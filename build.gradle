@@ -11,6 +11,22 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
+// ДОБАВЛЯЕМ РЕПОЗИТОРИИ ДЛЯ ЗАВИСИМОСТЕЙ
+repositories {
+    // ВОТ ОНО. РЕПОЗИТОРИЙ, ГДЕ ЛЕЖИТ SAM NEOFORGE.
+    maven {
+        name = 'NeoForge'
+        url = 'https://maven.neoforged.net/releases'
+    }
+    // Репозиторий для Curios, GeckoLib и других модов
+    maven {
+        url "https://cursemaven.com"
+        content {
+            includeGroup "curse.maven"
+        }
+    }
+}
+
 runs {
     configureEach {
         systemProperty 'forge.logging.markers', 'REGISTRIES'
@@ -24,7 +40,7 @@ runs {
 
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        // ИСПРАВЛЕНО: Правильный синтаксис - это присваивание списка свойству 'args'
+        // Этот синтаксис верный, он заработает, когда 'server' будет найден
         args = ['--nogui']
     }
 
@@ -33,27 +49,15 @@ runs {
     }
 
     data {
-        // ИСПРАВЛЕНО: Правильный синтаксис - это присваивание списка свойству 'args'
+        // Этот синтаксис верный, он заработает, когда 'data' будет найден
         args = ['--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()]
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
-repositories {
-    maven {
-        url "https://cursemaven.com"
-        content {
-            includeGroup "curse.maven"
-        }
-    }
-}
-
 dependencies {
-    // Основная зависимость - NeoForge. Версия берется из gradle.properties
     implementation "net.neoforged:neoforge:${neo_version}"
-
-    // ЗАВИСИМОСТИ ДЛЯ ПОРТИРОВАНИЯ:
     implementation fg.deobf("curse.maven:curios-309927:6665790")
     implementation fg.deobf("curse.maven:geckolib-388172:6659026")
 }
