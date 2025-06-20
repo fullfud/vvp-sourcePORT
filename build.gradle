@@ -1,6 +1,5 @@
 plugins {
-    // Используем правильный ID и последнюю версию из MDK
-    id 'net.neoforged.gradle.userdev' version '7.0.185'
+    id 'net.neoforged.gradle.userdev' version '7.0.123'
 }
 
 version = mod_version
