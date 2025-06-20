@@ -6,7 +6,7 @@ import tech.vvp.vvp.tools.Ammo; // <-- Убедитесь, что этот им�
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 import net.minecraft.nbt.Tag;
 
 import java.util.HashMap;

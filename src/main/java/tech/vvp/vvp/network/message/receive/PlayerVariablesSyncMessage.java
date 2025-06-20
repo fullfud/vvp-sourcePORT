@@ -5,7 +5,7 @@ import tech.vvp.vvp.network.PlayerVariable;
 import tech.vvp.vvp.tools.Ammo;
 import net.minecraft.client.Minecraft;
 import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.NetworkEvent;
 
 import java.util.Map;
 import java.util.function.Supplier;

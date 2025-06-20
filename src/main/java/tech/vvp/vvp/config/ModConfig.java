@@ -1,7 +1,7 @@
 package tech.vvp.vvp.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
-import net.minecraftforge.fml.ModLoadingContext;
+import net.neoforged.neoforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.fml.ModLoadingContext;
 
 public class ModConfig {
     public static void register() {

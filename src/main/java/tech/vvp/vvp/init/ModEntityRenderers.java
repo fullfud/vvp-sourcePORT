@@ -1,9 +1,9 @@
 package tech.vvp.vvp.init;
 
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.EntityRenderersEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.neoforge.api.distmarker.Dist;
+import net.neoforged.neoforge.client.event.EntityRenderersEvent;
+import net.neoforged.neoforge.eventbus.api.SubscribeEvent;
+import net.neoforged.neoforge.fml.common.Mod;
 import tech.vvp.vvp.VVP;
 import tech.vvp.vvp.client.renderer.entity.vazikRenderer;
 import tech.vvp.vvp.client.renderer.entity.bikegreenRenderer;

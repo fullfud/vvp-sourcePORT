@@ -1,6 +1,6 @@
 package tech.vvp.vvp.config;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ForgeConfigSpec;
 
 public class VehicleConfigVVP {
         public static final ForgeConfigSpec.Builder BUILDER = new ForgeConfigSpec.Builder();
