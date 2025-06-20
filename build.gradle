@@ -11,21 +11,7 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// ДОБАВЛЯЕМ РЕПОЗИТОРИИ ДЛЯ ЗАВИСИМОСТЕЙ
-repositories {
-    // ВОТ ОНО. РЕПОЗИТОРИЙ, ГДЕ ЛЕЖИТ SAM NEOFORGE.
-    maven {
-        name = 'NeoForge'
-        url = 'https://maven.neoforged.net/releases'
-    }
-    // Репозиторий для Curios, GeckoLib и других модов
-    maven {
-        url "https://cursemaven.com"
-        content {
-            includeGroup "curse.maven"
-        }
-    }
-}
+// Блок repositories здесь больше НЕ НУЖЕН. Он теперь в settings.gradle.
 
 runs {
     configureEach {
@@ -40,7 +26,6 @@ runs {
 
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        // Этот синтаксис верный, он заработает, когда 'server' будет найден
         args = ['--nogui']
     }
 
@@ -49,7 +34,6 @@ runs {
     }
 
     data {
-        // Этот синтаксис верный, он заработает, когда 'data' будет найден
         args = ['--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()]
     }
 }
