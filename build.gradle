@@ -9,7 +9,11 @@ base {
     archivesName = mod_id
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(21)
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
 
 // repositories не нужен, если всё в settings.gradle
 
@@ -22,11 +26,12 @@ runs {
 
     client {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        // Можно добавить programArgs, если нужно
     }
 
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        args = ['--nogui']
+        programArgs.add('--nogui')
     }
 
     gameTestServer {
@@ -34,7 +39,12 @@ runs {
     }
 
     data {
-        args = ['--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()]
+        programArgs.addAll([
+            '--mod', project.mod_id,
+            '--all',
+            '--output', file('src/generated/resources/').getAbsolutePath(),
+            '--existing', file('src/main/resources/').getAbsolutePath()
+        ])
     }
 }
 
