@@ -1,34 +1,25 @@
 package com.atsuishio.superbwarfare.item.common.ammo;
 
-import com.atsuishio.superbwarfare.entity.projectile.MortarShellEntity;
-import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
-import com.atsuishio.superbwarfare.init.ModSounds;
-import com.atsuishio.superbwarfare.item.DispenserLaunchable;
-import net.minecraft.core.BlockSource;
-import net.minecraft.core.Position;
-import net.minecraft.core.dispenser.AbstractProjectileDispenseBehavior;
-import net.minecraft.core.dispenser.DispenseItemBehavior;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.projectile.Projectile;
+import net.minecraft.util.FastColor;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
-import net.minecraft.world.level.Level;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RegisterColorHandlersEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterColorHandlersEvent;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.Nullable;
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
-public class PotionMortarShell extends MortarShell implements DispenserLaunchable {
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+public class PotionMortarShell extends MortarShell {
 
     public PotionMortarShell() {
         super();
@@ -36,40 +27,23 @@ public class PotionMortarShell extends MortarShell implements DispenserLaunchabl
 
     @Override
     public @NotNull ItemStack getDefaultInstance() {
-        return PotionUtils.setPotion(super.getDefaultInstance(), Potions.POISON);
+        ItemStack itemstack = super.getDefaultInstance();
+        itemstack.set(DataComponents.POTION_CONTENTS, new PotionContents(Potions.POISON));
+        return itemstack;
     }
 
     @Override
     @ParametersAreNonnullByDefault
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltip, TooltipFlag pFlag) {
-        PotionUtils.addPotionTooltip(pStack, pTooltip, 0.125F);
+    public void appendHoverText(ItemStack stack, Item.TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        PotionContents potioncontents = stack.get(DataComponents.POTION_CONTENTS);
+        if (potioncontents != null) {
+            potioncontents.addPotionTooltip(tooltipComponents::add, 0.125F, context.tickRate());
+        }
     }
 
     @SubscribeEvent
     public static void onRegisterColorHandlers(final RegisterColorHandlersEvent.Item event) {
-        event.register((stack, layer) -> layer == 1 ? PotionUtils.getColor(stack) : -1, ModItems.POTION_MORTAR_SHELL.get());
-    }
-
-    @Override
-    public DispenseItemBehavior getLaunchBehavior() {
-        return new AbstractProjectileDispenseBehavior() {
-            @Override
-            protected float getPower() {
-                return 0.5F;
-            }
-
-            @Override
-            @ParametersAreNonnullByDefault
-            protected @NotNull Projectile getProjectile(Level pLevel, Position pPosition, ItemStack pStack) {
-                var shell = new MortarShellEntity(ModEntities.MORTAR_SHELL.get(), pPosition.x(), pPosition.y(), pPosition.z(), pLevel);
-                shell.setEffectsFromItem(pStack);
-                return shell;
-            }
-
-            @Override
-            protected void playSound(BlockSource pSource) {
-                pSource.getLevel().playSound(null, pSource.getPos(), ModSounds.MORTAR_FIRE.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
-            }
-        };
+        event.register((stack, layer) -> layer == 1 ? FastColor.ARGB32.opaque(stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY).getColor()) : -1,
+                ModItems.POTION_MORTAR_SHELL.get());
     }
 }

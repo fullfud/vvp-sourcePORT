@@ -6,9 +6,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
@@ -45,7 +45,7 @@ public class Mk42Model extends GeoModel<Mk42Entity> {
 
     @Override
     public void setCustomAnimations(Mk42Entity animatable, long instanceId, AnimationState<Mk42Entity> animationState) {
-        CoreGeoBone bone = getAnimationProcessor().getBone("maingun");
+        GeoBone bone = getAnimationProcessor().getBone("maingun");
         EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
         bone.setRotX((entityData.headPitch()) * Mth.DEG_TO_RAD);
     }

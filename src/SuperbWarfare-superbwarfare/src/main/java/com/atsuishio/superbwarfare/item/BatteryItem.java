@@ -1,49 +1,39 @@
 package com.atsuishio.superbwarfare.item;
 
-import com.atsuishio.superbwarfare.capability.energy.ItemEnergyProvider;
 import com.atsuishio.superbwarfare.client.tooltip.component.CellImageComponent;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.Optional;
-import java.util.function.Supplier;
 
-public class BatteryItem extends Item {
+public class BatteryItem extends Item implements EnergyStorageItem {
 
-    private final Supplier<Integer> energyCapacity;
     public int maxEnergy;
 
     public BatteryItem(int maxEnergy, Properties properties) {
         super(properties.stacksTo(1));
         this.maxEnergy = maxEnergy;
-        this.energyCapacity = () -> maxEnergy;
     }
 
     @Override
     public boolean isBarVisible(ItemStack pStack) {
-        return pStack.getCapability(ForgeCapabilities.ENERGY)
-                .map(IEnergyStorage::getEnergyStored)
-                .orElse(0) != maxEnergy;
+        var cap = pStack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap == null) return false;
+        return cap.getEnergyStored() != cap.getMaxEnergyStored();
     }
 
     @Override
     public int getBarWidth(ItemStack pStack) {
-        var energy = pStack.getCapability(ForgeCapabilities.ENERGY)
-                .map(IEnergyStorage::getEnergyStored)
-                .orElse(0);
+        var energy = 0;
+        var cap = pStack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap != null) {
+            energy = cap.getEnergyStored();
+        }
 
         return Math.round((float) energy * 13.0F / maxEnergy);
-    }
-
-    @Override
-    public ICapabilityProvider initCapabilities(ItemStack stack, CompoundTag tag) {
-        return new ItemEnergyProvider(stack, energyCapacity.get());
     }
 
     @Override
@@ -58,9 +48,15 @@ public class BatteryItem extends Item {
 
     public ItemStack makeFullEnergyStack() {
         ItemStack stack = new ItemStack(this);
-        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> e.receiveEnergy(maxEnergy, false)
-        );
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap == null) return stack;
+
+        cap.receiveEnergy(maxEnergy, false);
         return stack;
+    }
+
+    @Override
+    public int getMaxEnergy() {
+        return maxEnergy;
     }
 }

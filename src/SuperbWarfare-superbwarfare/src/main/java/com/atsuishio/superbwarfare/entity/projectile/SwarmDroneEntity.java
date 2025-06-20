@@ -1,11 +1,7 @@
 package com.atsuishio.superbwarfare.entity.projectile;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
-import com.atsuishio.superbwarfare.init.ModDamageTypes;
-import com.atsuishio.superbwarfare.init.ModEntities;
-import com.atsuishio.superbwarfare.init.ModItems;
-import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.init.*;
 import com.atsuishio.superbwarfare.network.message.receive.ClientIndicatorMessage;
 import com.atsuishio.superbwarfare.tools.CustomExplosion;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
@@ -13,8 +9,6 @@ import com.atsuishio.superbwarfare.tools.ParticleTool;
 import com.atsuishio.superbwarfare.tools.SeekTool;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -36,23 +30,18 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
 import java.util.List;
 
-public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEntity, DestroyableProjectileEntity, ExplosiveProjectile {
+public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
 
     public static final EntityDataAccessor<String> TARGET_UUID = SynchedEntityData.defineId(SwarmDroneEntity.class, EntityDataSerializers.STRING);
     public static final EntityDataAccessor<Float> TARGET_X = SynchedEntityData.defineId(SwarmDroneEntity.class, EntityDataSerializers.FLOAT);
@@ -83,23 +72,14 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
         this.explosionRadius = explosionRadius;
     }
 
-    public SwarmDroneEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.SWARM_DRONE.get(), level);
-    }
-
     @Override
     public boolean isPickable() {
         return !this.isRemoved();
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
-        return ModItems.SWARM_DRONE.get();
+    protected @NotNull Item getDefaultItem() {
+        return ModItems.DRONE.get();
     }
 
     public void setTargetUuid(String uuid) {
@@ -141,17 +121,18 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(HEALTH, 10f);
-        this.entityData.define(TARGET_UUID, "none");
-        this.entityData.define(TARGET_X, 0f);
-        this.entityData.define(TARGET_Y, 0f);
-        this.entityData.define(TARGET_Z, 0f);
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        super.defineSynchedData(builder);
+
+        builder.define(TARGET_UUID, "none")
+                .define(HEALTH, 10f)
+                .define(TARGET_X, 0f)
+                .define(TARGET_Y, 0f)
+                .define(TARGET_Z, 0f);
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag compound) {
         super.readAdditionalSaveData(compound);
         if (compound.contains("Health")) {
             this.entityData.set(HEALTH, compound.getFloat("Health"));
@@ -177,7 +158,7 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag compound) {
         super.addAdditionalSaveData(compound);
         compound.putFloat("Health", this.entityData.get(HEALTH));
         compound.putString("TargetUUID", this.entityData.get(TARGET_UUID));
@@ -194,15 +175,18 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    protected void onHitEntity(EntityHitResult result) {
-        if (result.getEntity() instanceof SwarmDroneEntity) {
+    protected void onHitEntity(@NotNull EntityHitResult result) {
+        Entity entity = result.getEntity();
+        if (entity instanceof SwarmDroneEntity) {
             return;
         }
+        if (this.getOwner() != null && this.getOwner().getVehicle() != null && entity == this.getOwner().getVehicle())
+            return;
         if (this.getOwner() instanceof LivingEntity living) {
             if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
                 living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
 
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
             }
         }
         if (this.level() instanceof ServerLevel) {
@@ -211,7 +195,7 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    public void onHitBlock(BlockHitResult blockHitResult) {
+    public void onHitBlock(@NotNull BlockHitResult blockHitResult) {
         super.onHitBlock(blockHitResult);
         if (this.level() instanceof ServerLevel) {
             causeMissileExplode(ModDamageTypes.causeProjectileBoomDamage(this.level().registryAccess(), this, this.getOwner()), this.explosionDamage, this.explosionRadius);
@@ -225,9 +209,10 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
         List<Entity> decoy = SeekTool.seekLivingEntities(this, this.level(), 32, 90);
 
         for (var e : decoy) {
-            if (e instanceof DecoyEntity decoyEntity && !distracted) {
-                this.entityData.set(TARGET_UUID, decoyEntity.getDecoyUUID());
-                distracted = true;
+            if (e.getType().is(ModTags.EntityTypes.DECOY) && !this.distracted) {
+                this.entityData.set(TARGET_UUID, e.getStringUUID());
+                this.distracted = true;
+                break;
             }
         }
 
@@ -287,7 +272,7 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
         CustomExplosion explosion = new CustomExplosion(level(), this, source, damage,
                 this.getX(), this.getY(), this.getZ(), radius, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1.25f);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(level(), explosion);
+        EventHooks.onExplosionStart(level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnMediumExplosionParticles(level(), position());
         discard();
@@ -298,7 +283,7 @@ public class SwarmDroneEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    protected float getGravity() {
+    protected double getDefaultGravity() {
         return tickCount > 10 ? 0 : 0.1f;
     }
 

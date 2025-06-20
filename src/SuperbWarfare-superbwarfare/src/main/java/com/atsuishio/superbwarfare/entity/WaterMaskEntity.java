@@ -1,12 +1,14 @@
 package com.atsuishio.superbwarfare.entity;
 
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class WaterMaskEntity extends Entity implements GeoEntity {
@@ -26,20 +28,22 @@ public class WaterMaskEntity extends Entity implements GeoEntity {
         return this.cache;
     }
 
-    @Override
-    protected void defineSynchedData() {
-    }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag compoundTag) {
-    }
-
-    @Override
-    protected void addAdditionalSaveData(CompoundTag compoundTag) {
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
     }
 
     @Override
     public void baseTick() {
         discard();
+    }
+
+    @Override
+    protected void readAdditionalSaveData(@NotNull CompoundTag compound) {
+    }
+
+    @Override
+    protected void addAdditionalSaveData(@NotNull CompoundTag compound) {
+
     }
 }

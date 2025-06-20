@@ -1,8 +1,8 @@
 package com.atsuishio.superbwarfare.perk.functional;
 
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.data.gun.GunData;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.perk.PerkInstance;
 import com.atsuishio.superbwarfare.tools.DamageTypeTool;
@@ -34,23 +34,24 @@ public class Subsistence extends Perk {
 
             float rate = instance.level() * (0.1f + (stack.is(ModTags.Items.SMG) || stack.is(ModTags.Items.RIFLE) ? 0.07f : 0f));
 
-            Player finalAttacker = attacker;
-            PlayerVariable.modify(attacker, cap -> {
-                int mag = data.magazine();
-                int ammo = data.ammo.get();
-                int ammoReload = (int) Math.min(mag, mag * rate);
-                int ammoNeed = Math.min(mag - ammo, ammoReload);
+            var cap = attacker.getData(ModAttachments.PLAYER_VARIABLE).watch();
 
-                boolean flag = finalAttacker.isCreative() || InventoryTool.hasCreativeAmmoBox(finalAttacker);
+            int mag = data.magazine();
+            int ammo = data.ammo.get();
+            int ammoReload = (int) Math.min(mag, mag * rate);
+            int ammoNeed = Math.min(mag - ammo, ammoReload);
 
-                int ammoFinal = Math.min(data.countBackupAmmo(finalAttacker), ammoNeed);
-                if (flag) {
-                    ammoFinal = ammoNeed;
-                } else {
-                    data.consumeBackupAmmo(finalAttacker, ammoFinal);
-                }
-                data.ammo.set(Math.min(mag, ammo + ammoFinal));
-            });
+            boolean flag = attacker.isCreative() || InventoryTool.hasCreativeAmmoBox(attacker);
+
+            int ammoFinal = Math.min(data.countBackupAmmo(attacker), ammoNeed);
+            if (flag) {
+                ammoFinal = ammoNeed;
+            } else {
+                data.consumeBackupAmmo(attacker, ammoFinal);
+            }
+            data.ammo.set(Math.min(mag, ammo + ammoFinal));
+
+            cap.sync(attacker);
         }
     }
 }

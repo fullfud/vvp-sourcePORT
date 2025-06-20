@@ -3,10 +3,14 @@ package com.atsuishio.superbwarfare.client.tooltip;
 import com.atsuishio.superbwarfare.client.screens.DogTagEditorScreen;
 import com.atsuishio.superbwarfare.client.tooltip.component.DogTagImageComponent;
 import com.atsuishio.superbwarfare.item.DogTag;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 public class ClientDogTagImageTooltip implements ClientTooltipComponent {
 
@@ -21,8 +25,8 @@ public class ClientDogTagImageTooltip implements ClientTooltipComponent {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void renderImage(Font pFont, int pX, int pY, GuiGraphics pGuiGraphics) {
-        if (this.stack.getTag() == null) return;
         short[][] colors = DogTag.getColors(this.stack);
         if (isAllMinusOne(colors)) return;
 
@@ -31,8 +35,9 @@ public class ClientDogTagImageTooltip implements ClientTooltipComponent {
         for (int i = 0; i < 16; i++) {
             for (int j = 0; j < 16; j++) {
                 if (colors[i][j] == -1) continue;
+                var color = ChatFormatting.getById(colors[i][j]);
                 pGuiGraphics.fill(5 + pX + i * 4 + 4, 5 + pY + j * 4 + 4, 5 + pX + i * 4, 5 + pY + j * 4,
-                        DogTagEditorScreen.getColorByNum(colors[i][j]));
+                        DogTagEditorScreen.getColorFromFormatting(color));
             }
         }
 
@@ -45,12 +50,11 @@ public class ClientDogTagImageTooltip implements ClientTooltipComponent {
     }
 
     @Override
-    public int getWidth(Font pFont) {
+    public int getWidth(@NotNull Font pFont) {
         return !shouldRenderIcon(this.stack) ? 0 : this.width;
     }
 
     public static boolean shouldRenderIcon(ItemStack stack) {
-        if (stack.getTag() == null) return false;
         short[][] colors = DogTag.getColors(stack);
         return !isAllMinusOne(colors);
     }

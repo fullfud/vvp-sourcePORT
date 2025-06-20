@@ -3,10 +3,9 @@ package com.atsuishio.superbwarfare.entity.vehicle.base;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.menu.VehicleMenu;
 import com.atsuishio.superbwarfare.tools.InventoryTool;
-import net.minecraft.core.Direction;
 import net.minecraft.core.NonNullList;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.world.ContainerHelper;
 import net.minecraft.world.Containers;
 import net.minecraft.world.InteractionHand;
@@ -22,10 +21,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.items.wrapper.InvWrapper;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
@@ -35,27 +32,21 @@ public abstract class ContainerMobileVehicleEntity extends MobileVehicleEntity i
     public static final int CONTAINER_SIZE = 102;
 
     private final NonNullList<ItemStack> items = NonNullList.withSize(CONTAINER_SIZE, ItemStack.EMPTY);
-    private LazyOptional<?> itemHandler = LazyOptional.of(() -> new InvWrapper(this));
 
     public ContainerMobileVehicleEntity(EntityType<?> pEntityType, Level pLevel) {
         super(pEntityType, pLevel);
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-    }
-
-    @Override
     public void addAdditionalSaveData(CompoundTag compound) {
         super.addAdditionalSaveData(compound);
-        ContainerHelper.saveAllItems(compound, this.getItemStacks());
+        ContainerHelper.saveAllItems(compound, this.getItemStacks(), level().registryAccess());
     }
 
     @Override
     public void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
-        ContainerHelper.loadAllItems(compound, this.getItemStacks());
+        ContainerHelper.loadAllItems(compound, this.getItemStacks(), level().registryAccess());
     }
 
     @Override
@@ -87,15 +78,14 @@ public abstract class ContainerMobileVehicleEntity extends MobileVehicleEntity i
             int neededEnergy = this.getMaxEnergy() - this.getEnergy();
             if (neededEnergy <= 0) break;
 
-            var energyCap = stack.getCapability(ForgeCapabilities.ENERGY).resolve();
-            if (energyCap.isEmpty()) continue;
+            var energyCap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+            if (energyCap == null) continue;
 
-            var energyStorage = energyCap.get();
-            var stored = energyStorage.getEnergyStored();
+            var stored = energyCap.getEnergyStored();
             if (stored <= 0) continue;
 
             int energyToExtract = Math.min(stored, neededEnergy);
-            energyStorage.extractEnergy(energyToExtract, false);
+            energyCap.extractEnergy(energyToExtract, false);
             this.setEnergy(this.getEnergy() + energyToExtract);
         }
         this.refreshDimensions();
@@ -109,14 +99,13 @@ public abstract class ContainerMobileVehicleEntity extends MobileVehicleEntity i
         }
     }
 
-    @Nullable
     @Override
-    public ResourceLocation getLootTable() {
+    public ResourceKey<LootTable> getLootTable() {
         return null;
     }
 
     @Override
-    public void setLootTable(@Nullable ResourceLocation pLootTable) {
+    public void setLootTable(@Nullable ResourceKey<LootTable> lootTable) {
     }
 
     @Override
@@ -234,32 +223,12 @@ public abstract class ContainerMobileVehicleEntity extends MobileVehicleEntity i
 
     @Nullable
     @Override
-    public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
+    public AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory, Player pPlayer) {
         if (pPlayer.isSpectator()) {
             return null;
         } else {
             return new VehicleMenu(pContainerId, pPlayerInventory, this);
         }
-    }
-
-    @Override
-    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> capability, @Nullable Direction facing) {
-        if (this.isAlive() && capability == ForgeCapabilities.ITEM_HANDLER) {
-            return itemHandler.cast();
-        }
-        return super.getCapability(capability, facing);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        itemHandler.invalidate();
-    }
-
-    @Override
-    public void reviveCaps() {
-        super.reviveCaps();
-        itemHandler = LazyOptional.of(() -> new InvWrapper(this));
     }
 
     @Override

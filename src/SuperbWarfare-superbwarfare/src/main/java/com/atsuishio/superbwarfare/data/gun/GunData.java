@@ -13,6 +13,7 @@ import com.atsuishio.superbwarfare.tools.InventoryTool;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
@@ -21,11 +22,11 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryManager;
+import net.minecraft.world.item.component.CustomData;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
-import javax.annotation.Nullable;
 import java.util.*;
 
 public class GunData {
@@ -56,7 +57,8 @@ public class GunData {
         var id = stack.getDescriptionId();
         this.id = id.substring(id.indexOf(".") + 1).replace('.', ':');
 
-        this.tag = stack.getOrCreateTag();
+        var customData = stack.get(DataComponents.CUSTOM_DATA);
+        this.tag = customData != null ? customData.copyTag() : new CompoundTag();
 
         data = getOrPut("GunData");
         perkTag = getOrPut("Perks");
@@ -112,6 +114,7 @@ public class GunData {
         if (initialized()) return;
 
         data.putUUID("UUID", UUID.randomUUID());
+        save();
     }
 
     public static GunData from(ItemStack stack) {
@@ -363,7 +366,7 @@ public class GunData {
 
         public TagKey<Item> toTag() {
             if (type != AmmoConsumeType.TAG) throw new IllegalArgumentException("not TAG type!");
-            return ItemTags.create(Objects.requireNonNull(ResourceLocation.tryParse(this.value())));
+            return ItemTags.create(ResourceLocation.parse(this.value()));
         }
     }
 
@@ -418,7 +421,7 @@ public class GunData {
                 yield type.get(player);
             }
             case ITEM -> player.getInventory().clearOrCountMatchingItems(
-                    p -> p.getItem() == ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(info.value())),
+                    p -> p.getItem().toString().equals(info.value()),
                     0,
                     player.inventoryMenu.getCraftSlots()
             );
@@ -441,7 +444,7 @@ public class GunData {
         switch (info.type()) {
             case PLAYER_AMMO -> info.toPlayerAmmoType().set(player, info.toPlayerAmmoType().get(player) - count);
             case ITEM -> player.getInventory().clearOrCountMatchingItems(
-                    p -> p.getItem() == ForgeRegistries.ITEMS.getValue(ResourceLocation.tryParse(info.value())),
+                    p -> p.getItem().toString().equals(info.value()),
                     count,
                     player.inventoryMenu.getCraftSlots()
             );
@@ -510,8 +513,13 @@ public class GunData {
             }
         });
 
-        var perks = RegistryManager.ACTIVE.getRegistry(ModPerks.PERK_KEY).getEntries();
-        var perkValues = perks.stream().map(Map.Entry::getValue).toList();
+        // TODO 正确实现注册项读取
+        var perks = new ArrayList<DeferredHolder<Perk, ? extends Perk>>();
+        perks.addAll(ModPerks.AMMO_PERKS.getEntries());
+        perks.addAll(ModPerks.DAMAGE_PERKS.getEntries());
+        perks.addAll(ModPerks.FUNC_PERKS.getEntries());
+
+        var perkValues = perks.stream().map(DeferredHolder::get).toList();
         var perkKeys = perks.stream().map(perk -> perk.getKey().location().toString()).toList();
 
         for (String name : sortedNames) {
@@ -632,4 +640,8 @@ public class GunData {
     public final Bolt bolt;
     public final Attachment attachment;
     public final Perks perk;
+
+    public void save() {
+        stack.set(DataComponents.CUSTOM_DATA, CustomData.of(tag));
+    }
 }

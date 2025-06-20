@@ -5,6 +5,7 @@ import com.atsuishio.superbwarfare.entity.vehicle.base.MobileVehicleEntity;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.sounds.AbstractTickableSoundInstance;
 import net.minecraft.sounds.SoundEvent;
@@ -72,8 +73,8 @@ public abstract class VehicleSoundInstance extends AbstractTickableSoundInstance
         }
 
         ItemStack stack = player.getMainHandItem();
-        if (stack.is(ModItems.MONITOR.get()) && stack.getOrCreateTag().getBoolean("Using")) {
-            DroneEntity drone = EntityFindUtil.findDrone(player.level(), stack.getOrCreateTag().getString("LinkedDrone"));
+        if (stack.is(ModItems.MONITOR.get()) && NBTTool.getTag(stack).getBoolean("Using")) {
+            DroneEntity drone = EntityFindUtil.findDrone(player.level(), NBTTool.getTag(stack).getString("LinkedDrone"));
             if (this.mobileVehicle == drone) {
                 pitch = 1;
             }
@@ -110,7 +111,7 @@ public abstract class VehicleSoundInstance extends AbstractTickableSoundInstance
 
         @Override
         protected boolean canPlay(MobileVehicleEntity mobileVehicle) {
-            return mobileVehicle.engineRunning();
+            return mobileVehicle.engineRunning() && mobileVehicle.onGround();
         }
 
         @Override

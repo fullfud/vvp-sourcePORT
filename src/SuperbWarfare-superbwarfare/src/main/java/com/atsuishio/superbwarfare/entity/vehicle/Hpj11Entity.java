@@ -10,7 +10,6 @@ import com.atsuishio.superbwarfare.entity.vehicle.weapon.SmallCannonShellWeapon;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.VehicleWeapon;
 import com.atsuishio.superbwarfare.event.ClientMouseHandler;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
-import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.item.ContainerBlockItem;
 import com.atsuishio.superbwarfare.tools.*;
@@ -37,17 +36,17 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.event.EventHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.Comparator;
@@ -77,23 +76,19 @@ public class Hpj11Entity extends ContainerMobileVehicleEntity implements GeoEnti
     public float gunRot;
     public float gunRotO;
 
-    public Hpj11Entity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.HPJ_11.get(), world);
-    }
-
     public Hpj11Entity(EntityType<Hpj11Entity> type, Level world) {
         super(type, world);
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(ANIM_TIME, 0);
-        this.entityData.define(GUN_ROTATE, 0f);
-        this.entityData.define(TARGET_UUID, "none");
-        this.entityData.define(OWNER_UUID, Optional.empty());
-        this.entityData.define(ACTIVE, false);
-        this.entityData.define(FIRE_TIME, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(ANIM_TIME, 0)
+                .define(GUN_ROTATE, 0f)
+                .define(TARGET_UUID, "none")
+                .define(OWNER_UUID, Optional.empty())
+                .define(ACTIVE, false)
+                .define(FIRE_TIME, 0);
     }
 
     @Override
@@ -189,7 +184,6 @@ public class Hpj11Entity extends ContainerMobileVehicleEntity implements GeoEnti
         entityData.set(TARGET_UUID, "none");
         return super.interact(player, hand);
     }
-
 
     @Override
     public DamageModifier getDamageModifier() {
@@ -382,7 +376,7 @@ public class Hpj11Entity extends ContainerMobileVehicleEntity implements GeoEnti
                 ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP).
                 setDamageMultiplier(1.25f);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnMediumExplosionParticles(this.level(), vec3);
     }
@@ -413,9 +407,9 @@ public class Hpj11Entity extends ContainerMobileVehicleEntity implements GeoEnti
     }
 
     @Override
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
-        serverYRot = yaw;
-        serverXRot = pitch;
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
+        serverYRot = yRot;
+        serverXRot = xRot;
         this.interpolationSteps = 10;
     }
 
@@ -426,7 +420,7 @@ public class Hpj11Entity extends ContainerMobileVehicleEntity implements GeoEnti
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), getAttacker(), getAttacker()), 100f,
                     this.getX(), this.getY(), this.getZ(), 7f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
         }

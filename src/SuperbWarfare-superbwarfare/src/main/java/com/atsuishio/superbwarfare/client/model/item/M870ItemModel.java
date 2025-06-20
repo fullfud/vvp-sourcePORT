@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class M870ItemModel extends CustomGunModel<M870Item> {
 
@@ -47,10 +47,10 @@ public class M870ItemModel extends CustomGunModel<M870Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -87,8 +87,8 @@ public class M870ItemModel extends CustomGunModel<M870Item> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("main");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("main");
 
         float numR = (float) (1 - 0.72 * zt);
         float numP = (float) (1 - 0.82 * zt);

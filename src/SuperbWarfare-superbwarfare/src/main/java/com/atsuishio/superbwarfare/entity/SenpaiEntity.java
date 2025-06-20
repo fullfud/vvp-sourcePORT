@@ -1,17 +1,19 @@
 package com.atsuishio.superbwarfare.entity;
 
-import com.atsuishio.superbwarfare.init.ModEntities;
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import net.minecraft.core.BlockPos;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
+import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.damagesource.DamageSource;
-import net.minecraft.world.entity.*;
+import net.minecraft.world.entity.EntityDimensions;
+import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
@@ -27,29 +29,21 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.event.entity.living.MobSpawnEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.FinalizeSpawnEvent;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE)
-public class SenpaiEntity extends Monster implements GeoEntity {
+import javax.annotation.ParametersAreNonnullByDefault;
 
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.GAME)
+public class SenpaiEntity extends Monster implements GeoEntity {
     public static final EntityDataAccessor<Boolean> RUNNER = SynchedEntityData.defineId(SenpaiEntity.class, EntityDataSerializers.BOOLEAN);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-
-    public SenpaiEntity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.SENPAI.get(), world);
-    }
 
     public SenpaiEntity(EntityType<SenpaiEntity> type, Level world) {
         super(type, world);
@@ -58,42 +52,27 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(RUNNER, Math.random() < 0.3);
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(RUNNER, Math.random() < 0.5);
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag compound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag compound) {
         super.addAdditionalSaveData(compound);
         compound.putBoolean("Runner", this.entityData.get(RUNNER));
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag compound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag compound) {
         super.readAdditionalSaveData(compound);
         this.entityData.set(RUNNER, compound.getBoolean("Runner"));
     }
 
     @Override
-    protected float getStandingEyeHeight(Pose poseIn, EntityDimensions sizeIn) {
-        return 1.75F;
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
     protected void registerGoals() {
         super.registerGoals();
-        this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.4, false) {
-            @Override
-            protected double getAttackReachSqr(LivingEntity entity) {
-                return this.mob.getBbWidth() * this.mob.getBbWidth() + entity.getBbWidth();
-            }
-        });
+        this.goalSelector.addGoal(1, new MeleeAttackGoal(this, 1.4, false));
         this.targetSelector.addGoal(2, new HurtByTargetGoal(this).setAlertOthers());
         this.goalSelector.addGoal(3, new RandomLookAroundGoal(this));
         this.goalSelector.addGoal(4, new FloatGoal(this));
@@ -102,12 +81,9 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @Override
-    public MobType getMobType() {
-        return MobType.ILLAGER;
-    }
-
-    protected void dropCustomDeathLoot(DamageSource source, int looting, boolean recentlyHitIn) {
-        super.dropCustomDeathLoot(source, looting, recentlyHitIn);
+    @ParametersAreNonnullByDefault
+    protected void dropCustomDeathLoot(ServerLevel level, DamageSource damageSource, boolean recentlyHit) {
+        super.dropCustomDeathLoot(level, damageSource, recentlyHit);
 
         double random = Math.random();
         if (random < 0.01) {
@@ -125,12 +101,13 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void playStepSound(BlockPos pos, BlockState blockIn) {
         this.playSound(ModSounds.STEP.get(), 0.25f, 1);
     }
 
     @Override
-    public SoundEvent getHurtSound(DamageSource ds) {
+    public SoundEvent getHurtSound(@NotNull DamageSource ds) {
         return ModSounds.OUCH.get();
     }
 
@@ -146,8 +123,8 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @Override
-    public EntityDimensions getDimensions(Pose p_33597_) {
-        return super.getDimensions(p_33597_).scale((float) 1);
+    protected @NotNull EntityDimensions getDefaultDimensions(@NotNull Pose pose) {
+        return super.getDefaultDimensions(pose);
     }
 
     @Override
@@ -184,16 +161,11 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @Override
-    public void die(DamageSource source) {
-        super.die(source);
-    }
-
-    @Override
     protected void tickDeath() {
         ++this.deathTime;
         if (this.deathTime == 540) {
-            this.remove(SenpaiEntity.RemovalReason.KILLED);
-            this.dropExperience();
+            this.remove(RemovalReason.KILLED);
+            this.dropExperience(null);
         }
     }
 
@@ -208,18 +180,18 @@ public class SenpaiEntity extends Monster implements GeoEntity {
     }
 
     @SubscribeEvent
-    public static void onFinalizeSpawn(MobSpawnEvent.FinalizeSpawn event) {
+    public static void onFinalizeSpawn(FinalizeSpawnEvent event) {
         if (!(event.getEntity() instanceof SenpaiEntity senpai)) return;
 
         if (senpai.entityData.get(RUNNER)) {
             var attribute = senpai.getAttribute(Attributes.MOVEMENT_SPEED);
             if (attribute != null) {
-                attribute.addPermanentModifier(new AttributeModifier(com.atsuishio.superbwarfare.Mod.ATTRIBUTE_MODIFIER, 0.4, AttributeModifier.Operation.MULTIPLY_BASE));
+                attribute.addPermanentModifier(new AttributeModifier(com.atsuishio.superbwarfare.Mod.ATTRIBUTE_MODIFIER, 0.4, AttributeModifier.Operation.ADD_MULTIPLIED_BASE));
             }
         } else {
             var attribute = senpai.getAttribute(Attributes.ATTACK_DAMAGE);
             if (attribute != null) {
-                attribute.addPermanentModifier(new AttributeModifier(com.atsuishio.superbwarfare.Mod.ATTRIBUTE_MODIFIER, 3, AttributeModifier.Operation.ADDITION));
+                attribute.addPermanentModifier(new AttributeModifier(com.atsuishio.superbwarfare.Mod.ATTRIBUTE_MODIFIER, 3, AttributeModifier.Operation.ADD_VALUE));
             }
         }
     }

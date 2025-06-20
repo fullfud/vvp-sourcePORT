@@ -2,11 +2,10 @@ package com.atsuishio.superbwarfare.item;
 
 import com.atsuishio.superbwarfare.entity.Blu43Entity;
 import com.atsuishio.superbwarfare.init.ModEntities;
-import net.minecraft.core.BlockSource;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Position;
+import net.minecraft.core.dispenser.BlockSource;
 import net.minecraft.core.dispenser.DefaultDispenseItemBehavior;
-import net.minecraft.core.dispenser.DispenseItemBehavior;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -20,7 +19,7 @@ import org.joml.Math;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 
-public class Blu43Mine extends Item implements DispenserLaunchable {
+public class Blu43Mine extends Item {
     public Blu43Mine() {
         super(new Properties());
     }
@@ -30,7 +29,7 @@ public class Blu43Mine extends Item implements DispenserLaunchable {
         ItemStack stack = player.getItemInHand(hand);
 
         if (!level.isClientSide) {
-            float randomRot = (float) Mth.clamp((2 * Math.random() - 1) * 180 , -180, 180);
+            float randomRot = (float) Mth.clamp((2 * Math.random() - 1) * 180, -180, 180);
             Blu43Entity entity = new Blu43Entity(player, level);
             entity.moveTo(player.getX(), player.getY() + 1.1, player.getZ(), randomRot, 0);
             entity.setYBodyRot(randomRot);
@@ -49,31 +48,28 @@ public class Blu43Mine extends Item implements DispenserLaunchable {
         return InteractionResultHolder.success(stack);
     }
 
-    @Override
-    public DispenseItemBehavior getLaunchBehavior() {
-        return new DefaultDispenseItemBehavior() {
-            @Override
-            @ParametersAreNonnullByDefault
-            public @NotNull ItemStack execute(BlockSource pSource, ItemStack pStack) {
-                Level level = pSource.getLevel();
-                Position position = DispenserBlock.getDispensePosition(pSource);
-                Direction direction = pSource.getBlockState().getValue(DispenserBlock.FACING);
+    public static class Blu43MineDispenseBehavior extends DefaultDispenseItemBehavior {
+        @Override
+        @ParametersAreNonnullByDefault
+        protected @NotNull ItemStack execute(BlockSource blockSource, ItemStack stack) {
+            Level level = blockSource.level();
+            Position position = DispenserBlock.getDispensePosition(blockSource);
+            Direction direction = blockSource.state().getValue(DispenserBlock.FACING);
 
-                var blu43 = new Blu43Entity(ModEntities.BLU_43.get(), level);
-                blu43.setPos(position.x(), position.y(), position.z());
-                float randomRot = (float) Mth.clamp((2 * Math.random() - 1) * 180 , -180, 180);
+            var blu43 = new Blu43Entity(ModEntities.BLU_43.get(), level);
+            blu43.setPos(position.x(), position.y(), position.z());
+            float randomRot = (float) Mth.clamp((2 * Math.random() - 1) * 180, -180, 180);
 
-                var pX = direction.getStepX();
-                var pY = direction.getStepY();
-                var pZ = direction.getStepZ();
-                blu43.shoot(pX, pY, pZ, 0.4f, 10);
-                blu43.setYRot(randomRot);
-                blu43.yRotO = blu43.getYRot();
+            var pX = direction.getStepX();
+            var pY = direction.getStepY();
+            var pZ = direction.getStepZ();
+            blu43.shoot(pX, pY, pZ, 0.4f, 10);
+            blu43.setYRot(randomRot);
+            blu43.yRotO = blu43.getYRot();
 
-                level.addFreshEntity(blu43);
-                pStack.shrink(1);
-                return pStack;
-            }
-        };
+            level.addFreshEntity(blu43);
+            stack.shrink(1);
+            return stack;
+        }
     }
 }

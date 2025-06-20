@@ -1,32 +1,35 @@
 package com.atsuishio.superbwarfare.recipe;
 
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModRecipes;
-import com.atsuishio.superbwarfare.item.common.ammo.AmmoBox;
+import com.atsuishio.superbwarfare.item.common.ammo.box.AmmoBox;
 import com.atsuishio.superbwarfare.tools.Ammo;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
-import net.minecraft.core.RegistryAccess;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.world.inventory.CraftingContainer;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.CraftingBookCategory;
+import net.minecraft.world.item.crafting.CraftingInput;
 import net.minecraft.world.item.crafting.CustomRecipe;
 import net.minecraft.world.item.crafting.RecipeSerializer;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
 public class AmmoBoxExtractAmmoRecipe extends CustomRecipe {
 
-    public AmmoBoxExtractAmmoRecipe(ResourceLocation pId, CraftingBookCategory pCategory) {
-        super(pId, pCategory);
+    public AmmoBoxExtractAmmoRecipe(CraftingBookCategory pCategory) {
+        super(pCategory);
     }
 
     @Override
-    public boolean matches(CraftingContainer pContainer, @NotNull Level pLevel) {
+    @ParametersAreNonnullByDefault
+    public boolean matches(CraftingInput input, Level level) {
         var hasAmmoBox = false;
         var ammoBoxItem = ItemStack.EMPTY;
 
-        for (var item : pContainer.getItems()) {
+        for (var item : input.items()) {
             if (item.getItem() instanceof AmmoBox) {
                 if (hasAmmoBox) return false;
                 hasAmmoBox = true;
@@ -36,24 +39,26 @@ public class AmmoBoxExtractAmmoRecipe extends CustomRecipe {
             }
         }
 
-        var tag = ammoBoxItem.getTag();
-        if (tag == null) return false;
+        var data = ammoBoxItem.get(ModDataComponents.AMMO_BOX_INFO);
+        if (data == null) return false;
 
-        var typeString = tag.getString("Type");
+        var typeString = data.type();
         var type = Ammo.getType(typeString);
         if (type == null) return false;
 
         return type.get(ammoBoxItem) > 0;
     }
 
-
     @Override
-    public @NotNull ItemStack assemble(CraftingContainer pContainer, @NotNull RegistryAccess pRegistryAccess) {
+    @ParametersAreNonnullByDefault
+    public @NotNull ItemStack assemble(CraftingInput input, HolderLookup.Provider registries) {
         Ammo type = null;
 
-        for (var item : pContainer.getItems()) {
+        for (var item : input.items()) {
             if (item.getItem() instanceof AmmoBox) {
-                type = Ammo.getType(item.getOrCreateTag().getString("Type"));
+                var data = item.get(ModDataComponents.AMMO_BOX_INFO);
+                assert data != null;
+                type = Ammo.getType(data.type());
                 break;
             }
         }
@@ -67,19 +72,21 @@ public class AmmoBoxExtractAmmoRecipe extends CustomRecipe {
             case SHOTGUN -> new ItemStack(ModItems.SHOTGUN_AMMO.get());
             case SNIPER -> new ItemStack(ModItems.SNIPER_AMMO.get());
             case HEAVY -> new ItemStack(ModItems.HEAVY_AMMO.get());
-            default -> throw new IllegalStateException("Unexpected value: " + type);
         };
     }
 
     @Override
-    public @NotNull NonNullList<ItemStack> getRemainingItems(@NotNull CraftingContainer pContainer) {
-        var remaining = super.getRemainingItems(pContainer);
+    public @NotNull NonNullList<ItemStack> getRemainingItems(@NotNull CraftingInput input) {
+        var remaining = super.getRemainingItems(input);
 
-        for (int i = 0; i < pContainer.getContainerSize(); i++) {
-            var item = pContainer.getItem(i);
+        for (int i = 0; i < input.items().size(); i++) {
+            var item = input.getItem(i);
             if (item.getItem() instanceof AmmoBox) {
                 var ammoBox = item.copy();
-                Ammo type = Ammo.getType(item.getOrCreateTag().getString("Type"));
+
+                var data = ammoBox.get(ModDataComponents.AMMO_BOX_INFO);
+                assert data != null;
+                Ammo type = Ammo.getType(data.type());
 
                 assert type != null;
                 type.add(ammoBox, -1);

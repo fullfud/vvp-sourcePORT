@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class RpkItemModel extends CustomGunModel<RpkItem> {
 
@@ -52,16 +52,16 @@ public class RpkItemModel extends CustomGunModel<RpkItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone scope = getAnimationProcessor().getBone("Scope1");
-        CoreGeoBone button = getAnimationProcessor().getBone("button");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
-        CoreGeoBone base = getAnimationProcessor().getBone("base");
-        CoreGeoBone bone171 = getAnimationProcessor().getBone("bone171");
-        CoreGeoBone scope3 = getAnimationProcessor().getBone("Scope3");
-        CoreGeoBone shuan = getAnimationProcessor().getBone("shuan");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone scope = getAnimationProcessor().getBone("Scope1");
+        GeoBone button = getAnimationProcessor().getBone("button");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone base = getAnimationProcessor().getBone("base");
+        GeoBone bone171 = getAnimationProcessor().getBone("bone171");
+        GeoBone scope3 = getAnimationProcessor().getBone("Scope3");
+        GeoBone shuan = getAnimationProcessor().getBone("shuan");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -71,7 +71,6 @@ public class RpkItemModel extends CustomGunModel<RpkItem> {
         double fr = ClientEventHandler.fireRot;
 
         int type = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
-
 
         float posYAlt = switch (type) {
             case 2, 3 -> 0.5f;
@@ -111,7 +110,7 @@ public class RpkItemModel extends CustomGunModel<RpkItem> {
         bone171.setScaleY(1f - (0.55f * (float) zp));
         scope3.setScaleZ(1f - (0.7f * (float) zp));
 
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -142,12 +141,13 @@ public class RpkItemModel extends CustomGunModel<RpkItem> {
         shen.setRotZ((float) (shen.getRotZ() * (1 - 0.4 * zt)));
 
         CrossHairOverlay.gunRot = shen.getRotZ();
+
         shuan.setPosZ(2.4f * (float) fp);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.98 * zt);
         float numP = (float) (1 - 0.92 * zt);

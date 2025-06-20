@@ -1,51 +1,47 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record DoubleJumpMessage(int empty) implements CustomPacketPayload {
+    public static final Type<DoubleJumpMessage> TYPE = new Type<>(Mod.loc("double_jump"));
 
-public class DoubleJumpMessage {
+    public static final StreamCodec<ByteBuf, DoubleJumpMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            DoubleJumpMessage::empty,
+            DoubleJumpMessage::new
+    );
 
-    private final int empty;
+    public static void handler(final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
 
-    public DoubleJumpMessage(int empty) {
-        this.empty = empty;
+        Level level = player.level();
+        double x = player.getX();
+        double y = player.getY();
+        double z = player.getZ();
+
+        level.playSound(null, BlockPos.containing(x, y, z), ModSounds.DOUBLE_JUMP.get(), SoundSource.BLOCKS, 1, 1);
+
+        Entity vehicle = player.getRootVehicle();
+        if (vehicle != player) {
+            vehicle.setDeltaMovement(new Vec3(vehicle.getLookAngle().x, 0.8, vehicle.getLookAngle().z));
+        }
     }
 
-    public static DoubleJumpMessage decode(FriendlyByteBuf buffer) {
-        return new DoubleJumpMessage(buffer.readInt());
-    }
-
-    public static void encode(DoubleJumpMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.empty);
-    }
-
-    public static void handler(DoubleJumpMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
-
-            if (player != null) {
-                Level level = player.level();
-                double x = player.getX();
-                double y = player.getY();
-                double z = player.getZ();
-                level.playSound(null, BlockPos.containing(x, y, z), ModSounds.DOUBLE_JUMP.get(), SoundSource.BLOCKS, 1, 1);
-
-                Entity vehicle = player.getRootVehicle();
-                if (vehicle != player) {
-                    vehicle.setDeltaMovement(new Vec3(vehicle.getLookAngle().x, 0.8, vehicle.getLookAngle().z));
-                }
-            }
-        });
-        context.setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

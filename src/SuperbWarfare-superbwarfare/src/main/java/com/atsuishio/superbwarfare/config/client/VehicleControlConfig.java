@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class VehicleControlConfig {
 
-    public static ForgeConfigSpec.BooleanValue INVERT_AIRCRAFT_CONTROL;
+    public static ModConfigSpec.BooleanValue INVERT_AIRCRAFT_CONTROL;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("invert_aircraft_control");
 
         builder.comment("Set true to invert aircraft control");

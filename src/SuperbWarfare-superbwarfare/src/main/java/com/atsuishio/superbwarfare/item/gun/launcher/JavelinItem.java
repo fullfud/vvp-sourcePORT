@@ -1,23 +1,21 @@
 package com.atsuishio.superbwarfare.item.gun.launcher;
 
 import com.atsuishio.superbwarfare.Mod;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.JavelinItemRenderer;
 import com.atsuishio.superbwarfare.client.tooltip.component.LauncherImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
-import com.atsuishio.superbwarfare.entity.projectile.DecoyEntity;
 import com.atsuishio.superbwarfare.entity.projectile.JavelinMissileEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
+import com.atsuishio.superbwarfare.init.ModEnumExtensions;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.network.message.receive.ShootClientMessage;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.tools.*;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
@@ -28,60 +26,39 @@ import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.animal.Pig;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Vector3d;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class JavelinItem extends GunItem {
 
     public JavelinItem() {
-        super(new Properties().stacksTo(1).rarity(RarityTool.LEGENDARY));
+        super(new Properties().stacksTo(1).rarity(ModEnumExtensions.getLegendary()));
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    renderer = new JavelinItemRenderer();
-                }
-                return renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return JavelinItemRenderer::new;
     }
 
     private PlayState idlePredicate(AnimationState<JavelinItem> event) {
@@ -122,17 +99,18 @@ public class JavelinItem extends GunItem {
     @ParametersAreNonnullByDefault
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
         super.inventoryTick(stack, world, entity, slot, selected);
-        if (entity instanceof Player player && selected) {
-            var tag = stack.getOrCreateTag();
-            if (tag.getBoolean("Seeking")) {
+        var data = GunData.from(stack);
+        final var tag = data.tag();
 
+        if (entity instanceof Player player && selected) {
+            if (tag.getBoolean("Seeking")) {
                 List<Entity> decoy = SeekTool.seekLivingEntities(player, player.level(), 512, 8);
                 for (var e : decoy) {
-                    if (e instanceof DecoyEntity decoyEntity) {
-                        tag.putString("TargetEntity", decoyEntity.getDecoyUUID());
-                        tag.putDouble("TargetPosX", decoyEntity.getPosition().x);
-                        tag.putDouble("TargetPosY", decoyEntity.getPosition().y);
-                        tag.putDouble("TargetPosZ", decoyEntity.getPosition().z);
+                    if (e.getType().is(ModTags.EntityTypes.DECOY)) {
+                        tag.putString("TargetEntity", e.getStringUUID());
+                        tag.putDouble("TargetPosX", e.position().x);
+                        tag.putDouble("TargetPosY", e.position().y);
+                        tag.putDouble("TargetPosZ", e.position().z);
                     }
                 }
 
@@ -160,9 +138,7 @@ public class JavelinItem extends GunItem {
                             targetEntity.level().playSound(null, targetEntity.getOnPos(), targetEntity instanceof Pig ? SoundEvents.PIG_HURT : ModSounds.LOCKED_WARNING.get(), SoundSource.PLAYERS, 1, 0.95f);
                         }
                     }
-
                 } else if (tag.getInt("GuideType") == 1) {
-
                     Vec3 toVec = player.getEyePosition().vectorTo(new Vec3(tag.getDouble("TargetPosX"), tag.getDouble("TargetPosY"), tag.getDouble("TargetPosZ"))).normalize();
                     if (VectorTool.calculateAngle(player.getViewVector(1), toVec) < 8) {
                         tag.putInt("SeekTime", tag.getInt("SeekTime") + 1);
@@ -183,13 +159,14 @@ public class JavelinItem extends GunItem {
 
                 Entity seekingEntity = SeekTool.seekEntity(player, player.level(), 512, 8);
 
-                if (seekingEntity instanceof DecoyEntity) {
+                if (seekingEntity != null && seekingEntity.getType().is(ModTags.EntityTypes.DECOY)) {
                     tag.putInt("SeekTime", 0);
                 }
             }
         } else {
-            stack.getOrCreateTag().putInt("SeekTime", 0);
+            tag.putInt("SeekTime", 0);
         }
+        data.save();
     }
 
     @Override
@@ -234,7 +211,8 @@ public class JavelinItem extends GunItem {
                     (float) data.explosionDamage(),
                     (float) data.explosionRadius(),
                     tag.getInt("GuideType"),
-                    new Vec3(tag.getDouble("TargetPosX"), tag.getDouble("TargetPosY"), tag.getDouble("TargetPosZ")));
+                    new Vec3(tag.getDouble("TargetPosX"), tag.getDouble("TargetPosY"), tag.getDouble("TargetPosZ"))
+            );
 
             for (Perk.Type type : Perk.Type.values()) {
                 var instance = data.perk.getInstance(type);
@@ -260,11 +238,16 @@ public class JavelinItem extends GunItem {
             serverPlayer.level().playSound(null, serverPlayer.getOnPos(), ModSounds.JAVELIN_FIRE_3P.get(), SoundSource.PLAYERS, 4, 1);
             serverPlayer.level().playSound(null, serverPlayer.getOnPos(), ModSounds.JAVELIN_FAR.get(), SoundSource.PLAYERS, 10, 1);
 
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShootClientMessage(10));
+            PacketDistributor.sendToPlayer(serverPlayer, new ShootClientMessage(10));
         }
 
         player.getCooldowns().addCooldown(stack.getItem(), 10);
         data.ammo.set(data.ammo.get() - 1);
+        data.save();
+    }
+
+    @Override
+    public void onShoot(GunData data, Player player, double spread, boolean zoom) {
     }
 
     @Override
@@ -278,13 +261,9 @@ public class JavelinItem extends GunItem {
         tag.putInt("SeekTime", 0);
         tag.putString("TargetEntity", "none");
         if (player instanceof ServerPlayer serverPlayer) {
-            var clientboundstopsoundpacket = new ClientboundStopSoundPacket(new ResourceLocation(Mod.MODID, "javelin_lock"), SoundSource.PLAYERS);
+            var clientboundstopsoundpacket = new ClientboundStopSoundPacket(Mod.loc("javelin_lock"), SoundSource.PLAYERS);
             serverPlayer.connection.send(clientboundstopsoundpacket);
         }
-    }
-
-    @Override
-    public void onShoot(GunData data, Player player, double spread, boolean zoom) {
     }
 
     @Override
@@ -294,7 +273,6 @@ public class JavelinItem extends GunItem {
         if (!zoom || data.ammo.get() <= 0) return;
 
         var tag = data.tag();
-
         Entity seekingEntity = SeekTool.seekEntity(player, player.level(), 512, 8);
 
         if (seekingEntity != null && !player.isCrouching()) {

@@ -5,8 +5,8 @@ import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.item.LungeMine;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class LungeMineModel extends GeoModel<LungeMine> {
@@ -28,7 +28,7 @@ public class LungeMineModel extends GeoModel<LungeMine> {
 
     @Override
     public void setCustomAnimations(LungeMine animatable, long instanceId, AnimationState animationState) {
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
         ClientEventHandler.handleReloadShake(Mth.RAD_TO_DEG * camera.getRotX(), Mth.RAD_TO_DEG * camera.getRotY(), Mth.RAD_TO_DEG * camera.getRotZ());
     }
 }

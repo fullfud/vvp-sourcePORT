@@ -8,6 +8,7 @@ import net.minecraft.network.FriendlyByteBuf;
 
 import java.lang.annotation.Annotation;
 import java.lang.reflect.Field;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
@@ -16,7 +17,10 @@ import java.util.List;
 public class BufferSerializer {
     public static List<Field> sortedFields(Class<?> clazz) {
         return Arrays.stream(clazz.getDeclaredFields())
-                .filter(f -> !f.isAnnotationPresent(ServerOnly.class) && !f.getType().isAssignableFrom(Annotation.class))
+                .filter(f -> !f.isAnnotationPresent(ServerOnly.class)
+                        && !Modifier.isTransient(f.getModifiers())
+                        && !f.getType().isAssignableFrom(Annotation.class)
+                )
                 .sorted(Comparator.comparing(Field::getName))
                 .toList();
     }
@@ -47,22 +51,16 @@ public class BufferSerializer {
         var fields = fieldValuesList(object);
 
         fields.forEach(value -> {
-            if (value instanceof Byte b) {
-                buffer.writeByte(b);
-            } else if (value instanceof Integer i) {
-                buffer.writeVarInt(i);
-            } else if (value instanceof Long l) {
-                buffer.writeLong(l);
-            } else if (value instanceof Float f) {
-                buffer.writeFloat(f);
-            } else if (value instanceof Double d) {
-                buffer.writeDouble(d);
-            } else if (value instanceof String s) {
-                buffer.writeUtf(s);
-            } else if (value instanceof Boolean b) {
-                buffer.writeBoolean(b);
-            } else {
-                buffer.writeUtf(gson.toJson(value));
+            switch (value) {
+                case Byte b -> buffer.writeByte(b);
+                case Integer i -> buffer.writeVarInt(i);
+                case Long l -> buffer.writeLong(l);
+                case Float f -> buffer.writeFloat(f);
+                case Double d -> buffer.writeDouble(d);
+                case String s -> buffer.writeUtf(s);
+                case Boolean b -> buffer.writeBoolean(b);
+
+                default -> buffer.writeUtf(gson.toJson(value));
             }
         });
 

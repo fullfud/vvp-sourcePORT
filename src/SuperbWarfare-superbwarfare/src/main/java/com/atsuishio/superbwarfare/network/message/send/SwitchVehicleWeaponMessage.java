@@ -1,48 +1,40 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
-import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.vehicle.base.WeaponVehicleEntity;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.util.Mth;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record SwitchVehicleWeaponMessage(int index, double value, boolean isScroll) implements CustomPacketPayload {
+    public static final Type<SwitchVehicleWeaponMessage> TYPE = new Type<>(Mod.loc("switch_vehicle_weapon"));
 
-public class SwitchVehicleWeaponMessage {
+    public static final StreamCodec<ByteBuf, SwitchVehicleWeaponMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            SwitchVehicleWeaponMessage::index,
+            ByteBufCodecs.DOUBLE,
+            SwitchVehicleWeaponMessage::value,
+            ByteBufCodecs.BOOL,
+            SwitchVehicleWeaponMessage::isScroll,
+            SwitchVehicleWeaponMessage::new
+    );
 
-    private final int index;
-    private final double value;
-    private final boolean isScroll;
+    public static void handler(SwitchVehicleWeaponMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
 
-    public SwitchVehicleWeaponMessage(int index, double value, boolean isScroll) {
-        this.index = index;
-        this.value = value;
-        this.isScroll = isScroll;
+        if (player.getVehicle() instanceof WeaponVehicleEntity weaponVehicle && weaponVehicle.isDriver(player)) {
+            var value = message.isScroll ? (Mth.clamp(message.value > 0 ? Mth.ceil(message.value) : Mth.floor(message.value), -1, 1)) : message.value;
+            weaponVehicle.changeWeapon(message.index, (int) value, message.isScroll);
+        }
     }
 
-    public static void encode(SwitchVehicleWeaponMessage message, FriendlyByteBuf byteBuf) {
-        byteBuf.writeInt(message.index);
-        byteBuf.writeDouble(message.value);
-        byteBuf.writeBoolean(message.isScroll);
-    }
-
-    public static SwitchVehicleWeaponMessage decode(FriendlyByteBuf byteBuf) {
-        return new SwitchVehicleWeaponMessage(byteBuf.readInt(), byteBuf.readDouble(), byteBuf.readBoolean());
-    }
-
-    public static void handler(SwitchVehicleWeaponMessage message, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            ServerPlayer player = context.get().getSender();
-            if (player == null) {
-                return;
-            }
-
-            if (player.getVehicle() instanceof VehicleEntity vehicle && vehicle instanceof WeaponVehicleEntity weaponVehicle && weaponVehicle.hasWeapon(vehicle.getSeatIndex(player))) {
-                var value = message.isScroll ? (Mth.clamp(message.value > 0 ? Mth.ceil(message.value) : Mth.floor(message.value), -1, 1)) : message.value;
-                weaponVehicle.changeWeapon(message.index, (int) value, message.isScroll);
-            }
-        });
-        context.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

@@ -14,11 +14,10 @@ import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
-
-import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
 public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTableMenu> {
@@ -41,9 +40,8 @@ public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTable
     }
 
     @Override
-    @ParametersAreNonnullByDefault
-    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        this.renderBackground(pGuiGraphics);
+    public void render(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
 
         var ammoPerkLevel = ReforgingTableScreen.this.menu.ammoPerkLevel.get();
@@ -115,19 +113,14 @@ public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTable
             super(pX, pY, 40, 16, Component.empty());
         }
 
-        @Override
-        public void render(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-            super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
-        }
 
         @Override
         public void onPress() {
-            Mod.PACKET_HANDLER.sendToServer(new GunReforgeMessage(0));
+            PacketDistributor.sendToServer(new GunReforgeMessage(0));
         }
 
         @Override
         protected void updateWidgetNarration(@NotNull NarrationElementOutput pNarrationElementOutput) {
-
         }
     }
 
@@ -158,6 +151,7 @@ public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTable
                 }
                 case FUNCTIONAL -> {
                     if (ReforgingTableScreen.this.menu.funcPerkLevel.get() >= ReforgingTableMenu.MAX_PERK_LEVEL) {
+
                         return;
                     }
                 }
@@ -168,7 +162,7 @@ public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTable
                 }
             }
 
-            Mod.PACKET_HANDLER.sendToServer(new SetPerkLevelMessage(type.ordinal(), true));
+            PacketDistributor.sendToServer(new SetPerkLevelMessage(type.ordinal(), true));
         }
 
         @Override
@@ -214,12 +208,11 @@ public class ReforgingTableScreen extends AbstractContainerScreen<ReforgingTable
                 }
             }
 
-            Mod.PACKET_HANDLER.sendToServer(new SetPerkLevelMessage(type.ordinal(), false));
+            PacketDistributor.sendToServer(new SetPerkLevelMessage(type.ordinal(), false));
         }
 
         @Override
         protected void updateWidgetNarration(@NotNull NarrationElementOutput pNarrationElementOutput) {
-
         }
     }
 }

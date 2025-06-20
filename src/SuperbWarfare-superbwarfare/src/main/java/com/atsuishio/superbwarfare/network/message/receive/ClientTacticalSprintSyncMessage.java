@@ -1,32 +1,29 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
-import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.config.server.MiscConfig;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record ClientTacticalSprintSyncMessage(boolean flag) implements CustomPacketPayload {
+    public static final Type<ClientTacticalSprintSyncMessage> TYPE = new Type<>(Mod.loc("client_tactical_sprint_sync"));
 
-public class ClientTacticalSprintSyncMessage {
+    public static final StreamCodec<ByteBuf, ClientTacticalSprintSyncMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            ClientTacticalSprintSyncMessage::flag,
+            ClientTacticalSprintSyncMessage::new
+    );
 
-    public boolean flag;
-
-    public ClientTacticalSprintSyncMessage(boolean flag) {
-        this.flag = flag;
+    public static void handler(ClientTacticalSprintSyncMessage message) {
+        MiscConfig.ALLOW_TACTICAL_SPRINT.set(message.flag);
+        MiscConfig.ALLOW_TACTICAL_SPRINT.save();
     }
 
-    public static void encode(ClientTacticalSprintSyncMessage message, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(message.flag);
-    }
-
-    public static ClientTacticalSprintSyncMessage decode(FriendlyByteBuf buffer) {
-        return new ClientTacticalSprintSyncMessage(buffer.readBoolean());
-    }
-
-    public static void handler(ClientTacticalSprintSyncMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandler.handleClientTacticalSprintSync(message.flag, ctx)));
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

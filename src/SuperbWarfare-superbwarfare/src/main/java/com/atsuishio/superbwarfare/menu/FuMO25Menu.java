@@ -1,16 +1,14 @@
 package com.atsuishio.superbwarfare.menu;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.block.entity.FuMO25BlockEntity;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.init.ModBlocks;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModMenuTypes;
+import com.atsuishio.superbwarfare.item.FiringParameters;
 import com.atsuishio.superbwarfare.network.dataslot.ContainerEnergyData;
 import com.atsuishio.superbwarfare.network.dataslot.SimpleEnergyData;
-import com.atsuishio.superbwarfare.network.message.receive.RadarMenuCloseMessage;
-import com.atsuishio.superbwarfare.network.message.receive.RadarMenuOpenMessage;
 import net.minecraft.core.BlockPos;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Inventory;
@@ -18,14 +16,11 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 import java.util.Optional;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(bus = net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus.FORGE)
 public class FuMO25Menu extends EnergyMenu {
 
     protected final Container container;
@@ -86,9 +81,10 @@ public class FuMO25Menu extends EnergyMenu {
             ItemStack stack = this.container.getItem(0);
             if (stack.isEmpty()) return;
 
-            stack.getOrCreateTag().putInt("TargetX", this.posX);
-            stack.getOrCreateTag().putInt("TargetY", this.posY);
-            stack.getOrCreateTag().putInt("TargetZ", this.posZ);
+            var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+            var isDepressed = parameters != null && parameters.isDepressed();
+
+            stack.set(ModDataComponents.FIRING_PARAMETERS, new FiringParameters.Parameters(new BlockPos(this.posX, this.posY, this.posZ), isDepressed));
 
             this.resetPos();
             this.container.setChanged();
@@ -112,50 +108,50 @@ public class FuMO25Menu extends EnergyMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player pPlayer, int pIndex) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player pPlayer, int pIndex) {
         ItemStack itemstack = ItemStack.EMPTY;
         Slot slot = this.slots.get(pIndex);
         if (slot.hasItem()) {
-            ItemStack itemstack1 = slot.getItem();
-            itemstack = itemstack1.copy();
+            ItemStack stack = slot.getItem();
+            itemstack = stack.copy();
             if (pIndex != 0) {
-                if (!this.moveItemStackTo(itemstack1, 0, 1, false)) {
+                if (!this.moveItemStackTo(stack, 0, 1, false)) {
                     return ItemStack.EMPTY;
                 } else if (pIndex >= 1 && pIndex < 28) {
-                    if (!this.moveItemStackTo(itemstack1, 28, 37, false)) {
+                    if (!this.moveItemStackTo(stack, 28, 37, false)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (pIndex >= 28 && pIndex < 37 && !this.moveItemStackTo(itemstack1, 1, 28, false)) {
+                } else if (pIndex >= 28 && pIndex < 37 && !this.moveItemStackTo(stack, 1, 28, false)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (!this.moveItemStackTo(itemstack1, 1, 37, false)) {
+            } else if (!this.moveItemStackTo(stack, 1, 37, false)) {
                 return ItemStack.EMPTY;
             }
 
-            if (itemstack1.isEmpty()) {
+            if (stack.isEmpty()) {
                 slot.setByPlayer(ItemStack.EMPTY);
             } else {
                 slot.setChanged();
             }
 
-            if (itemstack1.getCount() == itemstack.getCount()) {
+            if (stack.getCount() == itemstack.getCount()) {
                 return ItemStack.EMPTY;
             }
 
-            slot.onTake(pPlayer, itemstack1);
+            slot.onTake(pPlayer, stack);
         }
 
         return itemstack;
     }
 
     @Override
-    public boolean stillValid(Player pPlayer) {
+    public boolean stillValid(@NotNull Player pPlayer) {
         return this.access.evaluate((level, pos) -> level.getBlockState(pos).is(ModBlocks.FUMO_25.get())
                 && pPlayer.distanceToSqr((double) pos.getX() + 0.5D, (double) pos.getY() + 0.5D, (double) pos.getZ() + 0.5D) <= 64.0D, true);
     }
 
     @Override
-    public void removed(Player pPlayer) {
+    public void removed(@NotNull Player pPlayer) {
         this.access.execute((level, pos) -> {
             ItemStack para = this.container.getItem(0);
             if (!para.isEmpty()) {
@@ -201,21 +197,6 @@ public class FuMO25Menu extends EnergyMenu {
         @Override
         public boolean mayPlace(ItemStack pStack) {
             return pStack.is(ModItems.FIRING_PARAMETERS.get());
-        }
-    }
-
-    @SubscribeEvent
-    public static void onContainerOpened(PlayerContainerEvent.Open event) {
-        if (event.getContainer() instanceof FuMO25Menu fuMO25Menu && event.getEntity() instanceof ServerPlayer serverPlayer) {
-            fuMO25Menu.getSelfPos().ifPresent(pos ->
-                    Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new RadarMenuOpenMessage(pos)));
-        }
-    }
-
-    @SubscribeEvent
-    public static void onContainerClosed(PlayerContainerEvent.Close event) {
-        if (event.getContainer() instanceof FuMO25Menu && event.getEntity() instanceof ServerPlayer serverPlayer) {
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new RadarMenuCloseMessage(0));
         }
     }
 }

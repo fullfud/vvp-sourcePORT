@@ -8,8 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.*;
 
@@ -41,11 +41,11 @@ public class AureliaSceptreModel extends CustomGunModel<AureliaSceptre> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        float times = 0.2f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.2f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone rootLeftHand = getAnimationProcessor().getBone("rootLeftHand");
+        GeoBone rootLeftHand = getAnimationProcessor().getBone("rootLeftHand");
 
         firePosMove = Mth.lerp((holdFire ? 5 : 2) * times, firePosMove, holdFire ? 1 : 0);
 
@@ -56,14 +56,14 @@ public class AureliaSceptreModel extends CustomGunModel<AureliaSceptre> {
         rootLeftHand.setRotY((float) (0.2f * movePosX + Mth.DEG_TO_RAD * 300 * drawTime + Mth.DEG_TO_RAD * turnRot[1] + 5 * Mth.DEG_TO_RAD * firePosMove));
         rootLeftHand.setRotZ((float) (0.2f * movePosX + Mth.DEG_TO_RAD * 90 * drawTime + 2.7f * movePosHorizon + Mth.DEG_TO_RAD * turnRot[2] + -0.0102 * Mth.DEG_TO_RAD * firePosMove));
 
-        CoreGeoBone guashi = getAnimationProcessor().getBone("guashi");
+        GeoBone guashi = getAnimationProcessor().getBone("guashi");
         guashi.setPosZ((float) (-0.5f * velocityY));
         guashi.setPosY((float) (-1.5f * velocityY));
 
-        CoreGeoBone shuimu = getAnimationProcessor().getBone("shuimu");
+        GeoBone shuimu = getAnimationProcessor().getBone("shuimu");
         shuimu.setScaleZ((float) Mth.clamp(1 - 1.5f * velocityY, 0.5, 1.5));
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
         ClientEventHandler.handleReloadShake(Mth.RAD_TO_DEG * camera.getRotX(), Mth.RAD_TO_DEG * camera.getRotY(), Mth.RAD_TO_DEG * camera.getRotZ());
     }
 }

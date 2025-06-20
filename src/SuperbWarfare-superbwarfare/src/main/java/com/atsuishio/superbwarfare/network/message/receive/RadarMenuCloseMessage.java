@@ -1,32 +1,30 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
-import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.client.screens.FuMO25ScreenHelper;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record RadarMenuCloseMessage(int msgType) implements CustomPacketPayload {
+    public static final Type<RadarMenuCloseMessage> TYPE = new Type<>(Mod.loc("radar_menu_close"));
 
-public class RadarMenuCloseMessage {
+    public static final StreamCodec<ByteBuf, RadarMenuCloseMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            RadarMenuCloseMessage::msgType,
+            RadarMenuCloseMessage::new
+    );
 
-    public int type;
-
-    public RadarMenuCloseMessage(int type) {
-        this.type = type;
+    public static void handler(RadarMenuCloseMessage message, final IPayloadContext context) {
+        FuMO25ScreenHelper.resetEntities();
+        FuMO25ScreenHelper.pos = null;
     }
 
-    public static void encode(RadarMenuCloseMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-    }
-
-    public static RadarMenuCloseMessage decode(FriendlyByteBuf buffer) {
-        return new RadarMenuCloseMessage(buffer.readInt());
-    }
-
-    public static void handler(RadarMenuCloseMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> ClientPacketHandler::handleRadarMenuClose));
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

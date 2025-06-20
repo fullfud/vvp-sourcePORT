@@ -14,16 +14,16 @@ public class ClientLauncherImageTooltip extends ClientGunImageTooltip {
 
     @Override
     protected Component getDamageComponent() {
-        double damage = getGunData().damage();
+        double damage = data.damage();
 
         for (var type : Perk.Type.values()) {
-            var instance = getGunData().perk.getInstance(type);
+            var instance = data.perk.getInstance(type);
             if (instance != null) {
-                damage = instance.perk().getDisplayDamage(damage, getGunData(), instance);
+                damage = instance.perk().getDisplayDamage(damage, data, instance);
             }
         }
 
-        double explosionDamage = getGunData().explosionDamage();
+        double explosionDamage = data.explosionDamage();
 
         return Component.translatable("des.superbwarfare.guns.damage").withStyle(ChatFormatting.GRAY)
                 .append(Component.empty().withStyle(ChatFormatting.RESET))

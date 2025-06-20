@@ -6,37 +6,24 @@ import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
 import org.jetbrains.annotations.NotNull;
 
-public class SmokeDecoyEntity extends Entity implements DecoyEntity {
+public class SmokeDecoyEntity extends Entity {
 
     public SmokeDecoyEntity(EntityType<? extends SmokeDecoyEntity> type, Level world) {
         super(type, world);
     }
 
-    public SmokeDecoyEntity(LivingEntity entity, Level level) {
+    public SmokeDecoyEntity(Level level) {
         super(ModEntities.SMOKE_DECOY.get(), level);
-    }
-
-    public SmokeDecoyEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.SMOKE_DECOY.get(), level);
-    }
-
-    @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public int life = 400;
@@ -53,13 +40,13 @@ public class SmokeDecoyEntity extends Entity implements DecoyEntity {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag compoundTag) {
+    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         compoundTag.putInt("IgniteTime", igniteTime);
         compoundTag.putInt("Life", life);
     }
 
     @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
     }
 
     @Override
@@ -90,15 +77,5 @@ public class SmokeDecoyEntity extends Entity implements DecoyEntity {
         this.setXRot((float) (Mth.atan2(vec3.y, d0) * 57.2957763671875));
         this.yRotO = this.getYRot();
         this.xRotO = this.getXRot();
-    }
-
-    @Override
-    public Vec3 getPosition() {
-        return position();
-    }
-
-    @Override
-    public String getDecoyUUID() {
-        return this.getStringUUID();
     }
 }

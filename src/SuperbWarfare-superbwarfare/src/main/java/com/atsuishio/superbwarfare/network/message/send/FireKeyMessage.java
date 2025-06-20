@@ -1,47 +1,37 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.event.GunEventHandler;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
-
-import java.util.function.Supplier;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
 /**
  * 开火按键按下/松开时的处理
  */
-public class FireKeyMessage {
-    private final int type;
-    private final double power;
-    private final boolean zoom;
+public record FireKeyMessage(int msgType, double power, boolean zoom) implements CustomPacketPayload {
+    public static final Type<FireKeyMessage> TYPE = new Type<>(Mod.loc("fire"));
 
-    public FireKeyMessage(int type, double power, boolean zoom) {
-        this.type = type;
-        this.power = power;
-        this.zoom = zoom;
-    }
+    public static final StreamCodec<ByteBuf, FireKeyMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            FireKeyMessage::msgType,
+            ByteBufCodecs.DOUBLE,
+            FireKeyMessage::power,
+            ByteBufCodecs.BOOL,
+            FireKeyMessage::zoom,
+            FireKeyMessage::new
+    );
 
-    public static FireKeyMessage decode(FriendlyByteBuf buffer) {
-        return new FireKeyMessage(buffer.readInt(), buffer.readDouble(), buffer.readBoolean());
-    }
 
-    public static void encode(FireKeyMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-        buffer.writeDouble(message.power);
-        buffer.writeBoolean(message.zoom);
-    }
-
-    public static void handler(FireKeyMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            if (context.getSender() != null) {
-                pressAction(context.getSender(), message.type, message.power, message.zoom);
-            }
-        });
-        context.setPacketHandled(true);
+    public static void handler(FireKeyMessage message, final IPayloadContext context) {
+        pressAction(context.player(), message.msgType, message.power, message.zoom);
     }
 
     public static void pressAction(Player player, int type, double power, boolean zoom) {
@@ -59,6 +49,8 @@ public class FireKeyMessage {
             // 松开开火
             data.item.onFireKeyRelease(data, player, power, zoom);
         }
+
+        data.save();
     }
 
     private static void handleGunBolt(Player player, ItemStack stack) {
@@ -77,5 +69,10 @@ public class FireKeyMessage {
                 GunEventHandler.playGunBoltSounds(player);
             }
         }
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

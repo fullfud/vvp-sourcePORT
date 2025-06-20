@@ -3184,16 +3184,20 @@
       {
         "name": "superbwarfare:melee_hit_01",
         "stream": false
-      },      {
+      },
+      {
         "name": "superbwarfare:melee_hit_02",
         "stream": false
-      },      {
+      },
+      {
         "name": "superbwarfare:melee_hit_03",
         "stream": false
-      },      {
+      },
+      {
         "name": "superbwarfare:melee_hit_04",
         "stream": false
-      },      {
+      },
+      {
         "name": "superbwarfare:melee_hit_05",
         "stream": false
       }

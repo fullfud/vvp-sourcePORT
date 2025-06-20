@@ -2,7 +2,6 @@ package com.atsuishio.superbwarfare.item.gun.handgun;
 
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.client.ClickHandler;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.TooltipTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.TracheliumItemRenderer;
 import com.atsuishio.superbwarfare.data.gun.GunData;
@@ -10,40 +9,30 @@ import com.atsuishio.superbwarfare.data.gun.value.AttachmentType;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.*;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.Set;
-import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class Trachelium extends GunItem {
 
     public Trachelium() {
-        super(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC));
+        super(new Properties().stacksTo(1).rarity(Rarity.EPIC));
     }
 
     @Override
@@ -52,24 +41,8 @@ public class Trachelium extends GunItem {
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (this.renderer == null) {
-                    this.renderer = new TracheliumItemRenderer();
-                }
-                return this.renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return TracheliumItemRenderer::new;
     }
 
     private PlayState fireAnimPredicate(AnimationState<Trachelium> event) {
@@ -80,8 +53,9 @@ public class Trachelium extends GunItem {
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.trachelium.idle"));
 
-        boolean stock = GunData.from(stack).attachment.get(AttachmentType.STOCK) == 2;
-        boolean grip = GunData.from(stack).attachment.get(AttachmentType.GRIP) > 0 || GunData.from(stack).attachment.get(AttachmentType.SCOPE) > 0;
+        var data = GunData.from(stack);
+        boolean stock = data.attachment.get(AttachmentType.STOCK) == 2;
+        boolean grip = data.attachment.get(AttachmentType.GRIP) > 0 || data.attachment.get(AttachmentType.SCOPE) > 0;
 
         if (ClientEventHandler.firePosTimer > 0 && ClientEventHandler.firePosTimer < 1.7) {
             if (stock) {
@@ -122,10 +96,11 @@ public class Trachelium extends GunItem {
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.trachelium.idle"));
 
-        boolean stock = GunData.from(stack).attachment.get(AttachmentType.STOCK) == 2;
-        boolean grip = GunData.from(stack).attachment.get(AttachmentType.GRIP) > 0 || GunData.from(stack).attachment.get(AttachmentType.SCOPE) > 0;
+        var data = GunData.from(stack);
+        boolean stock = data.attachment.get(AttachmentType.STOCK) == 2;
+        boolean grip = data.attachment.get(AttachmentType.GRIP) > 0 || data.attachment.get(AttachmentType.SCOPE) > 0;
 
-        if (GunData.from(stack).bolt.actionTimer.get() > 0) {
+        if (data.bolt.actionTimer.get() > 0) {
             if (stock) {
                 if (grip) {
                     return event.setAndContinue(RawAnimation.begin().thenPlay("animation.trachelium.action_stock_grip"));
@@ -231,7 +206,7 @@ public class Trachelium extends GunItem {
 
     @Override
     @ParametersAreNonnullByDefault
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> list, TooltipFlag flag) {
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> list, TooltipFlag tooltipFlag) {
         list.add(Component.empty());
         list.add(Component.translatable("des.superbwarfare.trachelium_1").withStyle(ChatFormatting.GRAY).withStyle(ChatFormatting.ITALIC));
         list.add(Component.translatable("des.superbwarfare.trachelium_2").withStyle(ChatFormatting.GRAY));
@@ -245,17 +220,17 @@ public class Trachelium extends GunItem {
     @ParametersAreNonnullByDefault
     public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
         super.inventoryTick(stack, world, entity, slot, selected);
+        var data = GunData.from(stack);
 
-        int scopeType = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
-        int stockType = GunData.from(stack).attachment.get(AttachmentType.STOCK);
-        CompoundTag tags = GunData.from(stack).attachment();
+        int scopeType = data.attachment.get(AttachmentType.SCOPE);
+        int stockType = data.attachment.get(AttachmentType.STOCK);
 
         if (stockType == 1) {
-            tags.putInt("Stock", 2);
+            data.attachment.set(AttachmentType.STOCK, 2);
         }
 
         if (scopeType == 3) {
-            tags.putInt("Scope", 0);
+            data.attachment.set(AttachmentType.SCOPE, 0);
         }
     }
 
@@ -273,7 +248,7 @@ public class Trachelium extends GunItem {
     @Override
     public double getCustomDamage(ItemStack stack) {
         if (useSpecialAttributes(stack)) {
-            return 2;
+            return 3;
         }
         return super.getCustomDamage(stack);
     }
@@ -281,7 +256,7 @@ public class Trachelium extends GunItem {
     @Override
     public double getCustomZoom(ItemStack stack) {
         int scopeType = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
-        return scopeType == 2 ? (stack.getOrCreateTag().getBoolean("ScopeAlt") ? 0 : 2.75) : 0;
+        return scopeType == 2 ? (NBTTool.getTag(stack).getBoolean("ScopeAlt") ? 0 : 2.75) : 0;
     }
 
     @Override
@@ -306,11 +281,6 @@ public class Trachelium extends GunItem {
             return 0.1;
         }
         return super.getCustomBypassArmor(stack);
-    }
-
-    @Override
-    public ResourceLocation getGunIcon() {
-        return Mod.loc("textures/gun_icon/trachelium_icon.png");
     }
 
     @Override
@@ -341,5 +311,10 @@ public class Trachelium extends GunItem {
     @Override
     public boolean hasCustomStock(ItemStack stack) {
         return true;
+    }
+
+    @Override
+    public ResourceLocation getGunIcon() {
+        return Mod.loc("textures/gun_icon/trachelium_icon.png");
     }
 }

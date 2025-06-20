@@ -1,43 +1,38 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.FuMO25Menu;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.core.BlockPos;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record RadarSetPosMessage(BlockPos pos) implements CustomPacketPayload {
+    public static final Type<RadarSetPosMessage> TYPE = new Type<>(Mod.loc("radar_set_pos"));
 
-public class RadarSetPosMessage {
+    public static final StreamCodec<ByteBuf, RadarSetPosMessage> STREAM_CODEC = StreamCodec.composite(
+            BlockPos.STREAM_CODEC,
+            RadarSetPosMessage::pos,
+            RadarSetPosMessage::new
+    );
 
-    private final BlockPos pos;
 
-    public RadarSetPosMessage(BlockPos pos) {
-        this.pos = pos;
+    public static void handler(RadarSetPosMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
+
+        AbstractContainerMenu menu = player.containerMenu;
+        if (menu instanceof FuMO25Menu fuMO25Menu) {
+            if (!player.containerMenu.stillValid(player)) return;
+            fuMO25Menu.setPos(message.pos.getX(), message.pos.getY(), message.pos.getZ());
+        }
     }
 
-    public static void encode(RadarSetPosMessage message, FriendlyByteBuf buffer) {
-        buffer.writeBlockPos(message.pos);
-    }
-
-    public static RadarSetPosMessage decode(FriendlyByteBuf buffer) {
-        return new RadarSetPosMessage(buffer.readBlockPos());
-    }
-
-    public static void handler(RadarSetPosMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-
-            AbstractContainerMenu menu = player.containerMenu;
-            if (menu instanceof FuMO25Menu fuMO25Menu) {
-                if (!player.containerMenu.stillValid(player)) {
-                    return;
-                }
-                fuMO25Menu.setPos(message.pos.getX(), message.pos.getY(), message.pos.getZ());
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

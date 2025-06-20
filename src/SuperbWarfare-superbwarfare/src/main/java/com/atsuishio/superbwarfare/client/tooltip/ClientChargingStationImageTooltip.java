@@ -1,17 +1,16 @@
 package com.atsuishio.superbwarfare.client.tooltip;
 
 import com.atsuishio.superbwarfare.client.tooltip.component.GunImageComponent;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.item.ChargingStationBlockItem;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.tooltip.ClientTooltipComponent;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
@@ -39,8 +38,7 @@ public class ClientChargingStationImageTooltip implements ClientTooltipComponent
     }
 
     protected Component getEnergyComponent() {
-        CompoundTag tag = BlockItem.getBlockEntityData(stack);
-        int energy = tag == null ? 0 : tag.getInt("Energy");
+        int energy = stack.getOrDefault(ModDataComponents.ENERGY.get(), 0);
         int maxEnergy = ChargingStationBlockItem.MAX_ENERGY;
         float percentage = Mth.clamp((float) energy / maxEnergy, 0, 1);
         MutableComponent component = Component.empty();

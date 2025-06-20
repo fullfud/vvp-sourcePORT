@@ -26,8 +26,8 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.Objects;
 import java.util.function.Predicate;
@@ -39,8 +39,9 @@ public class DPSGeneratorDeployer extends Item {
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack pStack, @Nullable Level pLevel, @NotNull List<Component> pTooltipComponents, @NotNull TooltipFlag pIsAdvanced) {
-        pTooltipComponents.add(Component.translatable("des.superbwarfare.dps_generator_deployer").withStyle(ChatFormatting.GRAY).withStyle(ChatFormatting.ITALIC));
+    @ParametersAreNonnullByDefault
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("des.superbwarfare.dps_generator_deployer").withStyle(ChatFormatting.GRAY).withStyle(ChatFormatting.ITALIC));
     }
 
     private static final Predicate<Entity> IS_GENERATOR = e -> e instanceof DPSGeneratorEntity;
@@ -65,7 +66,7 @@ public class DPSGeneratorDeployer extends Item {
             // 禁止堆叠
             if (!level.getEntities(
                     (Entity) null,
-                    ModEntities.DPS_GENERATOR.get().getAABB(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5),
+                    ModEntities.DPS_GENERATOR.get().getSpawnAABB(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5),
                     IS_GENERATOR
             ).isEmpty()) {
                 return InteractionResult.FAIL;
@@ -96,7 +97,7 @@ public class DPSGeneratorDeployer extends Item {
                 // 禁止堆叠
                 if (!level.getEntities(
                         (Entity) null,
-                        ModEntities.DPS_GENERATOR.get().getAABB(blockpos.getX() + 0.5, blockpos.getY() + 0.5, blockpos.getZ() + 0.5),
+                        ModEntities.DPS_GENERATOR.get().getSpawnAABB(blockpos.getX() + 0.5, blockpos.getY() + 0.5, blockpos.getZ() + 0.5),
                         IS_GENERATOR
                 ).isEmpty()) {
                     return InteractionResultHolder.fail(itemstack);

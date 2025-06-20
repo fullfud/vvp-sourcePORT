@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -58,19 +58,20 @@ public class M98bItemModel extends CustomGunModel<M98bItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
-        CoreGeoBone scope = getAnimationProcessor().getBone("Scope1");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
-        CoreGeoBone scope3 = getAnimationProcessor().getBone("Scope3");
-        CoreGeoBone button = getAnimationProcessor().getBone("button");
-        CoreGeoBone button6 = getAnimationProcessor().getBone("button6");
-        CoreGeoBone button7 = getAnimationProcessor().getBone("button7");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone scope = getAnimationProcessor().getBone("Scope1");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone scope3 = getAnimationProcessor().getBone("Scope3");
+        GeoBone button = getAnimationProcessor().getBone("button");
+        GeoBone button6 = getAnimationProcessor().getBone("button6");
+        GeoBone button7 = getAnimationProcessor().getBone("button7");
 
-        int type = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
+        var data = GunData.from(stack);
+        int type = data.attachment.get(AttachmentType.SCOPE);
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -78,9 +79,10 @@ public class M98bItemModel extends CustomGunModel<M98bItem> {
         double fp = ClientEventHandler.firePos;
         double fr = ClientEventHandler.fireRot;
 
-        posYAlt = Mth.lerp(times, posYAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? -0.9f : 0.05f);
-        scaleZAlt = Mth.lerp(times, scaleZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 0.5f : 0.92f);
-        posZAlt = Mth.lerp(times, posZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 2.5f : 5.5f);
+        boolean scopeAlt = data.tag.getBoolean("ScopeAlt");
+        posYAlt = Mth.lerp(times, posYAlt, scopeAlt ? -0.9f : 0.05f);
+        scaleZAlt = Mth.lerp(times, scaleZAlt, scopeAlt ? 0.5f : 0.92f);
+        posZAlt = Mth.lerp(times, posZAlt, scopeAlt ? 2.5f : 5.5f);
 
         float posY = switch (type) {
             case 0 -> 0.07f;
@@ -116,7 +118,7 @@ public class M98bItemModel extends CustomGunModel<M98bItem> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone shen = getAnimationProcessor().getBone("fire");
+        GeoBone shen = getAnimationProcessor().getBone("fire");
 
         fireRotY = (float) Mth.lerp(0.3f * times, fireRotY, 0.2f * ClientEventHandler.recoilHorizon * fpz);
         fireRotZ = (float) Mth.lerp(2f * times, fireRotZ, (0.4f + 0.5 * fpz) * ClientEventHandler.recoilHorizon);
@@ -135,14 +137,14 @@ public class M98bItemModel extends CustomGunModel<M98bItem> {
         shen.setRotY((float) (shen.getRotY() * (1 - 0.85 * zt)));
         shen.setRotZ((float) (shen.getRotZ() * (1 - 0.4 * zt)));
 
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
         rotXBipod = Mth.lerp(1.5f * times, rotXBipod, isProne(player) ? -90 : 0);
         l.setRotX(rotXBipod * Mth.DEG_TO_RAD);
         r.setRotX(rotXBipod * Mth.DEG_TO_RAD);
 
-        CoreGeoBone sight1fold = getAnimationProcessor().getBone("SightFold1");
-        CoreGeoBone sight2fold = getAnimationProcessor().getBone("SightFold2");
+        GeoBone sight1fold = getAnimationProcessor().getBone("SightFold1");
+        GeoBone sight2fold = getAnimationProcessor().getBone("SightFold2");
         rotXSight = Mth.lerp(1.5f * times, rotXSight, type == 0 ? 0 : 90);
         sight1fold.setRotX(rotXSight * Mth.DEG_TO_RAD);
         sight2fold.setRotX(rotXSight * Mth.DEG_TO_RAD);
@@ -150,7 +152,7 @@ public class M98bItemModel extends CustomGunModel<M98bItem> {
         float numR = (float) (1 - 0.9 * zt);
         float numP = (float) (1 - 0.68 * zt);
 
-        if (GunData.from(stack).reload.time() > 0 || GunData.from(stack).bolt.actionTimer.get() > 0) {
+        if (data.reload.time() > 0 || data.bolt.actionTimer.get() > 0) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

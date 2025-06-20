@@ -6,7 +6,7 @@ import com.atsuishio.superbwarfare.item.PerkItem;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.perk.PerkInstance;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -32,7 +32,7 @@ public final class Perks {
         set(instance.perk(), instance.level());
     }
 
-    public CompoundTag getTag(RegistryObject<Perk> registry) {
+    public CompoundTag getTag(DeferredHolder<Perk, Perk> registry) {
         return getTag(registry.get().type);
     }
 
@@ -54,11 +54,11 @@ public final class Perks {
         getTag(perk).putShort("Level", level);
     }
 
-    public short getLevel(PerkItem item) {
+    public short getLevel(PerkItem<?> item) {
         return getLevel(item.getPerk());
     }
 
-    public short getLevel(RegistryObject<Perk> perk) {
+    public short getLevel(DeferredHolder<Perk, ? extends Perk> perk) {
         return getLevel(perk.get());
     }
 
@@ -73,7 +73,7 @@ public final class Perks {
         return getTag(type).getShort("Level");
     }
 
-    public @Nullable Perk get(RegistryObject<Perk> registry) {
+    public @Nullable Perk get(DeferredHolder<Perk, Perk> registry) {
         return get(registry.get());
     }
 
@@ -82,7 +82,7 @@ public final class Perks {
     }
 
     public @Nullable Perk get(Perk.Type type) {
-        var perksRegistry = new ArrayList<RegistryObject<Perk>>();
+        var perksRegistry = new ArrayList<DeferredHolder<Perk, ? extends Perk>>();
         perksRegistry.addAll(ModPerks.AMMO_PERKS.getEntries());
         perksRegistry.addAll(ModPerks.FUNC_PERKS.getEntries());
         perksRegistry.addAll(ModPerks.DAMAGE_PERKS.getEntries());
@@ -107,7 +107,7 @@ public final class Perks {
         return new PerkInstance(perk, getLevel(type));
     }
 
-    public void reduceCooldown(RegistryObject<Perk> registry, String name) {
+    public void reduceCooldown(DeferredHolder<Perk, Perk> registry, String name) {
         reduceCooldown(registry.get(), name);
     }
 

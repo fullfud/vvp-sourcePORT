@@ -1,14 +1,19 @@
 package com.atsuishio.superbwarfare.block.entity;
 
 import com.atsuishio.superbwarfare.block.ChargingStationBlock;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.config.server.MiscConfig;
 import com.atsuishio.superbwarfare.init.ModBlockEntities;
 import com.atsuishio.superbwarfare.menu.ChargingStationMenu;
 import com.atsuishio.superbwarfare.network.dataslot.ContainerEnergyData;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.core.NonNullList;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
+import net.minecraft.nbt.IntTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.world.Container;
@@ -27,17 +32,14 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.EnergyStorage;
-import net.minecraftforge.items.wrapper.SidedInvWrapper;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.energy.EnergyStorage;
+import net.neoforged.neoforge.energy.IEnergyStorage;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicInteger;
 
 /**
  * Energy Data Slot Code based on @GoryMoon's Chargers
@@ -55,38 +57,46 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     public static final int CHARGE_OTHER_SPEED = MiscConfig.CHARGING_STATION_TRANSFER_SPEED.get();
     public static final int CHARGE_RADIUS = MiscConfig.CHARGING_STATION_CHARGE_RADIUS.get();
 
-    private LazyOptional<EnergyStorage> energyHandler;
-    private LazyOptional<?>[] itemHandlers = SidedInvWrapper.create(this, Direction.UP, Direction.DOWN, Direction.NORTH);
 
     public int fuelTick = 0;
     public int maxFuelTick = DEFAULT_FUEL_TIME;
     public boolean showRange = false;
 
     protected final ContainerEnergyData dataAccess = new ContainerEnergyData() {
-        public long get(int pIndex) {
+        public int get(int pIndex) {
             return switch (pIndex) {
                 case 0 -> ChargingStationBlockEntity.this.fuelTick;
                 case 1 -> ChargingStationBlockEntity.this.maxFuelTick;
                 case 2 -> {
-                    AtomicInteger energy = new AtomicInteger();
-                    ChargingStationBlockEntity.this.getCapability(ForgeCapabilities.ENERGY).ifPresent(consumer -> energy.set(consumer.getEnergyStored()));
-                    yield energy.get();
+                    var level = ChargingStationBlockEntity.this.level;
+                    if (level == null) yield 0;
+
+                    var cap = level.getCapability(Capabilities.EnergyStorage.BLOCK, ChargingStationBlockEntity.this.getBlockPos(), null);
+                    if (cap == null) yield 0;
+
+                    yield cap.getEnergyStored();
                 }
                 case 3 -> ChargingStationBlockEntity.this.showRange ? 1 : 0;
                 default -> 0;
             };
         }
 
-        public void set(int pIndex, long pValue) {
+        public void set(int pIndex, int pValue) {
             switch (pIndex) {
                 case 0:
-                    ChargingStationBlockEntity.this.fuelTick = (int) pValue;
+                    ChargingStationBlockEntity.this.fuelTick = pValue;
                     break;
                 case 1:
-                    ChargingStationBlockEntity.this.maxFuelTick = (int) pValue;
+                    ChargingStationBlockEntity.this.maxFuelTick = pValue;
                     break;
                 case 2:
-                    ChargingStationBlockEntity.this.getCapability(ForgeCapabilities.ENERGY).ifPresent(consumer -> consumer.receiveEnergy((int) pValue, false));
+                    var level = ChargingStationBlockEntity.this.level;
+                    if (level == null) return;
+
+                    var cap = level.getCapability(Capabilities.EnergyStorage.BLOCK, ChargingStationBlockEntity.this.getBlockPos(), null);
+                    if (cap == null) return;
+
+                    cap.receiveEnergy(pValue, false);
                     break;
                 case 3:
                     ChargingStationBlockEntity.this.showRange = pValue == 1;
@@ -101,8 +111,6 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
 
     public ChargingStationBlockEntity(BlockPos pos, BlockState state) {
         super(ModBlockEntities.CHARGING_STATION.get(), pos, state);
-
-        this.energyHandler = LazyOptional.of(() -> new EnergyStorage(MAX_ENERGY));
     }
 
     public static void serverTick(Level pLevel, BlockPos pPos, BlockState pState, ChargingStationBlockEntity blockEntity) {
@@ -111,47 +119,39 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
             setChanged(pLevel, pPos, pState);
         }
 
-        blockEntity.energyHandler.ifPresent(handler -> {
-            int energy = handler.getEnergyStored();
-            if (energy > 0) {
-                blockEntity.chargeEntity(handler);
-            }
-            if (handler.getEnergyStored() > 0) {
-                blockEntity.chargeItemStack(handler);
-            }
-            if (handler.getEnergyStored() > 0) {
-                blockEntity.chargeBlock(handler);
-            }
-        });
+        var handler = blockEntity.getEnergyStorage(null);
+        if (handler == null) return;
+
+        int energy = handler.getEnergyStored();
+        if (energy > 0) {
+            blockEntity.chargeEntity(handler);
+        }
+        if (handler.getEnergyStored() > 0) {
+            blockEntity.chargeItemStack(handler);
+        }
+        if (handler.getEnergyStored() > 0) {
+            blockEntity.chargeBlock(handler);
+        }
 
         if (blockEntity.fuelTick > 0) {
             blockEntity.fuelTick--;
-            blockEntity.energyHandler.ifPresent(handler -> {
-                int energy = handler.getEnergyStored();
-                if (energy < handler.getMaxEnergyStored()) {
-                    handler.receiveEnergy(CHARGE_SPEED, false);
-                }
-            });
+            if (energy < handler.getMaxEnergyStored()) {
+                handler.receiveEnergy(CHARGE_SPEED, false);
+            }
         } else if (!blockEntity.getItem(SLOT_FUEL).isEmpty()) {
-            AtomicBoolean flag = new AtomicBoolean(false);
-            blockEntity.energyHandler.ifPresent(handler -> {
-                if (handler.getEnergyStored() >= handler.getMaxEnergyStored()) {
-                    flag.set(true);
-                }
-            });
-            if (flag.get()) return;
+            if (handler.getEnergyStored() >= handler.getMaxEnergyStored()) return;
 
             ItemStack fuel = blockEntity.getItem(SLOT_FUEL);
-            int burnTime = ForgeHooks.getBurnTime(fuel, RecipeType.SMELTING);
+            int burnTime = fuel.getBurnTime(RecipeType.SMELTING);
 
-            if (fuel.getCapability(ForgeCapabilities.ENERGY).isPresent()) {
+            var fuelEnergy = fuel.getCapability(Capabilities.EnergyStorage.ITEM);
+
+            if (fuelEnergy != null) {
                 // 优先当作电池处理
-                fuel.getCapability(ForgeCapabilities.ENERGY).ifPresent(itemEnergy -> blockEntity.energyHandler.ifPresent(energy -> {
-                    var energyToExtract = Math.min(CHARGE_OTHER_SPEED, energy.getMaxEnergyStored() - energy.getEnergyStored());
-                    if (itemEnergy.canExtract() && energy.canReceive()) {
-                        energy.receiveEnergy(itemEnergy.extractEnergy(energyToExtract, false), false);
-                    }
-                }));
+                var energyToExtract = Math.min(CHARGE_OTHER_SPEED, handler.getMaxEnergyStored() - handler.getEnergyStored());
+                if (fuelEnergy.canExtract() && handler.canReceive()) {
+                    handler.receiveEnergy(fuelEnergy.extractEnergy(energyToExtract, false), false);
+                }
 
                 blockEntity.setChanged();
             } else if (burnTime > 0) {
@@ -180,13 +180,13 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
                 }
 
                 blockEntity.setChanged();
-            } else if (fuel.getItem().isEdible()) {
+            } else if (fuel.get(DataComponents.FOOD) != null) {
                 // 最后作为食物处理
-                var properties = fuel.getFoodProperties(null);
-                if (properties == null) return;
+                var foodComponent = fuel.get(DataComponents.FOOD);
+                if (foodComponent == null) return;
 
-                int nutrition = properties.getNutrition();
-                float saturation = properties.getSaturationModifier() * 2.0f * nutrition;
+                int nutrition = foodComponent.nutrition();
+                float saturation = foodComponent.saturation() * 2.0f * nutrition;
                 int tick = nutrition * 80 + (int) (saturation * 200);
 
                 if (fuel.hasCraftingRemainingItem()) {
@@ -202,51 +202,52 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
         }
     }
 
-    private void chargeEntity(EnergyStorage handler) {
+    private void chargeEntity(IEnergyStorage handler) {
         if (this.level == null) return;
         if (this.level.getGameTime() % 20 != 0) return;
 
         List<Entity> entities = this.level.getEntitiesOfClass(Entity.class, new AABB(this.getBlockPos()).inflate(CHARGE_RADIUS));
-        entities.forEach(entity -> entity.getCapability(ForgeCapabilities.ENERGY).ifPresent(cap -> {
-            if (cap.canReceive()) {
-                int charged = cap.receiveEnergy(Math.min(handler.getEnergyStored(), CHARGE_OTHER_SPEED * 20), false);
-                handler.extractEnergy(charged, false);
-            }
-        }));
-        this.setChanged();
-    }
+        entities.forEach(entity -> {
+            var cap = entity.getCapability(Capabilities.EnergyStorage.ENTITY, null);
+            if (cap == null || !cap.canReceive()) return;
 
-    private void chargeItemStack(EnergyStorage handler) {
-        ItemStack stack = this.getItem(SLOT_CHARGE);
-        if (stack.isEmpty()) return;
-
-        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(consumer -> {
-            if (consumer.getEnergyStored() < consumer.getMaxEnergyStored()) {
-                int charged = consumer.receiveEnergy(Math.min(CHARGE_OTHER_SPEED, handler.getEnergyStored()), false);
-                handler.extractEnergy(Math.min(charged, handler.getEnergyStored()), false);
-            }
+            int charged = cap.receiveEnergy(Math.min(handler.getEnergyStored(), CHARGE_OTHER_SPEED * 20), false);
+            handler.extractEnergy(charged, false);
         });
         this.setChanged();
     }
 
-    private void chargeBlock(EnergyStorage handler) {
+    private void chargeItemStack(IEnergyStorage handler) {
+        ItemStack stack = this.getItem(SLOT_CHARGE);
+        if (stack.isEmpty()) return;
+
+        var consumer = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (consumer != null) {
+            if (consumer.getEnergyStored() < consumer.getMaxEnergyStored()) {
+                int charged = consumer.receiveEnergy(Math.min(CHARGE_OTHER_SPEED, handler.getEnergyStored()), false);
+                handler.extractEnergy(Math.min(charged, handler.getEnergyStored()), false);
+            }
+        }
+        this.setChanged();
+    }
+
+    private void chargeBlock(IEnergyStorage handler) {
         if (this.level == null) return;
 
         for (Direction direction : Direction.values()) {
             var blockEntity = this.level.getBlockEntity(this.getBlockPos().relative(direction));
-            if (blockEntity == null || !blockEntity.getCapability(ForgeCapabilities.ENERGY).isPresent() || blockEntity instanceof ChargingStationBlockEntity) {
-                continue;
+            if (blockEntity == null) continue;
+
+            var energy = level.getCapability(Capabilities.EnergyStorage.BLOCK, blockEntity.getBlockPos(), direction);
+            if (energy == null || blockEntity instanceof ChargingStationBlockEntity) return;
+
+            if (energy.canReceive() && energy.getEnergyStored() < energy.getMaxEnergyStored()) {
+                int receiveEnergy = energy.receiveEnergy(Math.min(handler.getEnergyStored(), CHARGE_OTHER_SPEED), false);
+                handler.extractEnergy(receiveEnergy, false);
+
+                blockEntity.setChanged();
+                this.setChanged();
             }
-
-            blockEntity.getCapability(ForgeCapabilities.ENERGY).ifPresent(energy -> {
-                if (energy.canReceive() && energy.getEnergyStored() < energy.getMaxEnergyStored()) {
-                    int receiveEnergy = energy.receiveEnergy(Math.min(handler.getEnergyStored(), CHARGE_OTHER_SPEED), false);
-                    handler.extractEnergy(receiveEnergy, false);
-
-                    blockEntity.setChanged();
-                    this.setChanged();
-                }
-            });
         }
     }
 
@@ -255,42 +256,62 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     }
 
     @Override
-    public void load(CompoundTag pTag) {
-        super.load(pTag);
+    protected void applyImplicitComponents(@NotNull DataComponentInput componentInput) {
+        super.applyImplicitComponents(componentInput);
 
-        if (pTag.contains("Energy")) {
-            getCapability(ForgeCapabilities.ENERGY).ifPresent(handler -> ((EnergyStorage) handler).deserializeNBT(pTag.get("Energy")));
+        if (this.level != null) {
+            ((EnergyStorage) this.energyStorage).deserializeNBT(level.registryAccess(), IntTag.valueOf(componentInput.getOrDefault(ModDataComponents.ENERGY, 0)));
         }
-        this.fuelTick = pTag.getInt("FuelTick");
-        this.maxFuelTick = pTag.getInt("MaxFuelTick");
-        this.showRange = pTag.getBoolean("ShowRange");
+    }
+
+    @Override
+    protected void collectImplicitComponents(DataComponentMap.@NotNull Builder components) {
+        super.collectImplicitComponents(components);
+
+        components.set(ModDataComponents.ENERGY, this.energyStorage.getEnergyStored());
+    }
+
+    @Override
+    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        super.loadAdditional(tag, registries);
+
+        if (tag.contains("Energy")) {
+            var energy = tag.get("Energy");
+            if (energy instanceof IntTag) {
+                ((EnergyStorage) this.energyStorage).deserializeNBT(registries, energy);
+            }
+        }
+        this.fuelTick = tag.getInt("FuelTick");
+        this.maxFuelTick = tag.getInt("MaxFuelTick");
+        this.showRange = tag.getBoolean("ShowRange");
         this.items = NonNullList.withSize(this.getContainerSize(), ItemStack.EMPTY);
-        ContainerHelper.loadAllItems(pTag, this.items);
+        ContainerHelper.loadAllItems(tag, this.items, registries);
     }
 
     @Override
-    protected void saveAdditional(CompoundTag pTag) {
-        super.saveAdditional(pTag);
+    protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        super.saveAdditional(tag, registries);
 
-        getCapability(ForgeCapabilities.ENERGY).ifPresent(handler -> pTag.put("Energy", ((EnergyStorage) handler).serializeNBT()));
-        pTag.putInt("FuelTick", this.fuelTick);
-        pTag.putInt("MaxFuelTick", this.maxFuelTick);
-        pTag.putBoolean("ShowRange", this.showRange);
-        ContainerHelper.saveAllItems(pTag, this.items);
+        tag.putInt("Energy", this.energyStorage.getEnergyStored());
+
+        tag.putInt("FuelTick", this.fuelTick);
+        tag.putInt("MaxFuelTick", this.maxFuelTick);
+        tag.putBoolean("ShowRange", this.showRange);
+        ContainerHelper.saveAllItems(tag, this.items, registries);
     }
 
     @Override
-    public int[] getSlotsForFace(Direction pSide) {
+    public int @NotNull [] getSlotsForFace(@NotNull Direction pSide) {
         return new int[]{SLOT_FUEL};
     }
 
     @Override
-    public boolean canPlaceItemThroughFace(int pIndex, ItemStack pItemStack, @Nullable Direction pDirection) {
+    public boolean canPlaceItemThroughFace(int pIndex, @NotNull ItemStack pItemStack, @Nullable Direction pDirection) {
         return pIndex == SLOT_FUEL;
     }
 
     @Override
-    public boolean canTakeItemThroughFace(int pIndex, ItemStack pStack, Direction pDirection) {
+    public boolean canTakeItemThroughFace(int pIndex, @NotNull ItemStack pStack, @NotNull Direction pDirection) {
         return false;
     }
 
@@ -311,24 +332,24 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     }
 
     @Override
-    public ItemStack getItem(int pSlot) {
+    public @NotNull ItemStack getItem(int pSlot) {
         return this.items.get(pSlot);
     }
 
     @Override
-    public ItemStack removeItem(int pSlot, int pAmount) {
+    public @NotNull ItemStack removeItem(int pSlot, int pAmount) {
         return ContainerHelper.removeItem(this.items, pSlot, pAmount);
     }
 
     @Override
-    public ItemStack removeItemNoUpdate(int pSlot) {
+    public @NotNull ItemStack removeItemNoUpdate(int pSlot) {
         return ContainerHelper.takeItem(this.items, pSlot);
     }
 
     @Override
     public void setItem(int pSlot, ItemStack pStack) {
         ItemStack itemstack = this.items.get(pSlot);
-        boolean flag = !pStack.isEmpty() && ItemStack.isSameItemSameTags(itemstack, pStack);
+        boolean flag = !pStack.isEmpty() && ItemStack.isSameItem(itemstack, pStack);
         this.items.set(pSlot, pStack);
         if (pStack.getCount() > this.getMaxStackSize()) {
             pStack.setCount(this.getMaxStackSize());
@@ -340,7 +361,7 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     }
 
     @Override
-    public boolean stillValid(Player pPlayer) {
+    public boolean stillValid(@NotNull Player pPlayer) {
         return Container.stillValidBlockEntity(this, pPlayer);
     }
 
@@ -350,13 +371,13 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     }
 
     @Override
-    public Component getDisplayName() {
+    public @NotNull Component getDisplayName() {
         return Component.translatable("container.superbwarfare.charging_station");
     }
 
     @Nullable
     @Override
-    public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
+    public AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory, @NotNull Player pPlayer) {
         return new ChargingStationMenu(pContainerId, pPlayerInventory, this, this.dataAccess);
     }
 
@@ -366,47 +387,27 @@ public class ChargingStationBlockEntity extends BlockEntity implements WorldlyCo
     }
 
     @Override
-    public CompoundTag getUpdateTag() {
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.@NotNull Provider registries) {
         CompoundTag compoundtag = new CompoundTag();
-        ContainerHelper.saveAllItems(compoundtag, this.items, true);
+        ContainerHelper.saveAllItems(compoundtag, this.items, registries);
         compoundtag.putBoolean("ShowRange", this.showRange);
         return compoundtag;
     }
 
     @Override
-    public <T> LazyOptional<T> getCapability(Capability<T> cap, Direction side) {
-        if (cap == ForgeCapabilities.ENERGY) {
-            return energyHandler.cast();
-        }
-        if (!this.remove && side != null && cap == ForgeCapabilities.ITEM_HANDLER) {
-            if (side == Direction.UP) {
-                return itemHandlers[0].cast();
-            } else if (side == Direction.DOWN) {
-                return itemHandlers[1].cast();
-            } else {
-                return itemHandlers[2].cast();
-            }
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        for (LazyOptional<?> itemHandler : itemHandlers) itemHandler.invalidate();
-    }
-
-    @Override
-    public void reviveCaps() {
-        super.reviveCaps();
-        this.itemHandlers = SidedInvWrapper.create(this, Direction.UP, Direction.DOWN, Direction.NORTH);
-        this.energyHandler = LazyOptional.of(() -> new EnergyStorage(MAX_ENERGY));
-    }
-
-    @Override
-    public void saveToItem(ItemStack pStack) {
+    @ParametersAreNonnullByDefault
+    public void saveToItem(ItemStack stack, HolderLookup.Provider registries) {
         CompoundTag tag = new CompoundTag();
-        this.getCapability(ForgeCapabilities.ENERGY).ifPresent(handler -> tag.put("Energy", ((EnergyStorage) handler).serializeNBT()));
-        BlockItem.setBlockEntityData(pStack, this.getType(), tag);
+        if (this.level != null) {
+            tag.put("Energy", ((EnergyStorage) energyStorage).serializeNBT(registries));
+        }
+        BlockItem.setBlockEntityData(stack, this.getType(), tag);
+    }
+
+    private final IEnergyStorage energyStorage = new EnergyStorage(MAX_ENERGY);
+
+    @Nullable
+    public IEnergyStorage getEnergyStorage(@Nullable Direction side) {
+        return energyStorage;
     }
 }

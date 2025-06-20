@@ -8,8 +8,8 @@ import com.atsuishio.superbwarfare.init.ModItems;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class ProjectileEntityModel extends GeoModel<ProjectileEntity> {
@@ -44,7 +44,7 @@ public class ProjectileEntityModel extends GeoModel<ProjectileEntity> {
 
     @Override
     public void setCustomAnimations(ProjectileEntity animatable, long instanceId, AnimationState animationState) {
-        CoreGeoBone bone = getAnimationProcessor().getBone("bone");
+        GeoBone bone = getAnimationProcessor().getBone("bone");
         Player player = Minecraft.getInstance().player;
         if (player != null) {
             bone.setHidden(animatable.position().distanceTo(player.position()) < 3 || animatable.tickCount < 1);

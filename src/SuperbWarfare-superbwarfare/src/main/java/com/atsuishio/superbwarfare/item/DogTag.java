@@ -1,8 +1,8 @@
 package com.atsuishio.superbwarfare.item;
 
 import com.atsuishio.superbwarfare.client.tooltip.component.DogTagImageComponent;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.menu.DogTagEditorMenu;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
@@ -19,7 +19,6 @@ import top.theillusivec4.curios.api.CuriosApi;
 import top.theillusivec4.curios.api.SlotContext;
 import top.theillusivec4.curios.api.type.capability.ICurioItem;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -34,20 +33,19 @@ public class DogTag extends Item implements ICurioItem {
     public boolean canEquip(SlotContext slotContext, ItemStack stack) {
         LivingEntity livingEntity = slotContext.entity();
         AtomicBoolean flag = new AtomicBoolean(true);
-        CuriosApi.getCuriosInventory(livingEntity).ifPresent(c -> c.findFirstCurio(this).ifPresent(s -> flag.set(false)));
+        CuriosApi.getCuriosInventory(livingEntity).flatMap(c -> c.findFirstCurio(this)).ifPresent(s -> flag.set(false));
 
         return flag.get();
     }
 
     @Override
-    @ParametersAreNonnullByDefault
-    public @NotNull InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pUsedHand) {
-        ItemStack stack = pPlayer.getItemInHand(pUsedHand);
-        if (pLevel.isClientSide) {
+    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, @NotNull InteractionHand usedHand) {
+        ItemStack stack = player.getItemInHand(usedHand);
+        if (level.isClientSide) {
             return InteractionResultHolder.success(stack);
         } else {
-            pPlayer.openMenu(new SimpleMenuProvider((i, inventory, player) ->
-                    new DogTagEditorMenu(i, ContainerLevelAccess.create(pLevel, pPlayer.getOnPos()), stack), Component.empty()));
+            player.openMenu(new SimpleMenuProvider((i, inventory, p) ->
+                    new DogTagEditorMenu(i, ContainerLevelAccess.create(level, p.getOnPos()), stack), Component.empty()));
             return InteractionResultHolder.consume(stack);
         }
     }
@@ -63,12 +61,14 @@ public class DogTag extends Item implements ICurioItem {
             Arrays.fill(el, (short) -1);
         }
 
-        if (stack.getTag() == null) return colors;
-        CompoundTag tag = stack.getTag().getCompound("Colors");
+        var data = stack.get(ModDataComponents.DOG_TAG_IMAGE);
+        if (data == null) return colors;
+
+        var index = 0;
         for (int i = 0; i < 16; i++) {
-            int[] color = tag.getIntArray("Color" + i);
-            for (int j = 0; j < color.length; j++) {
-                colors[i][j] = (short) color[j];
+            for (int j = 0; j < 16; j++) {
+                colors[i][j] = data.get(index);
+                index++;
             }
         }
 

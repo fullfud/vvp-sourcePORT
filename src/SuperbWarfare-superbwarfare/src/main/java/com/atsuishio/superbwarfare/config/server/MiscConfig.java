@@ -1,24 +1,22 @@
 package com.atsuishio.superbwarfare.config.server;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class MiscConfig {
 
-    public static ForgeConfigSpec.BooleanValue ALLOW_TACTICAL_SPRINT;
-    public static ForgeConfigSpec.BooleanValue SEND_KILL_FEEDBACK;
-    public static ForgeConfigSpec.IntValue DEFAULT_ARMOR_LEVEL;
-    public static ForgeConfigSpec.IntValue MILITARY_ARMOR_LEVEL;
-    public static ForgeConfigSpec.IntValue HEAVY_MILITARY_ARMOR_LEVEL;
-    public static ForgeConfigSpec.IntValue ARMOR_PONT_PER_LEVEL;
-    public static ForgeConfigSpec.IntValue CHARGING_STATION_MAX_ENERGY;
-    public static ForgeConfigSpec.IntValue CHARGING_STATION_GENERATE_SPEED;
-    public static ForgeConfigSpec.IntValue CHARGING_STATION_TRANSFER_SPEED;
-    public static ForgeConfigSpec.IntValue CHARGING_STATION_CHARGE_RADIUS;
+    public static ModConfigSpec.BooleanValue ALLOW_TACTICAL_SPRINT;
+    public static ModConfigSpec.BooleanValue SEND_KILL_FEEDBACK;
+    public static ModConfigSpec.IntValue DEFAULT_ARMOR_LEVEL;
+    public static ModConfigSpec.IntValue MILITARY_ARMOR_LEVEL;
+    public static ModConfigSpec.IntValue HEAVY_MILITARY_ARMOR_LEVEL;
+    public static ModConfigSpec.IntValue ARMOR_PONT_PER_LEVEL;
+    public static ModConfigSpec.IntValue CHARGING_STATION_MAX_ENERGY;
+    public static ModConfigSpec.IntValue CHARGING_STATION_GENERATE_SPEED;
+    public static ModConfigSpec.IntValue CHARGING_STATION_TRANSFER_SPEED;
+    public static ModConfigSpec.IntValue CHARGING_STATION_CHARGE_RADIUS;
+    public static ModConfigSpec.IntValue CHARGING_STATION_DEFAULT_FUEL_TIME;
 
-    // TODO 这玩意是个啥
-    public static ForgeConfigSpec.IntValue CHARGING_STATION_DEFAULT_FUEL_TIME;
-
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("misc");
 
         builder.comment("Set true to enable tactical sprint");
@@ -51,7 +49,7 @@ public class MiscConfig {
         builder.comment("The charging radius of the charging station");
         CHARGING_STATION_CHARGE_RADIUS = builder.defineInRange("charging_station_charge_radius", 8, 0, 128);
 
-        builder.comment("What is this?");
+        builder.comment("The default fuel time of the charging station");
         CHARGING_STATION_DEFAULT_FUEL_TIME = builder.defineInRange("charging_station_default_fuel_time", 1600, 1, Integer.MAX_VALUE);
 
         builder.pop();

@@ -22,22 +22,16 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.PlayerModelPart;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import software.bernie.geckolib.animation.AnimationProcessor;
 import software.bernie.geckolib.cache.object.GeoBone;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationProcessor;
-import software.bernie.geckolib.util.RenderUtils;
+import software.bernie.geckolib.util.RenderUtil;
 
 public class AnimationHelper {
 
-    public static void renderPartOverBone(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn, float alpha) {
-        renderPartOverBone(model, bone, stack, buffer, packedLightIn, packedOverlayIn, 1.0f, 1.0f, 1.0f, alpha);
-    }
-
-    public static void renderPartOverBone(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn, float r, float g, float b, float a) {
+    public static void renderPartOverBone(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn) {
         setupModelFromBone(model, bone);
-        model.render(stack, buffer, packedLightIn, packedOverlayIn, r, g, b, a);
+        model.render(stack, buffer, packedLightIn, packedOverlayIn);
     }
 
     public static void setupModelFromBone(ModelPart model, GeoBone bone) {
@@ -47,13 +41,13 @@ public class AnimationHelper {
         model.zRot = 0.0f;
     }
 
-    public static void renderPartOverBone2(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn, float alpha) {
-        renderPartOverBone2(model, bone, stack, buffer, packedLightIn, packedOverlayIn, 1.0f, 1.0f, 1.0f, alpha);
+    public static void renderPartOverBoneR(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn) {
+        renderPartOverBone(model, bone, stack, buffer, packedLightIn, packedOverlayIn);
     }
 
-    public static void renderPartOverBone2(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn, float r, float g, float b, float a) {
+    public static void renderPartOverBone2(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn) {
         setupModelFromBone2(model, bone);
-        model.render(stack, buffer, packedLightIn, packedOverlayIn, r, g, b, a);
+        model.render(stack, buffer, packedLightIn, packedOverlayIn);
     }
 
     public static void setupModelFromBone2(ModelPart model, GeoBone bone) {
@@ -63,18 +57,31 @@ public class AnimationHelper {
         model.zRot = 180 * Mth.DEG_TO_RAD;
     }
 
+    public static void renderPartOverBone2R(ModelPart model, GeoBone bone, PoseStack stack, VertexConsumer buffer, int packedLightIn, int packedOverlayIn) {
+        setupModelFromBone2R(model, bone);
+        model.render(stack, buffer, packedLightIn, packedOverlayIn);
+    }
+
+    public static void setupModelFromBone2R(ModelPart model, GeoBone bone) {
+        model.setPos(bone.getPivotX(), bone.getPivotY() + 7, bone.getPivotZ());
+        model.xRot = 180 * Mth.DEG_TO_RAD;
+        model.yRot = 180 * Mth.DEG_TO_RAD;
+        model.zRot = 0;
+    }
+
     public static void handleShellsAnimation(AnimationProcessor<?> animationProcessor, float x, float y) {
-        CoreGeoBone shell1 = animationProcessor.getBone("shell1");
-        CoreGeoBone shell2 = animationProcessor.getBone("shell2");
-        CoreGeoBone shell3 = animationProcessor.getBone("shell3");
-        CoreGeoBone shell4 = animationProcessor.getBone("shell4");
-        CoreGeoBone shell5 = animationProcessor.getBone("shell5");
+        GeoBone shell1 = animationProcessor.getBone("shell1");
+        GeoBone shell2 = animationProcessor.getBone("shell2");
+        GeoBone shell3 = animationProcessor.getBone("shell3");
+        GeoBone shell4 = animationProcessor.getBone("shell4");
+        GeoBone shell5 = animationProcessor.getBone("shell5");
 
         ClientEventHandler.handleShells(x, y, shell1, shell2, shell3, shell4, shell5);
     }
 
-    public static void handleReloadShakeAnimation(ItemStack stack, CoreGeoBone main, CoreGeoBone camera, float roll, float pitch) {
-        if (GunData.from(stack).reload.time() > 0) {
+    public static void handleReloadShakeAnimation(ItemStack stack, GeoBone main, GeoBone camera, float roll, float pitch) {
+        var data = GunData.from(stack);
+        if (data.reload.time() > 0) {
             main.setRotX(roll * main.getRotX());
             main.setRotY(roll * main.getRotY());
             main.setRotZ(roll * main.getRotZ());
@@ -86,6 +93,7 @@ public class AnimationHelper {
             camera.setRotZ(roll * camera.getRotZ());
         }
     }
+
 
     public static void handleShootFlare(String name, PoseStack stack, ItemStack itemStack, GeoBone bone, MultiBufferSource buffer, int packedLightIn, double x, double y, double z, double size) {
         if (name.equals("flare") && ClientEventHandler.firePosTimer > 0 && ClientEventHandler.firePosTimer < 0.5 && GunData.from(itemStack).attachment.get(AttachmentType.BARREL) != 2) {
@@ -101,84 +109,87 @@ public class AnimationHelper {
 
             stack.pushPose();
             stack.translate(x, y + 0.02 + height, -z);
-            RenderUtils.translateMatrixToBone(stack, bone);
-            RenderUtils.translateToPivotPoint(stack, bone);
-            RenderUtils.rotateMatrixAroundBone(stack, bone);
-            RenderUtils.scaleMatrixForBone(stack, bone);
-            RenderUtils.translateAwayFromPivotPoint(stack, bone);
-            PoseStack.Pose $$6 = stack.last();
-            Matrix4f $$7 = $$6.pose();
-            Matrix3f $$8 = $$6.normal();
-            VertexConsumer $$9 = buffer.getBuffer(ModRenderTypes.MUZZLE_FLASH_TYPE.apply(Mod.loc("textures/particle/flare.png")));
-            vertex($$9, $$7, $$8, packedLightIn, 0.0F, 0, 0, 1);
-            vertex($$9, $$7, $$8, packedLightIn, 1.0F, 0, 1, 1);
-            vertex($$9, $$7, $$8, packedLightIn, 1.0F, 1, 1, 0);
-            vertex($$9, $$7, $$8, packedLightIn, 0.0F, 1, 0, 0);
+            RenderUtil.translateMatrixToBone(stack, bone);
+            RenderUtil.translateToPivotPoint(stack, bone);
+            RenderUtil.rotateMatrixAroundBone(stack, bone);
+            RenderUtil.scaleMatrixForBone(stack, bone);
+            RenderUtil.translateAwayFromPivotPoint(stack, bone);
+            PoseStack.Pose pose = stack.last();
+            VertexConsumer vertexConsumer = buffer.getBuffer(ModRenderTypes.MUZZLE_FLASH_TYPE.apply(Mod.loc("textures/particle/flare.png")));
+            vertex(vertexConsumer, pose, packedLightIn, 0.0F, 0, 0, 1);
+            vertex(vertexConsumer, pose, packedLightIn, 1.0F, 0, 1, 1);
+            vertex(vertexConsumer, pose, packedLightIn, 1.0F, 1, 1, 0);
+            vertex(vertexConsumer, pose, packedLightIn, 0.0F, 1, 0, 0);
             stack.popPose();
         }
     }
 
-    private static void vertex(VertexConsumer pConsumer, Matrix4f pPose, Matrix3f pNormal, int pLightmapUV, float pX, float pY, int pU, int pV) {
-        pConsumer.vertex(pPose, pX - 0.5F, pY - 0.5F, 0.0F).color(255, 255, 255, 255).uv((float) pU, (float) pV).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(pLightmapUV).normal(pNormal, 0.0F, 1.0F, 0.0F).endVertex();
+    private static void vertex(VertexConsumer pConsumer, PoseStack.Pose pPose, int pLightmapUV, float pX, float pY, int pU, int pV) {
+        pConsumer.addVertex(pPose, pX - 0.5F, pY - 0.5F, 0.0F)
+                .setColor(255, 255, 255, 255)
+                .setUv((float) pU, (float) pV)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(pLightmapUV)
+                .setNormal(pPose, 0.0F, 1.0F, 0.0F);
     }
 
     public static void handleZoomCrossHair(MultiBufferSource currentBuffer, RenderType renderType, String boneName, PoseStack stack, GeoBone bone, MultiBufferSource buffer, double x, double y, double z, float size, int r, int g, int b, int a, String name, boolean hasBlackPart) {
         if (boneName.equals("cross") && ClientEventHandler.zoomPos > 0.8) {
             stack.pushPose();
             stack.translate(x, y, -z);
-            RenderUtils.translateMatrixToBone(stack, bone);
-            RenderUtils.translateToPivotPoint(stack, bone);
-            RenderUtils.rotateMatrixAroundBone(stack, bone);
-            RenderUtils.scaleMatrixForBone(stack, bone);
-            RenderUtils.translateAwayFromPivotPoint(stack, bone);
-            PoseStack.Pose $$6 = stack.last();
-            Matrix4f $$7 = $$6.pose();
-            Matrix3f $$8 = $$6.normal();
+            RenderUtil.translateMatrixToBone(stack, bone);
+            RenderUtil.translateToPivotPoint(stack, bone);
+            RenderUtil.rotateMatrixAroundBone(stack, bone);
+            RenderUtil.scaleMatrixForBone(stack, bone);
+            RenderUtil.translateAwayFromPivotPoint(stack, bone);
+            PoseStack.Pose pose = stack.last();
+            Matrix4f $$7 = pose.pose();
+
             ResourceLocation tex = Mod.loc("textures/crosshair/" + name + ".png");
 
             int alpha = hasBlackPart ? a : (int) (0.12 * a);
 
             VertexConsumer blackPart = buffer.getBuffer(RenderType.entityTranslucent(tex));
-            vertexRGB(blackPart, $$7, $$8, 255, 0.0F, 0, 0, 1, r, g, b, alpha, size);
-            vertexRGB(blackPart, $$7, $$8, 255, size, 0, 1, 1, r, g, b, alpha, size);
-            vertexRGB(blackPart, $$7, $$8, 255, size, size, 1, 0, r, g, b, alpha, size);
-            vertexRGB(blackPart, $$7, $$8, 255, 0.0F, size, 0, 0, r, g, b, alpha, size);
+            vertexRGB(blackPart, $$7, pose, 255, 0.0F, 0, 0, 1, r, g, b, alpha, size);
+            vertexRGB(blackPart, $$7, pose, 255, size, 0, 1, 1, r, g, b, alpha, size);
+            vertexRGB(blackPart, $$7, pose, 255, size, size, 1, 0, r, g, b, alpha, size);
+            vertexRGB(blackPart, $$7, pose, 255, 0.0F, size, 0, 0, r, g, b, alpha, size);
 
             VertexConsumer $$9 = buffer.getBuffer(ModRenderTypes.MUZZLE_FLASH_TYPE.apply(tex));
-            vertexRGB($$9, $$7, $$8, 255, 0.0F, 0, 0, 1, r, g, b, a, size);
-            vertexRGB($$9, $$7, $$8, 255, size, 0, 1, 1, r, g, b, a, size);
-            vertexRGB($$9, $$7, $$8, 255, size, size, 1, 0, r, g, b, a, size);
-            vertexRGB($$9, $$7, $$8, 255, 0.0F, size, 0, 0, r, g, b, a, size);
+            vertexRGB($$9, $$7, pose, 255, 0.0F, 0, 0, 1, r, g, b, a, size);
+            vertexRGB($$9, $$7, pose, 255, size, 0, 1, 1, r, g, b, a, size);
+            vertexRGB($$9, $$7, pose, 255, size, size, 1, 0, r, g, b, a, size);
+            vertexRGB($$9, $$7, pose, 255, 0.0F, size, 0, 0, r, g, b, a, size);
 
             stack.popPose();
         }
         currentBuffer.getBuffer(renderType);
     }
 
-    private static void vertexRGB(VertexConsumer pConsumer, Matrix4f pPose, Matrix3f pNormal, int pLightmapUV, float pX, float pY, int pU, int pV, int r, int g, int b, int a, float size) {
-        pConsumer.vertex(pPose, pX - 0.5F * size, pY - 0.5F * size, 0.0F).color(r, g, b, a).uv((float) pU, (float) pV).overlayCoords(OverlayTexture.NO_OVERLAY).uv2(pLightmapUV).normal(pNormal, 0.0F, 1.0F, 0.0F).endVertex();
+    private static void vertexRGB(VertexConsumer pConsumer, Matrix4f pPose, PoseStack.Pose pNormal, int pLightmapUV, float pX, float pY, int pU, int pV, int r, int g, int b, int a, float size) {
+        pConsumer.addVertex(pPose, pX - 0.5F * size, pY - 0.5F * size, 0.0F)
+                .setColor(r, g, b, a)
+                .setUv((float) pU, (float) pV)
+                .setOverlay(OverlayTexture.NO_OVERLAY)
+                .setLight(pLightmapUV)
+                .setNormal(pNormal, 0.0F, 1.0F, 0.0F);
     }
+
+    public static final float SCALE_RECIPROCAL = 1 / 16.0f;
 
     public static void renderArms(LocalPlayer localPlayer, ItemDisplayContext transformType, PoseStack stack, String name, GeoBone bone,
                                   MultiBufferSource currentBuffer, RenderType renderType, int packedLightIn, boolean useOldHandRender) {
         if (transformType != null && transformType.firstPerson()) {
-            Minecraft mc = Minecraft.getInstance();
-
-            if (localPlayer == null) {
-                return;
-            }
-
+            var mc = Minecraft.getInstance();
             PlayerRenderer playerRenderer = (PlayerRenderer) mc.getEntityRenderDispatcher().getRenderer(localPlayer);
             PlayerModel<AbstractClientPlayer> model = playerRenderer.getModel();
             stack.pushPose();
-            RenderUtils.translateMatrixToBone(stack, bone);
-            RenderUtils.translateToPivotPoint(stack, bone);
-            RenderUtils.rotateMatrixAroundBone(stack, bone);
-            RenderUtils.scaleMatrixForBone(stack, bone);
-            RenderUtils.translateAwayFromPivotPoint(stack, bone);
-            ResourceLocation loc = localPlayer.getSkinTextureLocation();
-            VertexConsumer armBuilder = currentBuffer.getBuffer(RenderType.entitySolid(loc));
-            VertexConsumer sleeveBuilder = currentBuffer.getBuffer(RenderType.entityTranslucent(loc));
+            RenderUtil.translateMatrixToBone(stack, bone);
+            RenderUtil.translateToPivotPoint(stack, bone);
+            RenderUtil.rotateMatrixAroundBone(stack, bone);
+            RenderUtil.scaleMatrixForBone(stack, bone);
+            RenderUtil.translateAwayFromPivotPoint(stack, bone);
+            ResourceLocation loc = localPlayer.getSkin().texture();
             if (name.equals("Lefthand")) {
                 if (!model.leftArm.visible) {
                     model.leftArm.visible = true;
@@ -189,11 +200,11 @@ public class AnimationHelper {
 
                 stack.translate(-1.0f * CustomGunRenderer.SCALE_RECIPROCAL, 2.0f * CustomGunRenderer.SCALE_RECIPROCAL, 0.0f);
                 if (useOldHandRender) {
-                    AnimationHelper.renderPartOverBone(model.leftArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                    AnimationHelper.renderPartOverBone(model.leftSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
+                    AnimationHelper.renderPartOverBone(model.leftArm, bone, stack, currentBuffer.getBuffer(RenderType.entitySolid(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
+                    AnimationHelper.renderPartOverBone(model.leftSleeve, bone, stack, currentBuffer.getBuffer(RenderType.entityTranslucent(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
                 } else {
-                    AnimationHelper.renderPartOverBone2(model.leftArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                    AnimationHelper.renderPartOverBone2(model.leftSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
+                    AnimationHelper.renderPartOverBone2(model.leftArm, bone, stack, currentBuffer.getBuffer(RenderType.entitySolid(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
+                    AnimationHelper.renderPartOverBone2(model.leftSleeve, bone, stack, currentBuffer.getBuffer(RenderType.entityTranslucent(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
                 }
             } else {
                 if (!model.rightArm.visible) {
@@ -205,14 +216,13 @@ public class AnimationHelper {
 
                 stack.translate(CustomGunRenderer.SCALE_RECIPROCAL, 2.0f * CustomGunRenderer.SCALE_RECIPROCAL, 0.0f);
                 if (useOldHandRender) {
-                    AnimationHelper.renderPartOverBone(model.rightArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                    AnimationHelper.renderPartOverBone(model.rightSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
+                    AnimationHelper.renderPartOverBoneR(model.leftArm, bone, stack, currentBuffer.getBuffer(RenderType.entitySolid(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
+                    AnimationHelper.renderPartOverBoneR(model.leftSleeve, bone, stack, currentBuffer.getBuffer(RenderType.entityTranslucent(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
                 } else {
-                    AnimationHelper.renderPartOverBone2(model.rightArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                    AnimationHelper.renderPartOverBone2(model.rightSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
+                    AnimationHelper.renderPartOverBone2R(model.leftArm, bone, stack, currentBuffer.getBuffer(RenderType.entitySolid(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
+                    AnimationHelper.renderPartOverBone2R(model.leftSleeve, bone, stack, currentBuffer.getBuffer(RenderType.entityTranslucent(loc)), packedLightIn, OverlayTexture.NO_OVERLAY);
                 }
             }
-
             currentBuffer.getBuffer(renderType);
             stack.popPose();
         }

@@ -1,6 +1,5 @@
 package com.atsuishio.superbwarfare.entity.projectile;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.entity.vehicle.DroneEntity;
 import com.atsuishio.superbwarfare.init.ModEntities;
@@ -12,8 +11,6 @@ import com.atsuishio.superbwarfare.tools.ProjectileTool;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
@@ -29,12 +26,11 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
@@ -59,10 +55,6 @@ public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEnti
         this.fuse = fuse;
     }
 
-    public RgoGrenadeEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.RGO_GRENADE.get(), level);
-    }
-
     @Override
     public void addAdditionalSaveData(CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
@@ -82,12 +74,7 @@ public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
+    protected @NotNull Item getDefaultItem() {
         return ModItems.RGO_GRENADE.get();
     }
 
@@ -97,7 +84,7 @@ public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    protected void onHit(HitResult result) {
+    protected void onHit(@NotNull HitResult result) {
         if (level() instanceof ServerLevel) {
             switch (result.getType()) {
                 case BLOCK:
@@ -113,11 +100,13 @@ public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEnti
                 case ENTITY:
                     EntityHitResult entityResult = (EntityHitResult) result;
                     Entity entity = entityResult.getEntity();
+                    if (this.getOwner() != null && this.getOwner().getVehicle() != null && entity == this.getOwner().getVehicle())
+                        return;
                     if (this.getOwner() instanceof LivingEntity living) {
                         if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
                             living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
 
-                            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                            PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
                         }
                     }
                     if (!(entity instanceof DroneEntity)) {
@@ -149,7 +138,7 @@ public class RgoGrenadeEntity extends FastThrowableProjectile implements GeoEnti
     }
 
     @Override
-    protected float getGravity() {
+    protected double getDefaultGravity() {
         return 0.07F;
     }
 

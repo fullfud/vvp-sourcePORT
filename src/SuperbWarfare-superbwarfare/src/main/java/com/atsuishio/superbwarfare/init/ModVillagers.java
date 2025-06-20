@@ -5,35 +5,35 @@ import com.atsuishio.superbwarfare.item.SmallContainerBlockItem;
 import com.google.common.collect.ImmutableSet;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import net.minecraft.core.Holder;
-import net.minecraft.resources.ResourceLocation;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.ai.village.poi.PoiType;
 import net.minecraft.world.entity.npc.VillagerProfession;
 import net.minecraft.world.entity.npc.VillagerTrades;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
-import net.minecraftforge.common.BasicItemListing;
-import net.minecraftforge.event.village.VillagerTradesEvent;
-import net.minecraftforge.event.village.WandererTradesEvent;
-import net.minecraftforge.eventbus.api.IEventBus;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.DeferredRegister;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.IEventBus;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.common.BasicItemListing;
+import net.neoforged.neoforge.event.village.VillagerTradesEvent;
+import net.neoforged.neoforge.event.village.WandererTradesEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
+import net.neoforged.neoforge.registries.DeferredRegister;
 
 import java.util.List;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = Mod.MODID)
+@EventBusSubscriber(modid = Mod.MODID)
 public class ModVillagers {
 
-    public static final DeferredRegister<PoiType> POI_TYPES = DeferredRegister.create(ForgeRegistries.POI_TYPES, Mod.MODID);
-    public static final DeferredRegister<VillagerProfession> VILLAGER_PROFESSIONS = DeferredRegister.create(ForgeRegistries.VILLAGER_PROFESSIONS, Mod.MODID);
+    public static final DeferredRegister<PoiType> POI_TYPES = DeferredRegister.create(BuiltInRegistries.POINT_OF_INTEREST_TYPE, Mod.MODID);
+    public static final DeferredRegister<VillagerProfession> VILLAGER_PROFESSIONS = DeferredRegister.create(BuiltInRegistries.VILLAGER_PROFESSION, Mod.MODID);
 
-    public static final RegistryObject<PoiType> ARMORY_POI = POI_TYPES.register("armory",
+    public static final DeferredHolder<PoiType, PoiType> ARMORY_POI = POI_TYPES.register("armory",
             () -> new PoiType(ImmutableSet.copyOf(ModBlocks.REFORGING_TABLE.get().getStateDefinition().getPossibleStates()), 1, 1));
 
-    public static final RegistryObject<VillagerProfession> ARMORY = VILLAGER_PROFESSIONS.register("armory",
-            () -> new VillagerProfession("armory", holder -> holder.get() == ARMORY_POI.get(), holder -> holder.get() == ARMORY_POI.get(),
+    public static final DeferredHolder<VillagerProfession, VillagerProfession> ARMORY = VILLAGER_PROFESSIONS.register("armory",
+            () -> new VillagerProfession("armory", holder -> holder.value() == ARMORY_POI.get(), holder -> holder.value() == ARMORY_POI.get(),
                     ImmutableSet.of(), ImmutableSet.of(), null));
 
     public static void register(IEventBus eventBus) {
@@ -78,13 +78,13 @@ public class ModVillagers {
 
             // 等级 2 交易
             trades.get(2).add(new BasicItemListing(new ItemStack(Items.EMERALD, 10),
-                    new ItemStack(ModItems.STEEL_ACTION.get()), 12, 5, 0.05f));
+                    new ItemStack(ModItems.STEEL_MATERIALS.action().get()), 12, 5, 0.05f));
             trades.get(2).add(new BasicItemListing(new ItemStack(Items.EMERALD, 8),
-                    new ItemStack(ModItems.STEEL_BARREL.get()), 12, 5, 0.05f));
+                    new ItemStack(ModItems.STEEL_MATERIALS.barrel().get()), 12, 5, 0.05f));
             trades.get(2).add(new BasicItemListing(new ItemStack(Items.EMERALD, 6),
-                    new ItemStack(ModItems.STEEL_TRIGGER.get()), 12, 5, 0.05f));
+                    new ItemStack(ModItems.STEEL_MATERIALS.trigger().get()), 12, 5, 0.05f));
             trades.get(2).add(new BasicItemListing(new ItemStack(Items.EMERALD, 8),
-                    new ItemStack(ModItems.STEEL_SPRING.get()), 12, 5, 0.05f));
+                    new ItemStack(ModItems.STEEL_MATERIALS.spring().get()), 12, 5, 0.05f));
 
             trades.get(2).add(new BasicItemListing(new ItemStack(Items.EMERALD, 16),
                     new ItemStack(ModItems.MARLIN_BLUEPRINT.get()), 8, 25, 0.05f));
@@ -117,13 +117,13 @@ public class ModVillagers {
                     new ItemStack(Items.EMERALD, 3), 16, 5, 0.05f));
 
             trades.get(3).add(new BasicItemListing(new ItemStack(Items.EMERALD, 16),
-                    new ItemStack(ModItems.CEMENTED_CARBIDE_BARREL.get()), 12, 10, 0.05f));
+                    new ItemStack(ModItems.CEMENTED_CARBIDE_MATERIALS.barrel().get()), 12, 10, 0.05f));
             trades.get(3).add(new BasicItemListing(new ItemStack(Items.EMERALD, 20),
-                    new ItemStack(ModItems.CEMENTED_CARBIDE_ACTION.get()), 10, 10, 0.05f));
+                    new ItemStack(ModItems.CEMENTED_CARBIDE_MATERIALS.action().get()), 10, 10, 0.05f));
             trades.get(3).add(new BasicItemListing(new ItemStack(Items.EMERALD, 16),
-                    new ItemStack(ModItems.CEMENTED_CARBIDE_SPRING.get()), 10, 10, 0.05f));
+                    new ItemStack(ModItems.CEMENTED_CARBIDE_MATERIALS.spring().get()), 10, 10, 0.05f));
             trades.get(3).add(new BasicItemListing(new ItemStack(Items.EMERALD, 12),
-                    new ItemStack(ModItems.CEMENTED_CARBIDE_TRIGGER.get()), 10, 10, 0.05f));
+                    new ItemStack(ModItems.CEMENTED_CARBIDE_MATERIALS.trigger().get()), 10, 10, 0.05f));
 
             trades.get(3).add(new BasicItemListing(new ItemStack(Items.EMERALD, 32),
                     new ItemStack(ModItems.M_4_BLUEPRINT.get()), 10, 25, 0.05f));
@@ -247,10 +247,6 @@ public class ModVillagers {
         }
     }
 
-    private static Holder<Item> getItemHolder(String name) {
-        return ForgeRegistries.ITEMS.getHolder(new ResourceLocation(Mod.MODID, name)).orElse(new Holder.Direct<>(ItemStack.EMPTY.getItem()));
-    }
-
     @SubscribeEvent
     public static void addWandererTrade(WandererTradesEvent event) {
         List<VillagerTrades.ItemListing> rareTrades = event.getRareTrades();
@@ -260,4 +256,15 @@ public class ModVillagers {
         rareTrades.add(new BasicItemListing(new ItemStack(Items.EMERALD, 10),
                 SmallContainerBlockItem.createInstance(Mod.loc("containers/common")), 10, 0, 0.05f));
     }
+
+    private static Holder<Item> getItemHolder(String name) {
+        var item = BuiltInRegistries.ITEM.getHolder(Mod.loc(name));
+        if (item.isEmpty()) {
+            Mod.LOGGER.error("Item {} not found", name);
+            return Holder.direct(Items.AIR);
+        }
+
+        return item.get();
+    }
+
 }

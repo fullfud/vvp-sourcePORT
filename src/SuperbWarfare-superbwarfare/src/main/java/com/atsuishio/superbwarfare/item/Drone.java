@@ -22,7 +22,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
+import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Objects;
 
 public class Drone extends Item {
@@ -32,7 +34,7 @@ public class Drone extends Item {
     }
 
     @Override
-    public InteractionResult useOn(UseOnContext pContext) {
+    public @NotNull InteractionResult useOn(UseOnContext pContext) {
         Level level = pContext.getLevel();
         if (!(level instanceof ServerLevel)) {
             return InteractionResult.SUCCESS;
@@ -41,14 +43,14 @@ public class Drone extends Item {
             BlockPos blockpos = pContext.getClickedPos();
             Direction direction = pContext.getClickedFace();
             BlockState blockstate = level.getBlockState(blockpos);
-            BlockPos blockpos1;
+            BlockPos pos;
             if (blockstate.getCollisionShape(level, blockpos).isEmpty()) {
-                blockpos1 = blockpos;
+                pos = blockpos;
             } else {
-                blockpos1 = blockpos.relative(direction);
+                pos = blockpos.relative(direction);
             }
 
-            if (ModEntities.DRONE.get().spawn((ServerLevel) level, itemstack, pContext.getPlayer(), blockpos1, MobSpawnType.SPAWN_EGG, true, !Objects.equals(blockpos, blockpos1) && direction == Direction.UP) != null) {
+            if (ModEntities.DRONE.get().spawn((ServerLevel) level, itemstack, pContext.getPlayer(), pos, MobSpawnType.SPAWN_EGG, true, !Objects.equals(blockpos, pos) && direction == Direction.UP) != null) {
                 itemstack.shrink(1);
                 level.gameEvent(pContext.getPlayer(), GameEvent.ENTITY_PLACE, blockpos);
             }
@@ -58,7 +60,8 @@ public class Drone extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pHand) {
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pHand) {
         ItemStack itemstack = pPlayer.getItemInHand(pHand);
         BlockHitResult blockhitresult = getPlayerPOVHitResult(pLevel, pPlayer, ClipContext.Fluid.SOURCE_ONLY);
         if (blockhitresult.getType() != HitResult.Type.BLOCK) {

@@ -6,6 +6,7 @@ import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
@@ -29,52 +30,53 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(Camera.class)
 public abstract class CameraMixin {
 
-    @Shadow(aliases = "Lnet/minecraft/client/Camera;setRotation(FF)V")
-    protected abstract void setRotation(float p_90573_, float p_90574_);
+    @Shadow
+    @Deprecated
+    protected abstract void setRotation(float yRot, float xRot);
 
-    @Shadow(aliases = "Lnet/minecraft/client/Camera;setPosition(DDD)V")
-    protected abstract void setPosition(double p_90585_, double p_90586_, double p_90587_);
+    @Shadow
+    protected abstract void setPosition(double x, double y, double z);
 
-    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V", ordinal = 0),
-            method = "setup(Lnet/minecraft/world/level/BlockGetter;Lnet/minecraft/world/entity/Entity;ZZF)V",
+    @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FFF)V", ordinal = 0),
+            method = "setup",
             cancellable = true)
-    private void onSetup(BlockGetter level, Entity entity, boolean detached, boolean mirrored, float partialTicks, CallbackInfo info) {
+    private void onSetup(BlockGetter level, Entity entity, boolean detached, boolean thirdPersonReverse, float partialTicks, CallbackInfo info) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
+        if (player == null) return;
 
-        if (player != null) {
-            ItemStack stack = player.getMainHandItem();
+        ItemStack stack = player.getMainHandItem();
+        var tag = NBTTool.getTag(stack);
 
-            if (stack.is(ModItems.MONITOR.get()) && stack.getOrCreateTag().getBoolean("Using") && stack.getOrCreateTag().getBoolean("Linked")) {
-                DroneEntity drone = EntityFindUtil.findDrone(player.level(), stack.getOrCreateTag().getString("LinkedDrone"));
-                if (drone != null) {
-                    Matrix4f transform = superbWarfare$getDroneTransform(drone, partialTicks);
-                    float x0 = 0f;
-                    float y0 = 0.075f;
-                    float z0 = 0.18f;
+        if (stack.is(ModItems.MONITOR.get()) && tag.getBoolean("Using") && tag.getBoolean("Linked")) {
+            DroneEntity drone = EntityFindUtil.findDrone(player.level(), tag.getString("LinkedDrone"));
+            if (drone != null) {
+                Matrix4f transform = superbWarfare$getDroneTransform(drone, partialTicks);
+                float x0 = 0f;
+                float y0 = 0.075f;
+                float z0 = 0.18f;
 
-                    Vector4f worldPosition = superbWarfare$transformPosition(transform, x0, y0, z0);
+                Vector4f worldPosition = superbWarfare$transformPosition(transform, x0, y0, z0);
 
-                    setRotation(drone.getYaw(partialTicks), drone.getPitch(partialTicks));
-                    setPosition(worldPosition.x, worldPosition.y, worldPosition.z);
-                    info.cancel();
-                }
-                return;
+                setRotation(drone.getYaw(partialTicks), drone.getPitch(partialTicks));
+                setPosition(worldPosition.x, worldPosition.y, worldPosition.z);
+                info.cancel();
+            }
+            return;
+        }
+
+        if (player.getVehicle() instanceof VehicleEntity vehicle) {
+            var rotation = vehicle.getCameraRotation(partialTicks, player, ClientEventHandler.zoomVehicle, Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON);
+            if (rotation != null) {
+                setRotation(rotation.x, rotation.y);
+            }
+            var position = vehicle.getCameraPosition(partialTicks, player, ClientEventHandler.zoomVehicle, Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON);
+            if (position != null) {
+                setPosition(position.x, position.y, position.z);
             }
 
-            if (player.getVehicle() instanceof VehicleEntity vehicle) {
-                var rotation = vehicle.getCameraRotation(partialTicks, player, ClientEventHandler.zoomVehicle, Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON);
-                if (rotation != null) {
-                    setRotation(rotation.x, rotation.y);
-                }
-                var position = vehicle.getCameraPosition(partialTicks, player, ClientEventHandler.zoomVehicle, Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON);
-                if (position != null) {
-                    setPosition(position.x, position.y, position.z);
-                }
-
-                if (rotation != null || position != null) {
-                    info.cancel();
-                }
+            if (rotation != null || position != null) {
+                info.cancel();
             }
         }
     }
@@ -101,7 +103,7 @@ public abstract class CameraMixin {
                 && player.getMainHandItem().is(ModTags.Items.GUN)
                 && Math.max(ClientEventHandler.bowPullPos, ClientEventHandler.zoomPos) > 0
         ) {
-            move(-getMaxZoom(-2.9 * Math.max(ClientEventHandler.bowPullPos, ClientEventHandler.zoomPos)), 0, -ClientEventHandler.cameraLocation * Math.max(ClientEventHandler.bowPullPos, ClientEventHandler.zoomPos));
+            move(-getMaxZoom((float) (-2.9 * Math.max(ClientEventHandler.bowPullPos, ClientEventHandler.zoomPos))), 0F, (float) (-ClientEventHandler.cameraLocation * Math.max(ClientEventHandler.bowPullPos, ClientEventHandler.zoomPos)));
             return;
         }
 
@@ -109,13 +111,13 @@ public abstract class CameraMixin {
 
         var cameraPosition = vehicle.getThirdPersonCameraPosition(vehicle.getSeatIndex(entity));
         if (cameraPosition != null) {
-            move(-getMaxZoom(cameraPosition.distance()), cameraPosition.y(), cameraPosition.z());
+            move(-getMaxZoom((float) cameraPosition.distance()), (float) cameraPosition.y(), -(float) cameraPosition.z());
         }
     }
 
     @Shadow
-    protected abstract void move(double x, double y, double z);
+    protected abstract void move(float x, float y, float z);
 
     @Shadow
-    protected abstract double getMaxZoom(double desiredCameraDistance);
+    protected abstract float getMaxZoom(float maxZoom);
 }

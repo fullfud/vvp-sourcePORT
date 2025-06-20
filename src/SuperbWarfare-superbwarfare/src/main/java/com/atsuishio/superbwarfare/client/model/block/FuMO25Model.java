@@ -4,8 +4,8 @@ import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.block.entity.FuMO25BlockEntity;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class FuMO25Model extends GeoModel<FuMO25BlockEntity> {
@@ -27,7 +27,7 @@ public class FuMO25Model extends GeoModel<FuMO25BlockEntity> {
 
     @Override
     public void setCustomAnimations(FuMO25BlockEntity animatable, long instanceId, AnimationState<FuMO25BlockEntity> animationState) {
-        CoreGeoBone bone = this.getAnimationProcessor().getBone("mian");
+        GeoBone bone = this.getAnimationProcessor().getBone("mian");
         if (bone == null) return;
 
         float targetDeg = getTick(animatable) * 1.8f; // 目标角度（0~360°）

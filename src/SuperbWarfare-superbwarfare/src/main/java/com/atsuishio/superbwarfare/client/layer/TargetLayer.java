@@ -13,7 +13,6 @@ import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 public class TargetLayer extends GeoRenderLayer<TargetEntity> {
-
     private static final ResourceLocation LAYER = Mod.loc("textures/entity/target_e.png");
 
     public TargetLayer(GeoRenderer<TargetEntity> entityRenderer) {
@@ -23,6 +22,6 @@ public class TargetLayer extends GeoRenderLayer<TargetEntity> {
     @Override
     public void render(PoseStack poseStack, TargetEntity animatable, BakedGeoModel bakedModel, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
         RenderType glowRenderType = RenderType.eyes(LAYER);
-        getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+        getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
     }
 }

@@ -15,19 +15,22 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.joml.Math;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 import static com.atsuishio.superbwarfare.client.RenderHelper.preciseBlit;
 import static com.atsuishio.superbwarfare.client.overlay.VehicleHudOverlay.renderKillIndicator3P;
@@ -36,13 +39,16 @@ import static com.atsuishio.superbwarfare.entity.vehicle.base.MobileVehicleEntit
 import static com.atsuishio.superbwarfare.entity.vehicle.base.MobileVehicleEntity.HEAT;
 
 @OnlyIn(Dist.CLIENT)
-public class VehicleMgHudOverlay implements IGuiOverlay {
+public class VehicleMgHudOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_vehicle_mg_hud";
+    public static final ResourceLocation ID = Mod.loc("vehicle_mg_hud");
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        Minecraft mc = gui.getMinecraft();
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        int w = guiGraphics.guiWidth();
+        int h = guiGraphics.guiHeight();
+        Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         PoseStack poseStack = guiGraphics.pose();
         Camera camera = mc.gameRenderer.getMainCamera();
@@ -52,8 +58,6 @@ public class VehicleMgHudOverlay implements IGuiOverlay {
 
         Entity cannon = player.getVehicle();
         if (cannon == null) return;
-
-        poseStack.pushPose();
 
         RenderSystem.disableDepthTest();
         RenderSystem.depthMask(false);
@@ -66,17 +70,17 @@ public class VehicleMgHudOverlay implements IGuiOverlay {
             if (Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON || ClientEventHandler.zoomVehicle) {
                 float fovAdjust = (float) 70 / Minecraft.getInstance().options.fov().get();
 
-                float f = (float) Math.min(screenWidth, screenHeight);
-                float f1 = Math.min((float) screenWidth / f, (float) screenHeight / f) * fovAdjust;
+                float f = (float) Math.min(w, h);
+                float f1 = Math.min((float) w / f, (float) h / f) * fovAdjust;
                 int i = Mth.floor(f * f1);
                 int j = Mth.floor(f * f1);
-                int k = (screenWidth - i) / 2;
-                int l = (screenHeight - j) / 2;
+                int k = (w - i) / 2;
+                int l = (h - j) / 2;
                 RenderHelper.preciseBlit(guiGraphics, Mod.loc("textures/screens/cannon/cannon_crosshair_notzoom.png"), k, l, 0, 0.0F, i, j, i, j);
-                VehicleHudOverlay.renderKillIndicator(guiGraphics, screenWidth, screenHeight);
+                VehicleHudOverlay.renderKillIndicator(guiGraphics, w, h);
             } else if (Minecraft.getInstance().options.getCameraType() == CameraType.THIRD_PERSON_BACK && !ClientEventHandler.zoomVehicle) {
-                Vec3 p = RenderHelper.worldToScreen(new Vec3(Mth.lerp(partialTick, player.xo, player.getX()), Mth.lerp(partialTick, player.yo + player.getEyeHeight(), player.getEyeY()),
-                        Mth.lerp(partialTick, player.zo, player.getZ())).add(iLand.getGunVec(partialTick).scale(192)), cameraPos);
+                Vec3 p = RenderHelper.worldToScreen(new Vec3(Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.xo, player.getX()), Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.yo + player.getEyeHeight(), player.getEyeY()),
+                        Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.zo, player.getZ())).add(iLand.getGunVec(deltaTracker.getGameTimeDeltaPartialTick(true)).scale(192)), cameraPos);
 
                 // 第三人称准星
                 if (p != null) {
@@ -116,8 +120,6 @@ public class VehicleMgHudOverlay implements IGuiOverlay {
                 }
             }
         }
-
-        poseStack.popPose();
     }
 
     private static boolean shouldRenderCrossHair(Player player) {

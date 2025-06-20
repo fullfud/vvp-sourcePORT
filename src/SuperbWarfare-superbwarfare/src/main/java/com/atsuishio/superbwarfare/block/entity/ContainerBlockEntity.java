@@ -4,34 +4,34 @@ import com.atsuishio.superbwarfare.block.ContainerBlock;
 import com.atsuishio.superbwarfare.init.ModBlockEntities;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponentMap;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvents;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.CustomData;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 import software.bernie.geckolib.animatable.GeoBlockEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class ContainerBlockEntity extends BlockEntity implements GeoBlockEntity {
 
     public EntityType<?> entityType;
-    public Entity entity = null;
+    public CompoundTag entityTag = null;
     public int tick = 0;
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
@@ -51,23 +51,21 @@ public class ContainerBlockEntity extends BlockEntity implements GeoBlockEntity 
 
             if (blockEntity.tick == 18) {
                 ParticleTool.sendParticle((ServerLevel) pLevel, ParticleTypes.EXPLOSION, pPos.getX(), pPos.getY() + 1, pPos.getZ(), 40, 1.5, 1.5, 1.5, 1, false);
-                pLevel.playSound(null, pPos, SoundEvents.GENERIC_EXPLODE, SoundSource.BLOCKS, 4.0F, (1.0F + (pLevel.random.nextFloat() - pLevel.random.nextFloat()) * 0.2F) * 0.7F);
+                pLevel.playSound(null, pPos, SoundEvents.GENERIC_EXPLODE.value(), SoundSource.BLOCKS, 4.0F, (1.0F + (pLevel.random.nextFloat() - pLevel.random.nextFloat()) * 0.2F) * 0.7F);
             }
         } else {
             var direction = pState.getValue(ContainerBlock.FACING);
 
-            if (blockEntity.entity != null) {
-                blockEntity.entity.setPos(pPos.getX() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getY() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getZ() + 0.5 + (2 * Math.random() - 1) * 0.1f);
-                blockEntity.entity.setYRot(direction.toYRot());
-                pLevel.addFreshEntity(blockEntity.entity);
-            } else if (blockEntity.entityType != null) {
-                var entity = blockEntity.entityType.create(pLevel);
-                if (entity != null) {
-                    entity.setPos(pPos.getX() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getY() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getZ() + 0.5 + (2 * Math.random() - 1) * 0.1f);
-                    entity.setYRot(direction.toYRot());
-                    pLevel.addFreshEntity(entity);
-                }
+            var entity = blockEntity.entityType.create(pLevel);
+            if (entity == null) return;
+
+            if (blockEntity.entityTag != null) {
+                entity.load(blockEntity.entityTag);
             }
+
+            entity.setPos(pPos.getX() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getY() + 0.5 + (2 * Math.random() - 1) * 0.1f, pPos.getZ() + 0.5 + (2 * Math.random() - 1) * 0.1f);
+            entity.setYRot(direction.toYRot());
+            pLevel.addFreshEntity(entity);
 
             pLevel.setBlockAndUpdate(pPos, Blocks.AIR.defaultBlockState());
         }
@@ -81,8 +79,8 @@ public class ContainerBlockEntity extends BlockEntity implements GeoBlockEntity 
     }
 
     @Override
-    public void registerControllers(AnimatableManager.ControllerRegistrar data) {
-        data.add(new AnimationController<>(this, "controller", 0, this::predicate));
+    public void registerControllers(AnimatableManager.ControllerRegistrar controllers) {
+        controllers.add(new AnimationController<>(this, "controller", 0, this::predicate));
     }
 
     @Override
@@ -90,31 +88,52 @@ public class ContainerBlockEntity extends BlockEntity implements GeoBlockEntity 
         return this.cache;
     }
 
+    // 保存额外DataComponent以确保正确生成掉落物
     @Override
-    public void load(CompoundTag compound) {
-        super.load(compound);
-        if (compound.contains("EntityType")) {
-            this.entityType = EntityType.byString(compound.getString("EntityType")).orElse(null);
-        }
-        if (compound.contains("Entity") && this.entityType != null && this.level != null) {
-            this.entity = this.entityType.create(this.level);
-            if (entity != null) {
-                entity.load(compound.getCompound("Entity"));
-            }
-        }
-        this.tick = compound.getInt("Tick");
+    protected void collectImplicitComponents(DataComponentMap.@NotNull Builder components) {
+        super.collectImplicitComponents(components);
+
+        components.set(DataComponents.BLOCK_ENTITY_DATA, CustomData.of(saveToTag()));
     }
 
     @Override
-    public void saveAdditional(CompoundTag compound) {
-        super.saveAdditional(compound);
-        if (this.entity != null) {
-            compound.put("Entity", this.entity.serializeNBT());
+    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        super.loadAdditional(tag, registries);
+
+        loadFromTag(tag);
+    }
+
+    private void loadFromTag(CompoundTag tag) {
+        if (tag.contains("EntityType")) {
+            this.entityType = EntityType.byString(tag.getString("EntityType")).orElse(null);
         }
+        if (tag.contains("Entity") && this.entityTag == null && this.entityType != null) {
+            this.entityTag = tag.getCompound("Entity");
+        }
+        this.tick = tag.getInt("Tick");
+    }
+
+    private CompoundTag saveToTag() {
+        CompoundTag tag = new CompoundTag();
+        tag.putString("id", "superbwarfare:container");
+        saveDataToTag(tag);
+        return tag;
+    }
+
+    private void saveDataToTag(CompoundTag tag) {
         if (this.entityType != null) {
-            compound.putString("EntityType", EntityType.getKey(this.entityType).toString());
+            tag.putString("EntityType", EntityType.getKey(this.entityType).toString());
         }
-        compound.putInt("Tick", this.tick);
+        if (this.entityTag != null) {
+            tag.put("Entity", this.entityTag);
+        }
+        tag.putInt("Tick", this.tick);
+    }
+
+    @Override
+    protected void saveAdditional(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        super.saveAdditional(tag, registries);
+        saveDataToTag(tag);
     }
 
     @Override
@@ -122,17 +141,21 @@ public class ContainerBlockEntity extends BlockEntity implements GeoBlockEntity 
         return ClientboundBlockEntityDataPacket.create(this);
     }
 
+
     @Override
-    public CompoundTag getUpdateTag() {
-        return this.saveWithFullMetadata();
+    public @NotNull CompoundTag getUpdateTag(HolderLookup.@NotNull Provider registries) {
+        return this.saveWithFullMetadata(registries);
     }
 
     @Override
-    public void saveToItem(ItemStack pStack) {
+    public void saveToItem(@NotNull ItemStack stack, HolderLookup.@NotNull Provider registries) {
+        super.saveToItem(stack, registries);
+
         CompoundTag tag = new CompoundTag();
         if (this.entityType != null) {
             tag.putString("EntityType", EntityType.getKey(this.entityType).toString());
         }
-        BlockItem.setBlockEntityData(pStack, this.getType(), tag);
+        BlockItem.setBlockEntityData(stack, this.getType(), tag);
     }
+
 }

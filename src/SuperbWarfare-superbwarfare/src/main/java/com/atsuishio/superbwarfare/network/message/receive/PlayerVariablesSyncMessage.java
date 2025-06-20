@@ -1,58 +1,62 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
-import com.atsuishio.superbwarfare.network.ModVariables;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
+import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import com.atsuishio.superbwarfare.tools.Ammo;
+import io.netty.buffer.ByteBuf;
 import net.minecraft.client.Minecraft;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import org.jetbrains.annotations.NotNull;
 
+import java.util.HashMap;
 import java.util.Map;
-import java.util.function.Supplier;
 
-public class PlayerVariablesSyncMessage {
-    private final int target;
-    private final Map<Byte, Integer> data;
+public record PlayerVariablesSyncMessage(int target, Map<Byte, Integer> data) implements CustomPacketPayload {
+    public static final CustomPacketPayload.Type<PlayerVariablesSyncMessage> TYPE = new CustomPacketPayload.Type<>(Mod.loc("player_variable_sync"));
 
-    public PlayerVariablesSyncMessage(FriendlyByteBuf buffer) {
-        this.target = buffer.readVarInt();
-        this.data = buffer.readMap(FriendlyByteBuf::readByte, FriendlyByteBuf::readVarInt);
-    }
+    public static final StreamCodec<ByteBuf, PlayerVariablesSyncMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.VAR_INT,
+            PlayerVariablesSyncMessage::target,
+            ByteBufCodecs.map(
+                    HashMap::new,
+                    ByteBufCodecs.BYTE,
+                    ByteBufCodecs.VAR_INT,
+                    256
+            ),
+            PlayerVariablesSyncMessage::data,
+            PlayerVariablesSyncMessage::new
+    );
 
-    public PlayerVariablesSyncMessage(int entityId, Map<Byte, Integer> data) {
-        this.data = data;
-        this.target = entityId;
-    }
 
-    public static void buffer(PlayerVariablesSyncMessage message, FriendlyByteBuf buffer) {
-        buffer.writeVarInt(message.target);
-        buffer.writeMap(message.data, (buf, key) -> buf.writeByte(key), FriendlyByteBuf::writeVarInt);
-    }
+    public static void handler(final PlayerVariablesSyncMessage message) {
+        if (Minecraft.getInstance().player == null) return;
 
-    public static void handler(PlayerVariablesSyncMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            context.setPacketHandled(true);
-            if (context.getDirection().getReceptionSide().isServer() || Minecraft.getInstance().player == null) {
-                return;
-            }
+        var entity = Minecraft.getInstance().player.level().getEntity(message.target());
+        if (entity == null) return;
 
-            var entity = Minecraft.getInstance().player.level().getEntity(message.target);
-            if (entity == null) return;
+        var variable = entity.getData(ModAttachments.PLAYER_VARIABLE);
+        var map = message.data();
 
-            PlayerVariable variables = entity.getCapability(ModVariables.PLAYER_VARIABLE, null).orElse(new PlayerVariable());
-
-            for (var entry : message.data.entrySet()) {
-                var type = entry.getKey();
-                if (type == -1) {
-                    variables.tacticalSprint = entry.getValue() == 1;
-                } else {
-                    var types = Ammo.values();
-                    if (type < types.length) {
-                        types[type].set(variables, entry.getValue());
-                    }
+        for (var entry : map.entrySet()) {
+            var type = entry.getKey();
+            if (type == -1) {
+                variable.tacticalSprint = entry.getValue() == 1;
+            } else {
+                var ammoTypes = Ammo.values();
+                if (type < ammoTypes.length) {
+                    var ammo = ammoTypes[type];
+                    variable.ammo.put(ammo, entry.getValue());
                 }
             }
-        });
+        }
+
+        entity.setData(ModAttachments.PLAYER_VARIABLE, variable);
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

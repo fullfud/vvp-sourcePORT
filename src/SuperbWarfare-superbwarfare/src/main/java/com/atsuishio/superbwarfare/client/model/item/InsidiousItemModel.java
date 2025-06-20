@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class InsidiousItemModel extends CustomGunModel<InsidiousItem> {
 
@@ -50,9 +50,9 @@ public class InsidiousItemModel extends CustomGunModel<InsidiousItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -66,7 +66,7 @@ public class InsidiousItemModel extends CustomGunModel<InsidiousItem> {
         gun.setPosZ(6.2f * (float) zp + (float) (0.5f * zpz));
         gun.setScaleZ(1f - (0.82f * (float) zp));
 
-        CoreGeoBone shen = getAnimationProcessor().getBone("fireRootNormal");
+        GeoBone shen = getAnimationProcessor().getBone("fireRootNormal");
 
         fireRotY = (float) Mth.lerp(0.3f * times, fireRotY, 0.2f * ClientEventHandler.recoilHorizon * fpz);
         fireRotZ = (float) Mth.lerp(2f * times, fireRotZ, (0.4f + 0.5 * fpz) * ClientEventHandler.recoilHorizon);
@@ -88,8 +88,8 @@ public class InsidiousItemModel extends CustomGunModel<InsidiousItem> {
         CrossHairOverlay.gunRot = shen.getRotZ();
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.98 * zt);
         float numP = (float) (1 - 0.92 * zt);

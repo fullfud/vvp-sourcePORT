@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.server;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 import java.util.List;
 
 public class SeekConfig {
 
-    public static ForgeConfigSpec.ConfigValue<List<? extends String>> SEEK_BLACKLIST;
+    public static ModConfigSpec.ConfigValue<List<? extends String>> SEEK_BLACKLIST;
 
     public static final List<? extends String> DEFAULT_SEEK_BLACKLIST = List.of(
             "minecraft:item",
@@ -20,7 +20,7 @@ public class SeekConfig {
             "mts:builder_rendering"
     );
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("seek");
 
         builder.comment("List of entities that can NOT be sought");

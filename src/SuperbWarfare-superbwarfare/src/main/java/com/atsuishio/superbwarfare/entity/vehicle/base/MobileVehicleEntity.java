@@ -1,6 +1,7 @@
 package com.atsuishio.superbwarfare.entity.vehicle.base;
 
 import com.atsuishio.superbwarfare.config.server.VehicleConfig;
+import com.atsuishio.superbwarfare.entity.OBBEntity;
 import com.atsuishio.superbwarfare.entity.TargetEntity;
 import com.atsuishio.superbwarfare.entity.projectile.FlareDecoyEntity;
 import com.atsuishio.superbwarfare.entity.projectile.SmokeDecoyEntity;
@@ -9,9 +10,11 @@ import com.atsuishio.superbwarfare.init.ModDamageTypes;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
+import com.atsuishio.superbwarfare.tools.OBB;
 import com.mojang.math.Axis;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
@@ -39,7 +42,6 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 import org.joml.Matrix4f;
@@ -51,7 +53,6 @@ import java.util.function.Consumer;
 import java.util.stream.StreamSupport;
 
 public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements ControllableVehicle {
-
     public static Consumer<MobileVehicleEntity> trackSound = vehicle -> {
     };
     public static Consumer<MobileVehicleEntity> engineSound = vehicle -> {
@@ -77,6 +78,7 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
 
     public double acceleration;
     public int decoyReloadCoolDown;
+    public static boolean IGNORE_ENTITY_GROUND_CHECK_STEPPING = false;
     public boolean leftInputDown;
     public boolean rightInputDown;
     public boolean forwardInputDown;
@@ -291,9 +293,8 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     public void releaseSmokeDecoy(Vec3 vec3) {
         if (decoyInputDown) {
             if (this.entityData.get(DECOY_COUNT) > 0 && this.level() instanceof ServerLevel) {
-                Entity passenger = getFirstPassenger();
                 for (int i = 0; i < 8; i++) {
-                    SmokeDecoyEntity smokeDecoyEntity = new SmokeDecoyEntity((LivingEntity) passenger, this.level());
+                    SmokeDecoyEntity smokeDecoyEntity = new SmokeDecoyEntity(this.level());
                     smokeDecoyEntity.setPos(this.getX(), this.getY() + getBbHeight(), this.getZ());
                     smokeDecoyEntity.decoyShoot(this, vec3.yRot((-78.75f + 22.5F * i) * Mth.DEG_TO_RAD), 4f, 8);
                     this.level().addFreshEntity(smokeDecoyEntity);
@@ -315,9 +316,8 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     public void releaseDecoy() {
         if (decoyInputDown) {
             if (this.entityData.get(DECOY_COUNT) > 0 && this.level() instanceof ServerLevel) {
-                Entity passenger = getFirstPassenger();
                 for (int i = 0; i < 4; i++) {
-                    FlareDecoyEntity flareDecoyEntity = new FlareDecoyEntity((LivingEntity) passenger, this.level());
+                    FlareDecoyEntity flareDecoyEntity = new FlareDecoyEntity(this.level());
                     flareDecoyEntity.setPos(this.getX() + this.getDeltaMovement().x, this.getY() + 0.5 + this.getDeltaMovement().y, this.getZ() + this.getDeltaMovement().z);
                     flareDecoyEntity.decoyShoot(this, this.getViewVector(1).yRot((45 + 90 * i) * Mth.DEG_TO_RAD), 0.8f, 8);
                     this.level().addFreshEntity(flareDecoyEntity);
@@ -605,6 +605,8 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     }
 
     public void bounceHorizontal(Direction direction) {
+        collideBlock();
+        collideHardBlock();
         switch (direction.getAxis()) {
             case X:
                 this.setDeltaMovement(this.getDeltaMovement().multiply(0.8, 0.99, 0.99));
@@ -661,24 +663,41 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     public void crushEntities(Vec3 velocity) {
         if (level() instanceof ServerLevel) {
             if (!this.canCrushEntities()) return;
-            if (velocity.horizontalDistance() < 0.25) return;
+//            if (velocity.horizontalDistance() < 0.25) return;
             if (isRemoved()) return;
-            var frontBox = getBoundingBox().move(velocity);
 
-            var entities = level().getEntities(EntityTypeTest.forClass(Entity.class), frontBox,
-                            entity -> entity != this && entity != getFirstPassenger() && entity.getVehicle() == null)
-                    .stream().filter(entity -> {
-                                if (entity.isAlive()) {
-                                    var type = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-                                    if (type == null) return false;
-                                    return (entity instanceof VehicleEntity || entity instanceof Boat || entity instanceof Minecart
-                                            || (entity instanceof LivingEntity living && !(living instanceof Player player && player.isSpectator())))
-                                            || VehicleConfig.COLLISION_ENTITY_WHITELIST.get().contains(type.toString());
+            List<Entity> entities;
+
+            if (this instanceof OBBEntity obbEntity) {
+                var frontBox = getBoundingBox().move(velocity).inflate(4);
+                entities = level().getEntities(EntityTypeTest.forClass(Entity.class), frontBox,
+                                entity -> entity != this && entity != getFirstPassenger() && entity.getVehicle() == null)
+                        .stream().filter(entity -> {
+                                    if (entity.isAlive() && isInObb(obbEntity, entity, velocity)) {
+                                        var type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+                                        return (entity instanceof VehicleEntity || entity instanceof Boat || entity instanceof Minecart || (entity instanceof LivingEntity living && !(living instanceof Player player && player.isSpectator()))) || VehicleConfig.COLLISION_ENTITY_WHITELIST.get().contains(type.toString());
+                                    }
+                                    return false;
                                 }
-                                return false;
-                            }
-                    )
-                    .toList();
+                        )
+                        .toList();
+
+            } else {
+                var frontBox = getBoundingBox().move(velocity);
+                entities = level().getEntities(EntityTypeTest.forClass(Entity.class), frontBox,
+                                entity -> entity != this && entity != getFirstPassenger() && entity.getVehicle() == null)
+                        .stream().filter(entity -> {
+                                    if (entity.isAlive()) {
+                                        var type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
+                                        return (entity instanceof VehicleEntity || entity instanceof Boat || entity instanceof Minecart
+                                                || (entity instanceof LivingEntity living && !(living instanceof Player player && player.isSpectator())))
+                                                || VehicleConfig.COLLISION_ENTITY_WHITELIST.get().contains(type.toString());
+                                    }
+                                    return false;
+                                }
+                        )
+                        .toList();
+            }
 
             for (var entity : entities) {
                 double entitySize = entity.getBoundingBox().getSize();
@@ -729,6 +748,22 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
                 }
             }
         }
+    }
+
+    public boolean isInObb(OBBEntity obbEntity, Entity entity, Vec3 velocity) {
+        var obbList = obbEntity.getOBBs();
+        for (var obb : obbList) {
+            obb = obb.move(velocity);
+            if (entity instanceof OBBEntity obbEntity2) {
+                var obbList2 = obbEntity2.getOBBs();
+                for (var obb2 : obbList2) {
+                    return OBB.isColliding(obb, obb2);
+                }
+            } else {
+                return OBB.isColliding(obb, entity.getBoundingBox());
+            }
+        }
+        return false;
     }
 
     public Vector3f getForwardDirection() {
@@ -897,18 +932,18 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(CANNON_RECOIL_TIME, 0);
-        this.entityData.define(POWER, 0f);
-        this.entityData.define(YAW, 0f);
-        this.entityData.define(AMMO, 0);
-        this.entityData.define(FIRE_ANIM, 0);
-        this.entityData.define(COAX_HEAT, 0);
-        this.entityData.define(DECOY_COUNT, 0);
-        this.entityData.define(GEAR_ROT, 0);
-        this.entityData.define(GEAR_UP, false);
-        this.entityData.define(PLANE_BREAK, 0f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(CANNON_RECOIL_TIME, 0)
+                .define(POWER, 0f)
+                .define(YAW, 0f)
+                .define(AMMO, 0)
+                .define(FIRE_ANIM, 0)
+                .define(COAX_HEAT, 0)
+                .define(DECOY_COUNT, 0)
+                .define(GEAR_ROT, 0)
+                .define(GEAR_UP, false)
+                .define(PLANE_BREAK, 0f);
     }
 
     @Override
@@ -936,6 +971,4 @@ public abstract class MobileVehicleEntity extends EnergyVehicleEntity implements
     public boolean canCrushEntities() {
         return true;
     }
-
-    public static boolean IGNORE_ENTITY_GROUND_CHECK_STEPPING = false;
 }

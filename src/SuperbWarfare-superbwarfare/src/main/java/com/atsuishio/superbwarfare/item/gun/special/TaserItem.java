@@ -1,8 +1,6 @@
 package com.atsuishio.superbwarfare.item.gun.special;
 
 import com.atsuishio.superbwarfare.Mod;
-import com.atsuishio.superbwarfare.capability.energy.ItemEnergyProvider;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.TaserItemRenderer;
 import com.atsuishio.superbwarfare.client.tooltip.component.EnergyImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
@@ -11,19 +9,15 @@ import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModPerks;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.item.EnergyStorageItem;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.perk.Perk;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
@@ -31,61 +25,35 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class TaserItem extends GunItem {
+public class TaserItem extends GunItem implements EnergyStorageItem {
 
     public static final int MAX_ENERGY = 6000;
 
-    private final Supplier<Integer> energyCapacity;
-
     public TaserItem() {
-        super(new Item.Properties().stacksTo(1).rarity(Rarity.COMMON));
-        this.energyCapacity = () -> MAX_ENERGY;
+        super(new Properties().stacksTo(1).rarity(Rarity.COMMON));
     }
 
     @Override
-    public boolean isBarVisible(ItemStack pStack) {
-        if (!pStack.getCapability(ForgeCapabilities.ENERGY).isPresent()) {
-            return false;
-        }
-
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
-        return energy.get() != 0;
+    public boolean isBarVisible(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        return cap != null && cap.getEnergyStored() != 0;
     }
 
     @Override
-    public int getBarWidth(ItemStack pStack) {
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
-
-        return Math.round((float) energy.get() * 13.0F / MAX_ENERGY);
-    }
-
-    @Override
-    public ICapabilityProvider initCapabilities(ItemStack stack, CompoundTag tag) {
-        return new ItemEnergyProvider(stack, energyCapacity.get());
+    public int getBarWidth(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        return Math.round((float) (cap != null ? cap.getEnergyStored() : 0) * 13.0F / MAX_ENERGY);
     }
 
     @Override
@@ -99,24 +67,8 @@ public class TaserItem extends GunItem {
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    renderer = new TaserItemRenderer();
-                }
-                return renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return TaserItemRenderer::new;
     }
 
     private PlayState idlePredicate(AnimationState<TaserItem> event) {
@@ -127,8 +79,7 @@ public class TaserItem extends GunItem {
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.taser.idle"));
 
-        var data = GunData.from(stack);
-        if (data.reload.empty()) {
+        if (GunData.from(stack).reload.empty()) {
             return event.setAndContinue(RawAnimation.begin().thenPlay("animation.taser.reload"));
         }
 
@@ -157,25 +108,21 @@ public class TaserItem extends GunItem {
         if (entity instanceof Player player) {
             for (var cell : player.getInventory().items) {
                 if (cell.is(ModItems.CELL.get())) {
-                    assert stack.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
-                    var stackStorage = stack.getCapability(ForgeCapabilities.ENERGY).resolve().get();
+                    var stackStorage = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (stackStorage == null) continue;
                     int stackMaxEnergy = stackStorage.getMaxEnergyStored();
                     int stackEnergy = stackStorage.getEnergyStored();
 
-                    assert cell.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
-                    var cellStorage = cell.getCapability(ForgeCapabilities.ENERGY).resolve().get();
+                    var cellStorage = cell.getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (cellStorage == null) continue;
                     int cellEnergy = cellStorage.getEnergyStored();
 
                     int stackEnergyNeed = Math.min(cellEnergy, stackMaxEnergy - stackEnergy);
 
                     if (cellEnergy > 0) {
-                        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                                iEnergyStorage -> iEnergyStorage.receiveEnergy(stackEnergyNeed, false)
-                        );
+                        stackStorage.receiveEnergy(stackEnergyNeed, false);
                     }
-                    cell.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                            cEnergy -> cEnergy.extractEnergy(stackEnergyNeed, false)
-                    );
+                    cellStorage.extractEnergy(stackEnergyNeed, false);
                 }
             }
         }
@@ -231,7 +178,11 @@ public class TaserItem extends GunItem {
         super.afterShoot(data, player);
         var stack = data.stack;
         int perkLevel = data.perk.getLevel(ModPerks.VOLT_OVERLOAD);
-        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(energy -> energy.extractEnergy(400 + 100 * perkLevel, false));
+
+        var energyStorage = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (energyStorage != null) {
+            energyStorage.extractEnergy(400 + 100 * perkLevel, false);
+        }
     }
 
     @Override
@@ -239,12 +190,18 @@ public class TaserItem extends GunItem {
         var stack = data.stack;
 
         int perkLevel = data.perk.getLevel(ModPerks.VOLT_OVERLOAD);
-        var hasEnoughEnergy = stack.getCapability(ForgeCapabilities.ENERGY)
-                .map(storage -> storage.getEnergyStored() >= 400 + 100 * perkLevel)
-                .orElse(false);
+
+        var energyStorage = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        var hasEnoughEnergy = energyStorage != null && energyStorage.getEnergyStored() >= 400 + 100 * perkLevel;
 
         if (!hasEnoughEnergy) return false;
         if (data.reloading()) return false;
         return super.canShoot(data);
     }
+
+    @Override
+    public int getMaxEnergy() {
+        return MAX_ENERGY;
+    }
+
 }

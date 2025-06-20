@@ -3,7 +3,7 @@ package com.atsuishio.superbwarfare.api.event;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.Event;
+import net.neoforged.bus.api.Event;
 import org.jetbrains.annotations.ApiStatus;
 
 @ApiStatus.Internal
@@ -17,7 +17,7 @@ public class ReloadEvent extends Event {
     private ReloadEvent(Player player, GunData data) {
         this.player = player;
         this.data = data;
-        this.stack = data.stack;
+        this.stack = data.stack();
     }
 
     public static class Pre extends ReloadEvent {

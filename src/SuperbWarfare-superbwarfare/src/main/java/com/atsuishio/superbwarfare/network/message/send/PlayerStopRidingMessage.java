@@ -1,38 +1,35 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record PlayerStopRidingMessage(int msgType) implements CustomPacketPayload {
+    public static final Type<PlayerStopRidingMessage> TYPE = new Type<>(Mod.loc("player_stop_riding"));
 
-public class PlayerStopRidingMessage {
+    public static final StreamCodec<ByteBuf, PlayerStopRidingMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            PlayerStopRidingMessage::msgType,
+            PlayerStopRidingMessage::new
+    );
 
-    private final int type;
+    public static void handler(PlayerStopRidingMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
+        var vehicle = player.getVehicle();
+        if (!(vehicle instanceof VehicleEntity)) return;
 
-    public PlayerStopRidingMessage(int type) {
-        this.type = type;
+        player.stopRiding();
+        player.setJumping(false);
     }
 
-    public static void encode(PlayerStopRidingMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-    }
-
-    public static PlayerStopRidingMessage decode(FriendlyByteBuf buffer) {
-        return new PlayerStopRidingMessage(buffer.readInt());
-    }
-
-    public static void handler(PlayerStopRidingMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-            var vehicle = player.getVehicle();
-            if (!(vehicle instanceof VehicleEntity)) return;
-
-            player.stopRiding();
-            player.setJumping(false);
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

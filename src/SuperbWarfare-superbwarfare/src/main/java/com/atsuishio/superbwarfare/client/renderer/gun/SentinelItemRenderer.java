@@ -13,11 +13,9 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.cache.object.GeoBone;
-
-import java.util.concurrent.atomic.AtomicBoolean;
 
 public class SentinelItemRenderer extends CustomGunRenderer<SentinelItem> {
 
@@ -26,8 +24,7 @@ public class SentinelItemRenderer extends CustomGunRenderer<SentinelItem> {
     }
 
     @Override
-    public void renderRecursively(PoseStack stack, SentinelItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, float red,
-                                  float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack stack, SentinelItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, int color) {
         Minecraft mc = Minecraft.getInstance();
         String name = bone.getName();
         boolean renderingArms = false;
@@ -47,13 +44,12 @@ public class SentinelItemRenderer extends CustomGunRenderer<SentinelItem> {
         if (itemStack.getItem() instanceof GunItem && GeoItem.getId(itemStack) == this.getInstanceId(animatable)) {
             if (this.renderPerspective == ItemDisplayContext.FIRST_PERSON_RIGHT_HAND || this.renderPerspective == ItemDisplayContext.THIRD_PERSON_RIGHT_HAND) {
 
-                AtomicBoolean flag = new AtomicBoolean(false);
-                itemStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                        iEnergyStorage -> flag.set(iEnergyStorage.getEnergyStored() > 0)
-                );
+                var cap = itemStack.getCapability(Capabilities.EnergyStorage.ITEM);
+                var flag = cap != null && cap.getEnergyStored() > 0;
+
 
                 if (name.equals("charge_illuminated")) {
-                    bone.setHidden(!flag.get());
+                    bone.setHidden(!flag);
                     bone.setRotZ((System.currentTimeMillis() % 36000000) / 200f);
                 }
 
@@ -83,6 +79,6 @@ public class SentinelItemRenderer extends CustomGunRenderer<SentinelItem> {
         if (renderingArms) {
             AnimationHelper.renderArms(player, this.renderPerspective, stack, name, bone, buffer, type, packedLightIn, true);
         }
-        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, color);
     }
 }

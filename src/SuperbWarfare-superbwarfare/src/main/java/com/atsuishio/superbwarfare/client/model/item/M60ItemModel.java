@@ -11,8 +11,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -50,24 +50,25 @@ public class M60ItemModel extends CustomGunModel<M60Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
-        CoreGeoBone tiba = getAnimationProcessor().getBone("tiba");
-        CoreGeoBone b1 = getAnimationProcessor().getBone("b1");
-        CoreGeoBone b2 = getAnimationProcessor().getBone("b2");
-        CoreGeoBone b3 = getAnimationProcessor().getBone("b3");
-        CoreGeoBone b4 = getAnimationProcessor().getBone("b4");
-        CoreGeoBone b5 = getAnimationProcessor().getBone("b5");
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone tiba = getAnimationProcessor().getBone("tiba");
+        GeoBone b1 = getAnimationProcessor().getBone("b1");
+        GeoBone b2 = getAnimationProcessor().getBone("b2");
+        GeoBone b3 = getAnimationProcessor().getBone("b3");
+        GeoBone b4 = getAnimationProcessor().getBone("b4");
+        GeoBone b5 = getAnimationProcessor().getBone("b5");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
 
         if (isProne(player)) {
             l.setRotX(1.5f);
             r.setRotX(1.5f);
         }
 
-        int ammo = GunData.from(stack).ammo.get();
-        boolean flag = GunData.from(stack).hideBulletChain.get();
+        var data = GunData.from(stack);
+        int ammo = data.ammo.get();
+        boolean flag = data.hideBulletChain.get();
 
         if (ammo < 5 && flag) {
             b5.setScaleX(0);
@@ -99,7 +100,7 @@ public class M60ItemModel extends CustomGunModel<M60Item> {
             b1.setScaleZ(0);
         }
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -136,16 +137,16 @@ public class M60ItemModel extends CustomGunModel<M60Item> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.88 * zt);
         float numP = (float) (1 - 0.28 * zt);
 
         AnimationHelper.handleShellsAnimation(getAnimationProcessor(), 1f, 0.45f);
-        CoreGeoBone shell = getAnimationProcessor().getBone("shell");
+        GeoBone shell = getAnimationProcessor().getBone("shell");
 
-        if (GunData.from(stack).reload.time() > 0) {
+        if (data.reload.time() > 0) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

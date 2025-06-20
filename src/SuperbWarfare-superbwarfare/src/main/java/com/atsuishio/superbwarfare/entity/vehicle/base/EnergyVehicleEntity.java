@@ -9,19 +9,14 @@ import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.IEnergyStorage;
-import org.jetbrains.annotations.NotNull;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 
 public abstract class EnergyVehicleEntity extends VehicleEntity {
 
     public static final EntityDataAccessor<Integer> ENERGY = SynchedEntityData.defineId(EnergyVehicleEntity.class, EntityDataSerializers.INT);
 
     // TODO 在数据更新时修改能量相关属性
-    protected final SyncedEntityEnergyStorage energyStorage = new SyncedEntityEnergyStorage(this.getMaxEnergy(), this.entityData, ENERGY);
-    protected final LazyOptional<IEnergyStorage> energy = LazyOptional.of(() -> energyStorage);
+    protected final IEnergyStorage energyStorage = new SyncedEntityEnergyStorage(this.getMaxEnergy(), this.entityData, ENERGY);
 
     public EnergyVehicleEntity(EntityType<?> pEntityType, Level pLevel) {
         super(pEntityType, pLevel);
@@ -29,29 +24,24 @@ public abstract class EnergyVehicleEntity extends VehicleEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(ENERGY, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(ENERGY, 0);
     }
+
 
     @Override
     protected void readAdditionalSaveData(CompoundTag compound) {
         super.readAdditionalSaveData(compound);
         if (compound.get("Energy") instanceof IntTag energyNBT) {
-            energyStorage.deserializeNBT(energyNBT);
+            ((SyncedEntityEnergyStorage) energyStorage).deserializeNBT(level().registryAccess(), energyNBT);
         }
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        energy.invalidate();
     }
 
     @Override
     public void addAdditionalSaveData(CompoundTag compound) {
         super.addAdditionalSaveData(compound);
-        compound.put("Energy", energyStorage.serializeNBT());
+        compound.put("Energy", ((SyncedEntityEnergyStorage) energyStorage).serializeNBT(level().registryAccess()));
     }
 
     /**
@@ -71,6 +61,10 @@ public abstract class EnergyVehicleEntity extends VehicleEntity {
         return this.energyStorage.getEnergyStored();
     }
 
+    public IEnergyStorage getEnergyStorage() {
+        return this.energyStorage;
+    }
+
     public void setEnergy(int pEnergy) {
         int targetEnergy = Mth.clamp(pEnergy, 0, this.getMaxEnergy());
 
@@ -85,8 +79,4 @@ public abstract class EnergyVehicleEntity extends VehicleEntity {
         return data().maxEnergy();
     }
 
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap) {
-        return ForgeCapabilities.ENERGY.orEmpty(cap, energy);
-    }
 }

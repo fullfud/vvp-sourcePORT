@@ -2,6 +2,7 @@ package com.atsuishio.superbwarfare.entity.vehicle.base;
 
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.data.vehicle.VehicleData;
+import com.atsuishio.superbwarfare.entity.mixin.OBBHitter;
 import com.atsuishio.superbwarfare.entity.vehicle.DroneEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.damage.DamageModifier;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.VehicleWeapon;
@@ -25,9 +26,8 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.protocol.game.ClientboundSetPassengersPacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -49,19 +49,18 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.AbstractArrow;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.entity.vehicle.DismountHelper;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
+import net.minecraft.world.level.material.Fluid;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.common.util.FakePlayer;
-import net.minecraftforge.fluids.FluidType;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.common.util.FakePlayer;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
@@ -75,7 +74,6 @@ import java.util.Objects;
 import java.util.function.Function;
 
 import static com.atsuishio.superbwarfare.client.RenderHelper.preciseBlit;
-import static com.atsuishio.superbwarfare.tools.ParticleTool.sendParticle;
 
 public abstract class VehicleEntity extends Entity {
 
@@ -85,7 +83,7 @@ public abstract class VehicleEntity extends Entity {
     public static final EntityDataAccessor<Float> DELTA_ROT = SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
     public static final EntityDataAccessor<Float> MOUSE_SPEED_X = SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
     public static final EntityDataAccessor<Float> MOUSE_SPEED_Y = SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.FLOAT);
-    public static final EntityDataAccessor<IntList> SELECTED_WEAPON = SynchedEntityData.defineId(VehicleEntity.class, ModSerializers.INT_LIST_SERIALIZER.get());
+    public static final EntityDataAccessor<List<Integer>> SELECTED_WEAPON = SynchedEntityData.defineId(VehicleEntity.class, ModSerializers.INT_LIST_SERIALIZER.get());
     public static final EntityDataAccessor<Integer> HEAT = SynchedEntityData.defineId(VehicleEntity.class, EntityDataSerializers.INT);
 
     public VehicleWeapon[][] availableWeapons;
@@ -190,16 +188,15 @@ public abstract class VehicleEntity extends Entity {
         return VehicleData.from(this);
     }
 
-
     @Override
-    public float getStepHeight() {
+    public float maxUpStep() {
         return data().upStep();
     }
 
     @Nullable
     @Override
     public Entity getFirstPassenger() {
-        return orderedPassengers.get(0);
+        return orderedPassengers.getFirst();
     }
 
     /**
@@ -284,21 +281,23 @@ public abstract class VehicleEntity extends Entity {
     public VehicleEntity(EntityType<?> pEntityType, Level pLevel) {
         super(pEntityType, pLevel);
         this.setHealth(this.getMaxHealth());
+
+        if (this instanceof WeaponVehicleEntity weaponVehicle && weaponVehicle.getAllWeapons().length > 0) {
+            this.entityData.set(SELECTED_WEAPON, IntList.of(initSelectedWeaponArray(weaponVehicle)));
+        }
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(HEALTH, this.getMaxHealth());
-        this.entityData.define(LAST_ATTACKER_UUID, "undefined");
-        this.entityData.define(LAST_DRIVER_UUID, "undefined");
-        this.entityData.define(DELTA_ROT, 0f);
-        this.entityData.define(MOUSE_SPEED_X, 0f);
-        this.entityData.define(MOUSE_SPEED_Y, 0f);
-        this.entityData.define(HEAT, 0);
-
-        if (this instanceof WeaponVehicleEntity weaponVehicle && weaponVehicle.getAllWeapons().length > 0) {
-            this.entityData.define(SELECTED_WEAPON, IntList.of(initSelectedWeaponArray(weaponVehicle)));
-        }
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(HEALTH, this.getMaxHealth())
+                .define(LAST_ATTACKER_UUID, "undefined")
+                .define(LAST_DRIVER_UUID, "undefined")
+                .define(DELTA_ROT, 0f)
+                .define(MOUSE_SPEED_X, 0f)
+                .define(MOUSE_SPEED_Y, 0f)
+                .define(HEAT, 0)
+                .define(SELECTED_WEAPON, IntList.of(new int[this.getMaxPassengers()]));
+        // 怎么还不给玩动态注册了（恼）
     }
 
     private int[] initSelectedWeaponArray(WeaponVehicleEntity weaponVehicle) {
@@ -338,7 +337,7 @@ public abstract class VehicleEntity extends Entity {
         compound.putString("LastDriver", this.entityData.get(LAST_DRIVER_UUID));
 
         if (this instanceof WeaponVehicleEntity weaponVehicle && weaponVehicle.getAllWeapons().length > 0) {
-            compound.putIntArray("SelectedWeapon", this.entityData.get(SELECTED_WEAPON).toIntArray());
+            compound.putIntArray("SelectedWeapon", this.entityData.get(SELECTED_WEAPON));
         }
     }
 
@@ -431,32 +430,14 @@ public abstract class VehicleEntity extends Entity {
             repairCoolDown = maxRepairCoolDown();
         }
 
+        // TODO 这里可以获取击中的部位，给需要的载具加一个部位受伤方法
+        if (source.getDirectEntity() instanceof Projectile projectile) {
+            OBBHitter accessor = OBBHitter.getInstance(projectile);
+//            System.out.println(accessor.sbw$getCurrentHitPart());
+        }
+
         this.onHurt(computedAmount, source.getEntity(), true);
-
-        // 显示火花粒子效果
-        if (this.sendFireStarParticleOnHurt() && this.level() instanceof ServerLevel serverLevel) {
-            sendParticle(serverLevel, ModParticleTypes.FIRE_STAR.get(), this.getX(), this.getY() + 0.5 * getBbHeight(), this.getZ(), 2, 0.4, 0.4, 0.4, 0.2, false);
-        }
-        // 播放受击音效
-        if (this.playHitSoundOnHurt()) {
-            this.level().playSound(null, this.getOnPos(), ModSounds.HIT.get(), SoundSource.PLAYERS, 1, 1);
-        }
-
         return super.hurt(source, computedAmount);
-    }
-
-    /**
-     * 受击时是否显示火花粒子效果
-     */
-    public boolean sendFireStarParticleOnHurt() {
-        return true;
-    }
-
-    /**
-     * 受击时是否播放受击音效
-     */
-    public boolean playHitSoundOnHurt() {
-        return true;
     }
 
     /**
@@ -476,10 +457,8 @@ public abstract class VehicleEntity extends Entity {
 
         if (attacker != null) {
             Vec3 toVec = new Vec3(getX(), getY() + getBbHeight() / 2, getZ()).vectorTo(attacker.position()).normalize();
-            float angle = (float) java.lang.Math.abs(VectorTool.calculateAngle(this.position().vectorTo(attacker.position()), this.getViewVector(1)));
-            return (float) java.lang.Math.max(1f - multiply * toVec.dot(getViewVector(1)), 0.5f);
+            return (float) Math.max(1f - multiply * toVec.dot(getViewVector(1)), 0.5f);
         }
-
         return 1;
     }
 
@@ -494,7 +473,7 @@ public abstract class VehicleEntity extends Entity {
             var holder = Holder.direct(ModSounds.INDICATION_VEHICLE.get());
             if (attacker instanceof ServerPlayer player && pHealAmount > 0 && this.getHealth() > 0 && send && !(this instanceof DroneEntity)) {
                 player.connection.send(new ClientboundSoundPacket(holder, SoundSource.PLAYERS, player.getX(), player.getEyeY(), player.getZ(), 0.25f + (2.75f * pHealAmount / getMaxHealth()), random.nextFloat() * 0.1f + 0.9f, player.level().random.nextLong()));
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(3, 5));
+                PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(3, 5));
             }
 
             if (pHealAmount > 0 && this.getHealth() > 0 && send) {
@@ -552,9 +531,10 @@ public abstract class VehicleEntity extends Entity {
     }
 
     public double getSubmergedHeight(Entity entity) {
-        for (FluidType fluidType : ForgeRegistries.FLUID_TYPES.get().getValues()) {
-            if (entity.level().getFluidState(entity.blockPosition()).getFluidType() == fluidType)
-                return entity.getFluidTypeHeight(fluidType);
+        for (Fluid fluid : BuiltInRegistries.FLUID) {
+            var type = fluid.getFluidType();
+            if (entity.level().getFluidState(entity.blockPosition()).getFluidType() == type)
+                return entity.getFluidTypeHeight(type);
         }
         return 0;
     }
@@ -813,8 +793,32 @@ public abstract class VehicleEntity extends Entity {
         return transform;
     }
 
+    public Matrix4f getVehicleHorizontalTransform(float ticks) {
+        Matrix4f transform = new Matrix4f();
+        transform.translate((float) Mth.lerp(ticks, xo, getX()), (float) Mth.lerp(ticks, yo, getY()), (float) Mth.lerp(ticks, zo, getZ()));
+        transform.rotate(Axis.YP.rotationDegrees(-Mth.lerp(ticks, yRotO, getYRot())));
+        return transform;
+    }
+
     public Vector4f transformPosition(Matrix4f transform, float x, float y, float z) {
         return transform.transform(new Vector4f(x, y, z, 1));
+    }
+
+    public static Quaternionf eulerToQuaternion(float yaw, float pitch, float roll) {
+        double cy = Math.cos(yaw * 0.5 * Mth.DEG_TO_RAD);
+        double sy = Math.sin(yaw * 0.5 * Mth.DEG_TO_RAD);
+        double cp = Math.cos(pitch * 0.5 * Mth.DEG_TO_RAD);
+        double sp = Math.sin(pitch * 0.5 * Mth.DEG_TO_RAD);
+        double cr = Math.cos(roll * 0.5 * Mth.DEG_TO_RAD);
+        double sr = Math.sin(roll * 0.5 * Mth.DEG_TO_RAD);
+
+        Quaternionf q = new Quaternionf();
+        q.w = (float) (cy * cp * cr + sy * sp * sr);
+        q.x = (float) (cy * cp * sr - sy * sp * cr);
+        q.y = (float) (sy * cp * sr + cy * sp * cr);
+        q.z = (float) (sy * cp * cr - cy * sp * sr);
+
+        return q;
     }
 
     public void handleClientSync() {
@@ -839,12 +843,12 @@ public abstract class VehicleEntity extends Entity {
     }
 
     @Override
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+    public void lerpTo(double x, double y, double z, float yRot, float xRot, int steps) {
         this.x = x;
         this.y = y;
         this.z = z;
-        serverYRot = yaw;
-        serverXRot = pitch;
+        serverYRot = yRot;
+        serverXRot = xRot;
         this.interpolationSteps = 10;
     }
 
@@ -1012,11 +1016,6 @@ public abstract class VehicleEntity extends Entity {
 
     public double getMouseSpeedY() {
         return 0.4;
-    }
-
-    @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public float getMass() {

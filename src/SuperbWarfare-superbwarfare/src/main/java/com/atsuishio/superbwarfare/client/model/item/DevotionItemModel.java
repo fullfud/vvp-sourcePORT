@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -49,12 +49,12 @@ public class DevotionItemModel extends CustomGunModel<DevotionItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
-        CoreGeoBone bolt = getAnimationProcessor().getBone("bolt2");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone bolt = getAnimationProcessor().getBone("bolt2");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -69,7 +69,7 @@ public class DevotionItemModel extends CustomGunModel<DevotionItem> {
         gun.setRotZ((float) (0.05f * zpz));
         gun.setScaleZ(1f - (0.7f * (float) zp));
 
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
 
         shen.setPosX((float) (0.95f * ClientEventHandler.recoilHorizon * fpz * fp));
         shen.setPosY((float) (0.15f * fp + 0.18f * fr));
@@ -96,8 +96,8 @@ public class DevotionItemModel extends CustomGunModel<DevotionItem> {
             r.setRotX(1.5f);
         }
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.82 * zt);
         float numP = (float) (1 - 0.78 * zt);

@@ -4,8 +4,6 @@ import com.atsuishio.superbwarfare.client.AnimationTicker;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.network.syncher.EntityDataAccessor;
 import net.minecraft.network.syncher.EntityDataSerializers;
 import net.minecraft.network.syncher.SynchedEntityData;
@@ -18,7 +16,7 @@ import net.minecraft.world.level.Level;
 import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.PushReaction;
 import net.minecraft.world.phys.*;
-import net.minecraftforge.network.NetworkHooks;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.ArrayList;
@@ -80,17 +78,12 @@ public abstract class AbstractLaserEntity extends Entity implements TraceableEnt
             this.on = false;
         }
     }
-
-   
-
     @Override
-    protected void readAdditionalSaveData(CompoundTag pCompound) {
-
+    protected void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
     }
 
     @Override
-    protected void addAdditionalSaveData(CompoundTag pCompound) {
-
+    protected void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
     }
 
     protected void beamTick() {
@@ -107,21 +100,23 @@ public abstract class AbstractLaserEntity extends Entity implements TraceableEnt
     }
 
     @Override
-    public void push(Entity entityIn) {
+    public void push(@NotNull Entity entityIn) {
     }
 
     @Override
-    public PushReaction getPistonPushReaction() {
+    public @NotNull PushReaction getPistonPushReaction() {
         return PushReaction.IGNORE;
     }
 
+
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(DATA_CASTER_ID, -1);
-        this.entityData.define(DATA_YAW, 0F);
-        this.entityData.define(DATA_PITCH, 0F);
-        this.entityData.define(DATA_DURATION, 0);
-        this.entityData.define(DATA_COUNT_DOWN, 0);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder
+                .define(DATA_CASTER_ID, -1)
+                .define(DATA_YAW, 0F)
+                .define(DATA_PITCH, 0F)
+                .define(DATA_DURATION, 0)
+                .define(DATA_COUNT_DOWN, 0);
     }
 
     public void setCasterId(int id) {
@@ -243,11 +238,6 @@ public abstract class AbstractLaserEntity extends Entity implements TraceableEnt
 
     protected float getBaseScale() {
         return 0.5F;
-    }
-
-    @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
     }
 
     public static class CustomHitResult {

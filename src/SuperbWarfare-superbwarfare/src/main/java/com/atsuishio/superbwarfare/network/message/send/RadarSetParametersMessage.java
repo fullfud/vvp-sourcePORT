@@ -1,42 +1,39 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.FuMO25Menu;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record RadarSetParametersMessage(int mode) implements CustomPacketPayload {
+    public static final Type<RadarSetParametersMessage> TYPE = new Type<>(Mod.loc("radar_set_parameters"));
 
-public class RadarSetParametersMessage {
+    public static final StreamCodec<ByteBuf, RadarSetParametersMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            RadarSetParametersMessage::mode,
+            RadarSetParametersMessage::new
+    );
 
-    private final byte mode;
+    public static void handler(RadarSetParametersMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
 
-    public RadarSetParametersMessage(byte mode) {
-        this.mode = mode;
-    }
-
-    public static void encode(RadarSetParametersMessage message, FriendlyByteBuf buffer) {
-        buffer.writeByte(message.mode);
-    }
-
-    public static RadarSetParametersMessage decode(FriendlyByteBuf buffer) {
-        return new RadarSetParametersMessage(buffer.readByte());
-    }
-
-    public static void handler(RadarSetParametersMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-
-            AbstractContainerMenu menu = player.containerMenu;
-            if (menu instanceof FuMO25Menu fuMO25Menu) {
-                if (!player.containerMenu.stillValid(player)) {
-                    return;
-                }
-                fuMO25Menu.setPosToParameters();
+        AbstractContainerMenu menu = player.containerMenu;
+        if (menu instanceof FuMO25Menu fuMO25Menu) {
+            if (!player.containerMenu.stillValid(player)) {
+                return;
             }
-        });
-        ctx.get().setPacketHandled(true);
+            fuMO25Menu.setPosToParameters();
+        }
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

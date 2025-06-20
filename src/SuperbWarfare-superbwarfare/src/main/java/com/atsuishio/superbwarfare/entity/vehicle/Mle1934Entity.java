@@ -1,6 +1,7 @@
 package com.atsuishio.superbwarfare.entity.vehicle;
 
 import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.config.server.VehicleConfig;
 import com.atsuishio.superbwarfare.entity.vehicle.base.CannonEntity;
@@ -11,7 +12,6 @@ import com.atsuishio.superbwarfare.entity.vehicle.weapon.CannonShellWeapon;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.VehicleWeapon;
 import com.atsuishio.superbwarfare.event.ClientMouseHandler;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
-import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.item.common.ammo.CannonShellItem;
@@ -36,28 +36,20 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.event.EventHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
-
-import java.util.Comparator;
 
 public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEntity {
 
@@ -67,10 +59,6 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
     public static final EntityDataAccessor<Float> YAW = SynchedEntityData.defineId(Mle1934Entity.class, EntityDataSerializers.FLOAT);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     private final float shellGravity = 0.1f;
-
-    public Mle1934Entity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.MLE_1934.get(), world);
-    }
 
     public Mle1934Entity(EntityType<Mle1934Entity> type, Level world) {
         super(type, world);
@@ -92,7 +80,7 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
                                 .hitDamage(VehicleConfig.MLE1934_HE_DAMAGE.get())
                                 .explosionDamage(VehicleConfig.MLE1934_HE_EXPLOSION_DAMAGE.get())
                                 .explosionRadius(VehicleConfig.MLE1934_HE_EXPLOSION_RADIUS.get().floatValue())
-                                .durability(0)
+                                .durability(1)
                                 .fireProbability(0.24F)
                                 .fireTime(5)
                                 .gravity(shellGravity)
@@ -108,12 +96,12 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(COOL_DOWN, 0);
-        this.entityData.define(TYPE, 0);
-        this.entityData.define(PITCH, 0f);
-        this.entityData.define(YAW, 0f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(COOL_DOWN, 0)
+                .define(TYPE, 0)
+                .define(PITCH, 0f)
+                .define(YAW, 0f);
     }
 
     @Override
@@ -159,10 +147,14 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
     }
 
     public void setTarget(ItemStack stack) {
-        int targetX = stack.getOrCreateTag().getInt("TargetX");
-        int targetY = stack.getOrCreateTag().getInt("TargetY");
-        int targetZ = stack.getOrCreateTag().getInt("TargetZ");
-        var isDepressed = stack.getOrCreateTag().getBoolean("IsDepressed");
+        var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+        if (parameters == null) return;
+
+        var pos = parameters.pos();
+        int targetX = pos.getX();
+        int targetY = pos.getY();
+        int targetZ = pos.getZ();
+        var isDepressed = parameters.isDepressed();
 
         this.look(new Vec3(targetX, targetY, targetZ));
         Matrix4f transform = getVehicleFlatTransform(1);
@@ -186,7 +178,10 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
         entityData.set(YAW, Mth.wrapDegrees((float) (Mth.atan2(d2, d0) * 57.2957763671875) - 90.0F));
     }
 
-
+    @Override
+    public double getEyeY() {
+        return 2.16F;
+    }
 
     public void positionRider(@NotNull Entity passenger, @NotNull MoveFunction callback) {
         if (!this.hasPassenger(passenger)) {
@@ -251,7 +246,7 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
     }
 
     @Override
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps) {
         serverYRot = yaw;
         serverXRot = pitch;
         this.interpolationSteps = 10;
@@ -264,7 +259,7 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), getAttacker(), getAttacker()), 120f,
                     this.getX(), this.getY(), this.getZ(), 6f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
         }
@@ -387,13 +382,7 @@ public class Mle1934Entity extends VehicleEntity implements GeoEntity, CannonEnt
                     this.getZ() + 5 * this.getLookAngle().z,
                     100, 7, 0.02, 7, 0.005);
 
-            final Vec3 center = new Vec3(this.getX(), this.getEyeY(), this.getZ());
-
-            for (Entity target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(20), e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
-                if (target instanceof ServerPlayer serverPlayer) {
-                    Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShakeClientMessage(15, 15, 45, this.getX(), this.getEyeY(), this.getZ()));
-                }
-            }
+            ShakeClientMessage.sendToNearbyPlayers(this, 20, 15, 15, 45);
         }
     }
 

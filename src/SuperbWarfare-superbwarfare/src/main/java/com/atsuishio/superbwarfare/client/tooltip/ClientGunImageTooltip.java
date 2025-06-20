@@ -27,10 +27,6 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
     protected final ItemStack stack;
     protected final GunData data;
 
-    protected GunData getGunData() {
-        return GunData.from(stack);
-    }
-
     public ClientGunImageTooltip(GunImageComponent tooltip) {
         this.width = tooltip.width;
         this.height = tooltip.height;
@@ -78,9 +74,9 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
     }
 
     protected boolean shouldRenderPerks() {
-        return GunData.from(stack).perk.get(Perk.Type.AMMO) != null
-                || GunData.from(stack).perk.get(Perk.Type.DAMAGE) != null
-                || GunData.from(stack).perk.get(Perk.Type.FUNCTIONAL) != null;
+        return data.perk.get(Perk.Type.AMMO) != null
+                || data.perk.get(Perk.Type.DAMAGE) != null
+                || data.perk.get(Perk.Type.FUNCTIONAL) != null;
     }
 
     /**
@@ -96,23 +92,23 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
      * 获取武器伤害的文本组件
      */
     protected Component getDamageComponent() {
-        double damage = getGunData().damage();
+        double damage = data.damage();
         double extraDamage = -1;
         for (var type : Perk.Type.values()) {
-            var instance = getGunData().perk.getInstance(type);
+            var instance = data.perk.getInstance(type);
             if (instance != null) {
-                damage = instance.perk().getDisplayDamage(damage, getGunData(), instance);
-                if (instance.perk().getExtraDisplayDamage(damage, getGunData(), instance) >= 0) {
-                    extraDamage = instance.perk().getExtraDisplayDamage(damage, getGunData(), instance);
+                damage = instance.perk().getDisplayDamage(damage, data, instance);
+                if (instance.perk().getExtraDisplayDamage(damage, data, instance) >= 0) {
+                    extraDamage = instance.perk().getExtraDisplayDamage(damage, data, instance);
                 }
             }
         }
         String dmgStr = FormatTool.format1D(damage) + (extraDamage >= 0 ? " + " + FormatTool.format1D(extraDamage) : "");
-        if (getGunData().projectileAmount() > 1) {
+        if (data.projectileAmount() > 1) {
             if (extraDamage >= 0) {
-                dmgStr = "(" + dmgStr + ") * " + getGunData().projectileAmount();
+                dmgStr = "(" + dmgStr + ") * " + data.projectileAmount();
             } else {
-                dmgStr = dmgStr + " * " + getGunData().projectileAmount();
+                dmgStr = dmgStr + " * " + data.projectileAmount();
             }
         }
 
@@ -131,7 +127,7 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
                         || GunData.from(this.stack).getAvailableFireModes().contains(FireMode.BURST))) {
             return Component.translatable("des.superbwarfare.guns.rpm").withStyle(ChatFormatting.GRAY)
                     .append(Component.empty().withStyle(ChatFormatting.RESET))
-                    .append(Component.literal(FormatTool.format0D(getGunData().rpm()))
+                    .append(Component.literal(FormatTool.format0D(data.rpm()))
                             .withStyle(ChatFormatting.GREEN));
         }
         return Component.empty();
@@ -150,8 +146,8 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
      * 获取武器等级文本组件
      */
     protected Component getLevelComponent() {
-        int level = getGunData().level.get();
-        double rate = getGunData().exp.get() / (20 * Math.pow(level, 2) + 160 * level + 20);
+        int level = data.level.get();
+        double rate = data.exp.get() / (20 * Math.pow(level, 2) + 160 * level + 20);
 
         ChatFormatting formatting;
         if (level < 10) {
@@ -177,7 +173,7 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
      * 获取武器强化点数文本组件
      */
     protected Component getUpgradePointComponent() {
-        int upgradePoint = Mth.floor(getGunData().upgradePoint.get());
+        int upgradePoint = Mth.floor(data.upgradePoint.get());
         return Component.translatable("des.superbwarfare.guns.upgrade_point").withStyle(ChatFormatting.GRAY)
                 .append(Component.empty().withStyle(ChatFormatting.RESET))
                 .append(Component.literal(String.valueOf(upgradePoint)).withStyle(ChatFormatting.WHITE).withStyle(ChatFormatting.BOLD));
@@ -197,15 +193,14 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
      */
     protected Component getBypassComponent() {
         double perkBypassArmorRate = 0;
-
-        var data = GunData.from(stack);
         var perk = data.perk.get(Perk.Type.AMMO);
 
         if (perk instanceof AmmoPerk ammoPerk) {
-            int level = GunData.from(stack).perk.getLevel(perk);
+            var perkInstance = data.perk.getInstance(perk);
+            int level = perkInstance == null ? 0 : perkInstance.level();
             perkBypassArmorRate = ammoPerk.bypassArmorRate + (perk == ModPerks.AP_BULLET.get() ? 0.05f * (level - 1) : 0);
         }
-        double bypassRate = Math.max(getGunData().bypassArmor() + perkBypassArmorRate, 0);
+        double bypassRate = Math.max(data.bypassArmor() + perkBypassArmorRate, 0);
 
         return Component.translatable("des.superbwarfare.guns.bypass").withStyle(ChatFormatting.GRAY)
                 .append(Component.empty().withStyle(ChatFormatting.RESET))
@@ -216,7 +211,7 @@ public class ClientGunImageTooltip implements ClientTooltipComponent {
      * 获取武器爆头倍率文本组件
      */
     protected Component getHeadshotComponent() {
-        double headshot = getGunData().headshot();
+        double headshot = data.headshot();
         return Component.translatable("des.superbwarfare.guns.headshot").withStyle(ChatFormatting.GRAY)
                 .append(Component.empty().withStyle(ChatFormatting.RESET))
                 .append(Component.literal(FormatTool.format1D(headshot, "x")).withStyle(ChatFormatting.AQUA));

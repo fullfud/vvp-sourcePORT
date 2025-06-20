@@ -3,6 +3,7 @@ package com.atsuishio.superbwarfare.perk;
 import com.atsuishio.superbwarfare.data.gun.DamageReduce;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.entity.projectile.ProjectileEntity;
+import net.minecraft.core.Holder;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffect;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -20,7 +21,7 @@ public class AmmoPerk extends Perk {
     public float[] rgb;
     public Supplier<ArrayList<MobEffect>> mobEffects;
 
-    public AmmoPerk(AmmoPerk.Builder builder) {
+    public AmmoPerk(Builder builder) {
         super(builder.descriptionId, builder.type);
         this.bypassArmorRate = builder.bypassArmorRate;
         this.damageRate = builder.damageRate;
@@ -48,7 +49,7 @@ public class AmmoPerk extends Perk {
             int amplifier = this.getEffectAmplifier(instance);
             ArrayList<MobEffectInstance> mobEffectInstances = new ArrayList<>();
             for (MobEffect effect : this.mobEffects.get()) {
-                mobEffectInstances.add(new MobEffectInstance(effect, 70 + 30 * level, amplifier));
+                mobEffectInstances.add(new MobEffectInstance(Holder.direct(effect), 70 + 30 * level, amplifier));
             }
             projectile.effect(mobEffectInstances);
         }
@@ -94,34 +95,34 @@ public class AmmoPerk extends Perk {
             this.type = type;
         }
 
-        public AmmoPerk.Builder bypassArmorRate(float bypassArmorRate) {
+        public Builder bypassArmorRate(float bypassArmorRate) {
             this.bypassArmorRate = Mth.clamp(bypassArmorRate, -1, 1);
             return this;
         }
 
-        public AmmoPerk.Builder damageRate(float damageRate) {
+        public Builder damageRate(float damageRate) {
             this.damageRate = Mth.clamp(damageRate, 0, Float.POSITIVE_INFINITY);
             return this;
         }
 
-        public AmmoPerk.Builder speedRate(float speedRate) {
+        public Builder speedRate(float speedRate) {
             this.speedRate = Mth.clamp(speedRate, 0, Float.POSITIVE_INFINITY);
             return this;
         }
 
-        public AmmoPerk.Builder slug(boolean slug) {
+        public Builder slug(boolean slug) {
             this.slug = slug;
             return this;
         }
 
-        public AmmoPerk.Builder rgb(int r, int g, int b) {
+        public Builder rgb(int r, int g, int b) {
             this.rgb[0] = r / 255f;
             this.rgb[1] = g / 255f;
             this.rgb[2] = b / 255f;
             return this;
         }
 
-        public AmmoPerk.Builder mobEffect(Supplier<MobEffect> mobEffect) {
+        public Builder mobEffect(Supplier<MobEffect> mobEffect) {
             this.mobEffects.add(mobEffect.get());
             return this;
         }

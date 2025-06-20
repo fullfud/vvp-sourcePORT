@@ -1,23 +1,21 @@
 package com.atsuishio.superbwarfare.init;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.client.screens.*;
-import net.minecraft.client.gui.screens.MenuScreens;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.event.lifecycle.FMLClientSetupEvent;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RegisterMenuScreensEvent;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ModScreens {
 
     @SubscribeEvent
-    public static void clientLoad(FMLClientSetupEvent event) {
-        event.enqueueWork(() -> {
-            MenuScreens.register(ModMenuTypes.REFORGING_TABLE_MENU.get(), ReforgingTableScreen::new);
-            MenuScreens.register(ModMenuTypes.CHARGING_STATION_MENU.get(), ChargingStationScreen::new);
-            MenuScreens.register(ModMenuTypes.VEHICLE_MENU.get(), VehicleScreen::new);
-            MenuScreens.register(ModMenuTypes.FUMO_25_MENU.get(), FuMO25Screen::new);
-            MenuScreens.register(ModMenuTypes.DOG_TAG_EDITOR_MENU.get(), DogTagEditorScreen::new);
-        });
+    public static void clientLoad(RegisterMenuScreensEvent event) {
+        event.register(ModMenuTypes.REFORGING_TABLE_MENU.get(), ReforgingTableScreen::new);
+        event.register(ModMenuTypes.CHARGING_STATION_MENU.get(), ChargingStationScreen::new);
+        event.register(ModMenuTypes.VEHICLE_MENU.get(), VehicleScreen::new);
+        event.register(ModMenuTypes.FUMO_25_MENU.get(), FuMO25Screen::new);
+        event.register(ModMenuTypes.DOG_TAG_EDITOR_MENU.get(), DogTagEditorScreen::new);
     }
 }

@@ -1,58 +1,51 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.vehicle.DroneEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
+import com.atsuishio.superbwarfare.tools.NBTTool;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record MouseMoveMessage(double speedX, double speedY) implements CustomPacketPayload {
+    public static final Type<MouseMoveMessage> TYPE = new Type<>(Mod.loc("mouse_move"));
 
-public class MouseMoveMessage {
+    public static final StreamCodec<ByteBuf, MouseMoveMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.DOUBLE,
+            MouseMoveMessage::speedX,
+            ByteBufCodecs.DOUBLE,
+            MouseMoveMessage::speedY,
+            MouseMoveMessage::new
+    );
 
-    private final double speedX;
-    private final double speedY;
+    public static void handler(MouseMoveMessage message, final IPayloadContext context) {
+        var player = context.player();
+        var entity = player.getVehicle();
 
-    public MouseMoveMessage(double speedX, double speedY) {
-        this.speedX = speedX;
-        this.speedY = speedY;
+        if (entity instanceof VehicleEntity vehicle) {
+            vehicle.mouseInput(message.speedX, message.speedY);
+        }
+
+        ItemStack stack = player.getMainHandItem();
+        var tag = NBTTool.getTag(stack);
+
+        if (stack.is(ModItems.MONITOR.get()) && tag.getBoolean("Using") && tag.getBoolean("Linked")) {
+            DroneEntity drone = EntityFindUtil.findDrone(player.level(), tag.getString("LinkedDrone"));
+            if (drone != null) {
+                drone.mouseInput(message.speedX, message.speedY);
+            }
+        }
     }
 
-
-    public static void encode(MouseMoveMessage message, FriendlyByteBuf byteBuf) {
-        byteBuf.writeDouble(message.speedX);
-        byteBuf.writeDouble(message.speedY);
-    }
-
-    public static MouseMoveMessage decode(FriendlyByteBuf byteBuf) {
-        return new MouseMoveMessage(byteBuf.readDouble(), byteBuf.readDouble());
-    }
-
-    public static void handler(MouseMoveMessage message, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            ServerPlayer player = context.get().getSender();
-            if (player == null) {
-                return;
-            }
-
-            var entity = player.getVehicle();
-
-            if (entity instanceof VehicleEntity vehicle) {
-                vehicle.mouseInput(message.speedX, message.speedY);
-            }
-
-            ItemStack stack = player.getMainHandItem();
-
-            if (stack.is(ModItems.MONITOR.get()) && stack.getOrCreateTag().getBoolean("Using") && stack.getOrCreateTag().getBoolean("Linked")) {
-                DroneEntity drone = EntityFindUtil.findDrone(player.level(), stack.getOrCreateTag().getString("LinkedDrone"));
-                if (drone != null) {
-                    drone.mouseInput(message.speedX, message.speedY);
-                }
-            }
-        });
-        context.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

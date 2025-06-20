@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class Mp5ItemModel extends CustomGunModel<Mp5Item> {
 
@@ -52,10 +52,10 @@ public class Mp5ItemModel extends CustomGunModel<Mp5Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -89,7 +89,7 @@ public class Mp5ItemModel extends CustomGunModel<Mp5Item> {
         gun.setScaleZ(1f - (scaleZ * (float) zp));
         scope2.setScaleZ(1f - (0.8f * (float) zp));
 
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -122,8 +122,8 @@ public class Mp5ItemModel extends CustomGunModel<Mp5Item> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.92 * zt);
         float numP = (float) (1 - 0.88 * zt);

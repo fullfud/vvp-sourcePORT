@@ -5,6 +5,7 @@ import com.atsuishio.superbwarfare.client.model.block.FuMO25Model;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.renderer.GeoBlockRenderer;
 
 
@@ -19,7 +20,7 @@ public class FuMO25BlockEntityRenderer extends GeoBlockRenderer<FuMO25BlockEntit
     }
 
     @Override
-    public boolean shouldRenderOffScreen(FuMO25BlockEntity pBlockEntity) {
+    public boolean shouldRenderOffScreen(@NotNull FuMO25BlockEntity pBlockEntity) {
         return false;
     }
 

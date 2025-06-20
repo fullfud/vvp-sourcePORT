@@ -6,12 +6,14 @@ import com.atsuishio.superbwarfare.advancement.criteria.RPGMeleeExplosionTrigger
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModTags;
 import net.minecraft.advancements.Advancement;
+import net.minecraft.advancements.AdvancementHolder;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.data.CachedOutput;
 import net.minecraft.data.DataProvider;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.packs.PackType;
-import net.minecraftforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
 import org.jetbrains.annotations.NotNull;
 
 import java.nio.file.Path;
@@ -28,6 +30,7 @@ public class ModAdvancementProvider implements DataProvider {
 
     private final PackOutput packOutput;
     private final ExistingFileHelper existingFileHelper;
+    private final CompletableFuture<HolderLookup.Provider> registries;
 
     public static final List<ModAdvancement> ADVANCEMENTS = new ArrayList<>();
 
@@ -116,9 +119,10 @@ public class ModAdvancementProvider implements DataProvider {
     END = null;
 
 
-    public ModAdvancementProvider(PackOutput output, ExistingFileHelper existingFileHelper) {
+    public ModAdvancementProvider(PackOutput output, CompletableFuture<HolderLookup.Provider> lookupProvider, ExistingFileHelper existingFileHelper) {
         this.packOutput = output;
         this.existingFileHelper = existingFileHelper;
+        this.registries = lookupProvider;
     }
 
     private static ModAdvancement advancement(String id, UnaryOperator<ModAdvancement.Builder> b) {
@@ -126,24 +130,26 @@ public class ModAdvancementProvider implements DataProvider {
     }
 
     @Override
-    public @NotNull CompletableFuture<?> run(@NotNull CachedOutput pOutput) {
+    public @NotNull CompletableFuture<?> run(@NotNull CachedOutput output) {
         List<CompletableFuture<?>> futures = new ArrayList<>();
-        PackOutput.PathProvider pathProvider = packOutput.createPathProvider(PackOutput.Target.DATA_PACK, "advancements");
+        PackOutput.PathProvider pathProvider = packOutput.createPathProvider(PackOutput.Target.DATA_PACK, "advancement");
 
-        Consumer<Advancement> mainConsumer = (advancement) -> {
-            ResourceLocation id = advancement.getId();
-            if (existingFileHelper.exists(id, PackType.SERVER_DATA, ".json", "advancements")) {
-                throw new IllegalStateException("Duplicate advancement " + id);
+        return this.registries.thenCompose(provider -> {
+            Consumer<AdvancementHolder> consumer = advancementHolder -> {
+                ResourceLocation id = advancementHolder.id();
+                if (existingFileHelper.exists(id, PackType.SERVER_DATA, ".json", "advancement")) {
+                    throw new IllegalStateException("Duplicate advancement " + id);
+                }
+                Path path = pathProvider.json(advancementHolder.id());
+                futures.add(DataProvider.saveStable(output, provider, Advancement.CODEC, advancementHolder.value(), path));
+            };
+
+            for (ModAdvancement advancement : ADVANCEMENTS) {
+                advancement.save(consumer);
             }
-            Path path = pathProvider.json(id);
-            futures.add(DataProvider.saveStable(pOutput, advancement.deconstruct().serializeToJson(), path));
-        };
 
-        for (ModAdvancement advancement : ADVANCEMENTS) {
-            advancement.save(mainConsumer);
-        }
-
-        return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+            return CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new));
+        });
     }
 
     @Override

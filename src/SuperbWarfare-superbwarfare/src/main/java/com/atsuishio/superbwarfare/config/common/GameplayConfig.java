@@ -1,14 +1,14 @@
 package com.atsuishio.superbwarfare.config.common;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class GameplayConfig {
 
-    public static ForgeConfigSpec.BooleanValue RESPAWN_RELOAD;
-    public static ForgeConfigSpec.BooleanValue GLOBAL_INDICATION;
-    public static ForgeConfigSpec.BooleanValue RESPAWN_AUTO_ARMOR;
+    public static ModConfigSpec.BooleanValue RESPAWN_RELOAD;
+    public static ModConfigSpec.BooleanValue GLOBAL_INDICATION;
+    public static ModConfigSpec.BooleanValue RESPAWN_AUTO_ARMOR;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("gameplay");
 
         builder.comment("Set true if you want to reload all your guns when respawn");

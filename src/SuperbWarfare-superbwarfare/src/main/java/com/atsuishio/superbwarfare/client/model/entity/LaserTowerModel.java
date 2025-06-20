@@ -5,8 +5,8 @@ import com.atsuishio.superbwarfare.entity.vehicle.LaserTowerEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 import static com.atsuishio.superbwarfare.entity.vehicle.LaserTowerEntity.LASER_LENGTH;
@@ -44,7 +44,7 @@ public class LaserTowerModel extends GeoModel<LaserTowerEntity> {
 
     @Override
     public void setCustomAnimations(LaserTowerEntity animatable, long instanceId, AnimationState<LaserTowerEntity> animationState) {
-        CoreGeoBone laser = getAnimationProcessor().getBone("laser");
+        GeoBone laser = getAnimationProcessor().getBone("laser");
         laser.setScaleZ(10 * animatable.getEntityData().get(LASER_LENGTH));
     }
 }

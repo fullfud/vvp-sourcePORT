@@ -2,26 +2,34 @@ package com.atsuishio.superbwarfare.item;
 
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.client.renderer.item.SmallContainerBlockItemRenderer;
-import com.atsuishio.superbwarfare.init.ModBlockEntities;
 import com.atsuishio.superbwarfare.init.ModBlocks;
+import com.atsuishio.superbwarfare.init.ModItems;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
+import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.minecraft.world.item.component.SeededContainerLoot;
+import net.minecraft.world.level.storage.loot.LootTable;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.animation.AnimationController;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.List;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.MOD)
 public class SmallContainerBlockItem extends BlockItem implements GeoItem {
 
     public static final List<Supplier<ItemStack>> SMALL_CONTAINER_LOOT_TABLES = List.of(
@@ -39,17 +47,18 @@ public class SmallContainerBlockItem extends BlockItem implements GeoItem {
         return PlayState.CONTINUE;
     }
 
-    @Override
-    public void initializeClient(Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
+    @SubscribeEvent
+    private static void registerArmorExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new IClientItemExtensions() {
+
             private final BlockEntityWithoutLevelRenderer renderer = new SmallContainerBlockItemRenderer();
 
             @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+            public @NotNull BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return renderer;
             }
-        });
+
+        }, ModItems.SMALL_CONTAINER);
     }
 
     @Override
@@ -63,17 +72,12 @@ public class SmallContainerBlockItem extends BlockItem implements GeoItem {
     }
 
     public static ItemStack createInstance(ResourceLocation lootTable) {
-        return createInstance(lootTable, 0L);
+        return createInstance(ResourceKey.create(Registries.LOOT_TABLE, lootTable), 0L);
     }
 
-    public static ItemStack createInstance(ResourceLocation lootTable, long lootTableSeed) {
+    public static ItemStack createInstance(ResourceKey<LootTable> lootTable, long lootTableSeed) {
         ItemStack stack = new ItemStack(ModBlocks.SMALL_CONTAINER.get());
-        CompoundTag tag = new CompoundTag();
-        tag.putString("LootTable", lootTable.toString());
-        if (lootTableSeed != 0L) {
-            tag.putLong("LootTableSeed", lootTableSeed);
-        }
-        BlockItem.setBlockEntityData(stack, ModBlockEntities.SMALL_CONTAINER.get(), tag);
+        stack.set(DataComponents.CONTAINER_LOOT, new SeededContainerLoot(lootTable, lootTableSeed));
         return stack;
     }
 }

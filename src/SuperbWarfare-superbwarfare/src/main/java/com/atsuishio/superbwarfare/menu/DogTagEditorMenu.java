@@ -1,27 +1,29 @@
 package com.atsuishio.superbwarfare.menu;
 
-import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModMenuTypes;
 import com.atsuishio.superbwarfare.network.message.receive.DogTagEditorMessage;
-import net.minecraft.SharedConstants;
-import net.minecraft.Util;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.util.StringUtil;
 import net.minecraft.world.Container;
 import net.minecraft.world.SimpleContainer;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.entity.player.PlayerContainerEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.player.PlayerContainerEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
+import java.util.List;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(bus = net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME)
 public class DogTagEditorMenu extends AbstractContainerMenu {
 
     protected final Container container;
@@ -50,7 +52,7 @@ public class DogTagEditorMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player pPlayer, int pIndex) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player player, int index) {
         return ItemStack.EMPTY;
     }
 
@@ -59,15 +61,15 @@ public class DogTagEditorMenu extends AbstractContainerMenu {
         return pPlayer.isAlive();
     }
 
-    public boolean setItemName(String pItemName) {
-        String s = validateName(pItemName);
+    public boolean setItemName(String name) {
+        String s = validateName(name);
         if (s != null && !s.equals(this.itemName)) {
             this.itemName = s;
             if (!this.stack.isEmpty()) {
-                if (Util.isBlank(s)) {
-                    this.stack.resetHoverName();
+                if (StringUtil.isBlank(s)) {
+                    this.stack.remove(DataComponents.CUSTOM_NAME);
                 } else {
-                    this.stack.setHoverName(Component.literal(s));
+                    this.stack.set(DataComponents.CUSTOM_NAME, Component.literal(s));
                 }
             }
             return true;
@@ -78,35 +80,27 @@ public class DogTagEditorMenu extends AbstractContainerMenu {
 
     @Nullable
     private static String validateName(String pItemName) {
-        String s = SharedConstants.filterText(pItemName);
+        String s = StringUtil.filterText(pItemName);
         return s.length() <= 30 ? s : null;
     }
 
     @SubscribeEvent
     public static void onContainerOpened(PlayerContainerEvent.Open event) {
         if (event.getContainer() instanceof DogTagEditorMenu menu && event.getEntity() instanceof ServerPlayer serverPlayer) {
-            ItemStack itemStack = serverPlayer.getItemInHand(serverPlayer.getUsedItemHand());
-            if (itemStack.is(ModItems.DOG_TAG.get())) {
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new DogTagEditorMessage(menu.containerId, itemStack));
+            var stack = serverPlayer.getItemInHand(serverPlayer.getUsedItemHand());
+            if (stack.is(ModItems.DOG_TAG.get())) {
+                PacketDistributor.sendToPlayer(serverPlayer, new DogTagEditorMessage(menu.containerId, stack));
             }
         }
     }
 
-    public void finishEdit(short[][] colors, String name) {
+    public void finishEdit(List<Short> colors, String name) {
         if (this.stack.isEmpty()) return;
 
-        CompoundTag colorsTag = new CompoundTag();
-        for (int i = 0; i < colors.length; i++) {
-            int[] color = new int[colors[i].length];
-            for (int j = 0; j < colors[i].length; j++) {
-                color[j] = colors[i][j];
-            }
-            colorsTag.putIntArray("Color" + i, color);
-        }
-        this.stack.getOrCreateTag().put("Colors", colorsTag);
+        stack.set(ModDataComponents.DOG_TAG_IMAGE, colors);
 
         if (!name.isEmpty()) {
-            this.stack.setHoverName(Component.literal(name));
+            this.stack.set(DataComponents.CUSTOM_NAME, Component.literal(name));
         }
     }
 }

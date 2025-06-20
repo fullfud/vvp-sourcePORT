@@ -1,8 +1,8 @@
 package com.atsuishio.superbwarfare.item.common.ammo;
 
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
 import com.atsuishio.superbwarfare.tools.Ammo;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
@@ -30,8 +30,8 @@ public class AmmoSupplierItem extends Item {
     }
 
     @Override
-    public void appendHoverText(@NotNull ItemStack itemstack, Level world, List<Component> list, @NotNull TooltipFlag flag) {
-        list.add(Component.translatable("des.superbwarfare.ammo_supplier").withStyle(ChatFormatting.AQUA));
+    public void appendHoverText(@NotNull ItemStack stack, @NotNull TooltipContext context, List<Component> tooltipComponents, @NotNull TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("des.superbwarfare.ammo_supplier").withStyle(ChatFormatting.AQUA));
     }
 
     @Override
@@ -39,14 +39,21 @@ public class AmmoSupplierItem extends Item {
         ItemStack stack = player.getItemInHand(hand);
         int count = stack.getCount();
         player.getCooldowns().addCooldown(this, 10);
-        stack.shrink(count);
+
+        if (!player.isCreative()) {
+            stack.shrink(count);
+        }
 
         ItemStack offhandItem = player.getOffhandItem();
 
         if (offhandItem.is(ModItems.AMMO_BOX.get())) {
             this.type.add(offhandItem, ammoToAdd * count);
         } else {
-            PlayerVariable.modify(player, capability -> this.type.add(capability, ammoToAdd * count));
+            var capability = player.getData(ModAttachments.PLAYER_VARIABLE).watch();
+
+            this.type.add(capability, ammoToAdd * count);
+            player.setData(ModAttachments.PLAYER_VARIABLE, capability);
+            capability.sync(player);
         }
 
         if (!level.isClientSide()) {

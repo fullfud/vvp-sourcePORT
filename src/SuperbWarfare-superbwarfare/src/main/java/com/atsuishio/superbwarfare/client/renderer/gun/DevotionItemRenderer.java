@@ -23,8 +23,7 @@ public class DevotionItemRenderer extends CustomGunRenderer<DevotionItem> {
     }
 
     @Override
-    public void renderRecursively(PoseStack stack, DevotionItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, float red,
-                                  float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack stack, DevotionItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, int color) {
         Minecraft mc = Minecraft.getInstance();
         String name = bone.getName();
         boolean renderingArms = false;
@@ -61,7 +60,7 @@ public class DevotionItemRenderer extends CustomGunRenderer<DevotionItem> {
         if (renderingArms) {
             AnimationHelper.renderArms(player, this.renderPerspective, stack, name, bone, buffer, type, packedLightIn, true);
         }
-        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, color);
     }
 }
 

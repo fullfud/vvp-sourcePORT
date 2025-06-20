@@ -1,36 +1,31 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record DogTagEditorMessage(int containerId, ItemStack stack) implements CustomPacketPayload {
 
-public class DogTagEditorMessage {
+    public static final Type<DogTagEditorMessage> TYPE = new Type<>(Mod.loc("dog_tag_editor"));
 
-    private final int containerId;
-    private final ItemStack stack;
+    public static final StreamCodec<RegistryFriendlyByteBuf, DogTagEditorMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT, DogTagEditorMessage::containerId,
+            ItemStack.STREAM_CODEC, DogTagEditorMessage::stack,
+            DogTagEditorMessage::new
+    );
 
-    public DogTagEditorMessage(int containerId, ItemStack stack) {
-        this.containerId = containerId;
-        this.stack = stack;
+
+    public static void handler(DogTagEditorMessage message) {
+        ClientPacketHandler.handleDogTagEditorMessage(message.containerId, message.stack);
     }
 
-    public static DogTagEditorMessage decode(FriendlyByteBuf buf) {
-        return new DogTagEditorMessage(buf.readUnsignedByte(), buf.readItem());
-    }
-
-    public static void encode(DogTagEditorMessage message, FriendlyByteBuf buf) {
-        buf.writeByte(message.containerId);
-        buf.writeItem(message.stack);
-    }
-
-    public static void handler(DogTagEditorMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandler.handleDogTagEditorMessage(message.containerId, message.stack, ctx)));
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

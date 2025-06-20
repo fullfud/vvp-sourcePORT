@@ -1,36 +1,37 @@
 package com.atsuishio.superbwarfare.item;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.vehicle.DroneEntity;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.network.message.receive.ResetCameraTypeMessage;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
 import com.atsuishio.superbwarfare.tools.FormatTool;
-import com.atsuishio.superbwarfare.tools.ItemNBTTool;
-import com.google.common.collect.ImmutableMultimap;
-import com.google.common.collect.Multimap;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.CameraType;
 import net.minecraft.client.Minecraft;
+import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.EquipmentSlot;
-import net.minecraft.world.entity.ai.attributes.Attribute;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Monitor extends Item {
@@ -42,16 +43,16 @@ public class Monitor extends Item {
         super(new Properties().stacksTo(1));
     }
 
-    public static void link(ItemStack itemstack, String id) {
-        ItemNBTTool.setBoolean(itemstack, LINKED, true);
-        itemstack.getOrCreateTag().putString(LINKED_DRONE, id);
+    public static void link(CompoundTag tag, String id) {
+        tag.putBoolean(LINKED, true);
+        tag.putString(LINKED_DRONE, id);
     }
 
-    public static void disLink(ItemStack itemstack, Player player) {
-        ItemNBTTool.setBoolean(itemstack, LINKED, false);
-        itemstack.getOrCreateTag().putString(LINKED_DRONE, "none");
+    public static void disLink(CompoundTag tag, Player player) {
+        tag.putBoolean(LINKED, false);
+        tag.putString(LINKED_DRONE, "none");
         if (player instanceof ServerPlayer serverPlayer) {
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ResetCameraTypeMessage(0));
+            PacketDistributor.sendToPlayer(serverPlayer, new ResetCameraTypeMessage(0));
         }
     }
 
@@ -67,88 +68,105 @@ public class Monitor extends Item {
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResultHolder<ItemStack> use(Level world, Player player, InteractionHand hand) {
         ItemStack stack = player.getMainHandItem();
+        var tag = NBTTool.getTag(stack);
 
-        if (!ItemNBTTool.getBoolean(stack, LINKED, false)) {
+        if (!tag.getBoolean(LINKED)) {
             return super.use(world, player, hand);
         }
 
-        if (stack.getOrCreateTag().getBoolean("Using")) {
-            stack.getOrCreateTag().putBoolean("Using", false);
+        if (tag.getBoolean("Using")) {
+            tag.putBoolean("Using", false);
             if (world.isClientSide) {
                 if (ClientEventHandler.lastCameraType != null) {
                     Minecraft.getInstance().options.setCameraType(ClientEventHandler.lastCameraType);
                 }
             }
         } else {
-            stack.getOrCreateTag().putBoolean("Using", true);
+            tag.putBoolean("Using", true);
             if (world.isClientSide) {
                 ClientEventHandler.lastCameraType = Minecraft.getInstance().options.getCameraType();
                 Minecraft.getInstance().options.setCameraType(CameraType.THIRD_PERSON_BACK);
             }
         }
 
-        DroneEntity drone = EntityFindUtil.findDrone(player.level(), stack.getOrCreateTag().getString(LINKED_DRONE));
+        NBTTool.saveTag(stack, tag);
+        DroneEntity drone = EntityFindUtil.findDrone(player.level(), tag.getString(LINKED_DRONE));
         this.resetDroneData(drone);
 
         return super.use(world, player, hand);
     }
 
     @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack) {
-        if (slot == EquipmentSlot.MAINHAND) {
-            ImmutableMultimap.Builder<Attribute, AttributeModifier> builder = ImmutableMultimap.builder();
-            builder.putAll(super.getAttributeModifiers(slot, stack));
-            builder.put(Attributes.ATTACK_DAMAGE, new AttributeModifier(BASE_ATTACK_DAMAGE_UUID, "Item modifier", 2d, AttributeModifier.Operation.ADDITION));
-            builder.put(Attributes.ATTACK_SPEED, new AttributeModifier(BASE_ATTACK_SPEED_UUID, "Item modifier", -2.4, AttributeModifier.Operation.ADDITION));
-            return builder.build();
-        }
+    public @NotNull ItemAttributeModifiers getDefaultAttributeModifiers(@NotNull ItemStack stack) {
+        var list = new ArrayList<>(super.getDefaultAttributeModifiers(stack).modifiers());
+        list.addAll(List.of(
+                new ItemAttributeModifiers.Entry(
+                        Attributes.ATTACK_DAMAGE,
+                        new AttributeModifier(BASE_ATTACK_DAMAGE_ID, 2, AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND
+                ),
+                new ItemAttributeModifiers.Entry(
+                        Attributes.ATTACK_SPEED,
+                        new AttributeModifier(BASE_ATTACK_SPEED_ID, -2.4, AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND
+                )
+        ));
 
-        return super.getAttributeModifiers(slot, stack);
+        return new ItemAttributeModifiers(list, true);
     }
 
-    public static void getDronePos(ItemStack itemstack, Vec3 vec3) {
-        itemstack.getOrCreateTag().putDouble("PosX", vec3.x);
-        itemstack.getOrCreateTag().putDouble("PosY", vec3.y);
-        itemstack.getOrCreateTag().putDouble("PosZ", vec3.z);
+    public static void getDronePos(ItemStack stack, Vec3 vec3) {
+        var tag = NBTTool.getTag(stack);
+        tag.putDouble("PosX", vec3.x);
+        tag.putDouble("PosY", vec3.y);
+        tag.putDouble("PosZ", vec3.z);
+        NBTTool.saveTag(stack, tag);
     }
 
     @OnlyIn(Dist.CLIENT)
     @Override
-    public void appendHoverText(ItemStack stack, Level world, List<Component> list, TooltipFlag flag) {
-        if (!stack.getOrCreateTag().contains(LINKED_DRONE) || stack.getOrCreateTag().getString(LINKED_DRONE).equals("none"))
+    @ParametersAreNonnullByDefault
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        var tag = NBTTool.getTag(stack);
+        if (!tag.contains(LINKED_DRONE) || tag.getString(LINKED_DRONE).equals("none"))
             return;
 
         Player player = Minecraft.getInstance().player;
         if (player == null) return;
 
-        if (!stack.getOrCreateTag().contains("PosX") || !stack.getOrCreateTag().contains("PosY") || !stack.getOrCreateTag().contains("PosZ"))
+        if (!tag.contains("PosX") || !tag.contains("PosY") || !tag.contains("PosZ"))
             return;
 
-        Vec3 droneVec = new Vec3(stack.getOrCreateTag().getDouble("PosX"), stack.getOrCreateTag().getDouble("PosY"), stack.getOrCreateTag().getDouble("PosZ"));
+        Vec3 droneVec = new Vec3(tag.getDouble("PosX"), tag.getDouble("PosY"), tag.getDouble("PosZ"));
 
-        list.add(Component.translatable("des.superbwarfare.monitor",
+        tooltipComponents.add(Component.translatable("des.superbwarfare.monitor",
                 FormatTool.format1D(player.position().distanceTo(droneVec), "m")).withStyle(ChatFormatting.GRAY));
-        list.add(Component.literal("X: " + FormatTool.format1D(droneVec.x) +
+        tooltipComponents.add(Component.literal("X: " + FormatTool.format1D(droneVec.x) +
                 " Y: " + FormatTool.format1D(droneVec.y) +
                 " Z: " + FormatTool.format1D(droneVec.z)
         ));
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
         return false;
     }
 
     @Override
-    public void inventoryTick(ItemStack itemstack, Level world, Entity entity, int slot, boolean selected) {
-        super.inventoryTick(itemstack, world, entity, slot, selected);
-        DroneEntity drone = EntityFindUtil.findDrone(entity.level(), itemstack.getOrCreateTag().getString(LINKED_DRONE));
+    @ParametersAreNonnullByDefault
+    public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
+        super.inventoryTick(stack, world, entity, slot, selected);
+        var tag = NBTTool.getTag(stack);
+        DroneEntity drone = EntityFindUtil.findDrone(entity.level(), tag.getString(LINKED_DRONE));
 
         if (!selected) {
-            if (itemstack.getOrCreateTag().getBoolean("Using")) {
-                itemstack.getOrCreateTag().putBoolean("Using", false);
+            if (tag.getBoolean("Using")) {
+                tag.putBoolean("Using", false);
+                NBTTool.saveTag(stack, tag);
                 if (entity.level().isClientSide) {
                     if (ClientEventHandler.lastCameraType != null) {
                         Minecraft.getInstance().options.setCameraType(ClientEventHandler.lastCameraType);
@@ -157,8 +175,9 @@ public class Monitor extends Item {
             }
             this.resetDroneData(drone);
         } else if (drone == null) {
-            if (itemstack.getOrCreateTag().getBoolean("Using")) {
-                itemstack.getOrCreateTag().putBoolean("Using", false);
+            if (tag.getBoolean("Using")) {
+                tag.putBoolean("Using", false);
+                NBTTool.saveTag(stack, tag);
                 if (entity.level().isClientSide) {
                     if (ClientEventHandler.lastCameraType != null) {
                         Minecraft.getInstance().options.setCameraType(ClientEventHandler.lastCameraType);

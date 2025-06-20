@@ -45,11 +45,15 @@
 					"pivot": [0, 0, 7]
 				},
 				{
-					"name": "cross",
-					"parent": "0",
-					"pivot": [0, 4.10312, -100]
-				},
-				{
+                  "name": "cross",
+                  "parent": "0",
+                  "pivot": [
+                    0,
+                    4.10312,
+                    -100
+                  ]
+                },
+              {
 					"name": "flare",
 					"parent": "0",
 					"pivot": [0, 1.35156, -24.5]

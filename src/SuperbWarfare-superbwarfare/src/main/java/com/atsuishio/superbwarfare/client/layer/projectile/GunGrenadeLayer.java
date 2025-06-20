@@ -13,15 +13,15 @@ import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 public class GunGrenadeLayer extends GeoRenderLayer<GunGrenadeEntity> {
-	private static final ResourceLocation LAYER = new ResourceLocation(Mod.MODID, "textures/entity/cannon_shell_e.png");
+    private static final ResourceLocation LAYER = Mod.loc("textures/entity/cannon_shell_e.png");
 
-	public GunGrenadeLayer(GeoRenderer<GunGrenadeEntity> entityRenderer) {
-		super(entityRenderer);
-	}
+    public GunGrenadeLayer(GeoRenderer<GunGrenadeEntity> entityRenderer) {
+        super(entityRenderer);
+    }
 
-	@Override
-	public void render(PoseStack poseStack, GunGrenadeEntity animatable, BakedGeoModel bakedModel, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
-		RenderType glowRenderType = RenderType.eyes(LAYER);
-		getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
-	}
+    @Override
+    public void render(PoseStack poseStack, GunGrenadeEntity animatable, BakedGeoModel bakedModel, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
+        RenderType glowRenderType = RenderType.eyes(LAYER);
+        getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
+    }
 }

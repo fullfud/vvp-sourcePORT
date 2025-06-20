@@ -8,12 +8,13 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
+import net.minecraft.util.FastColor;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 public class ProjectileEntityLayer extends GeoRenderLayer<ProjectileEntity> {
-    private static final ResourceLocation LAYER = new ResourceLocation(Mod.MODID, "textures/entity/projectile_entity.png");
+    private static final ResourceLocation LAYER = Mod.loc("textures/entity/projectile_entity.png");
 
     public ProjectileEntityLayer(GeoRenderer<ProjectileEntity> entityRenderer) {
         super(entityRenderer);
@@ -29,6 +30,6 @@ public class ProjectileEntityLayer extends GeoRenderLayer<ProjectileEntity> {
 
         getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType,
                 bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY,
-                r, g, b, 0.8f);
+                FastColor.ARGB32.color((int) (0.8 * 255), (int) (r * 255), (int) (g * 255), (int) (b * 255)));
     }
 }

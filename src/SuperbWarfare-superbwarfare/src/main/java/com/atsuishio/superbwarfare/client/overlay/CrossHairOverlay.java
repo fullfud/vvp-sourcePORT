@@ -16,24 +16,30 @@ import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ClientTickEvent;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 import static com.atsuishio.superbwarfare.client.RenderHelper.preciseBlit;
 
 @OnlyIn(Dist.CLIENT)
-public class CrossHairOverlay implements IGuiOverlay {
+@EventBusSubscriber(modid = Mod.MODID, value = Dist.CLIENT)
+public class CrossHairOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_cross_hair";
+    public static final ResourceLocation ID = Mod.loc("cross_hair");
 
     private static final ResourceLocation REX_HORIZONTAL = Mod.loc("textures/screens/rex_horizontal.png");
     private static final ResourceLocation REX_VERTICAL = Mod.loc("textures/screens/rex_vertical.png");
@@ -46,8 +52,12 @@ public class CrossHairOverlay implements IGuiOverlay {
     public static float gunRot;
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        Player player = gui.getMinecraft().player;
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        int w = guiGraphics.guiWidth();
+        int h = guiGraphics.guiHeight();
+
+        Player player = Minecraft.getInstance().player;
         if (player == null) {
             return;
         }
@@ -59,7 +69,7 @@ public class CrossHairOverlay implements IGuiOverlay {
 
         ItemStack stack = player.getMainHandItem();
         double spread = ClientEventHandler.gunSpread + 1 * ClientEventHandler.firePos;
-        float deltaFrame = Minecraft.getInstance().getDeltaFrameTime();
+        float deltaFrame = deltaTracker.getGameTimeDeltaPartialTick(true);
         float moveX = 0;
         float moveY = 0;
 
@@ -79,35 +89,35 @@ public class CrossHairOverlay implements IGuiOverlay {
         RenderSystem.setShaderColor(1, 1, 1, 1);
 
         scopeScale = (float) Mth.lerp(0.5F * deltaFrame, scopeScale, 1 + 1.5f * spread);
-        float minLength = (float) Math.min(screenWidth, screenHeight);
-        float scaledMinLength = Math.min((float) screenWidth / minLength, (float) screenHeight / minLength) * 0.012f * scopeScale;
+        float minLength = (float) Math.min(w, h);
+        float scaledMinLength = Math.min((float) w / minLength, (float) h / minLength) * 0.012f * scopeScale;
         float finLength = Mth.floor(minLength * scaledMinLength);
-        float finPosX = ((screenWidth - finLength) / 2) + moveX;
-        float finPosY = ((screenHeight - finLength) / 2) + moveY;
+        float finPosX = ((w - finLength) / 2) + moveX;
+        float finPosY = ((h - finLength) / 2) + moveY;
 
         if (shouldRenderCrossHair(player) || (Minecraft.getInstance().options.getCameraType() == CameraType.FIRST_PERSON && (stack.is(ModItems.MINIGUN.get()) || stack.is(ModItems.AURELIA_SCEPTRE.get()))) || (Minecraft.getInstance().options.getCameraType() == CameraType.THIRD_PERSON_BACK && (ClientEventHandler.zoomTime > 0 || ClientEventHandler.bowPullPos > 0))) {
-            preciseBlit(guiGraphics, Mod.loc("textures/screens/point.png"), screenWidth / 2f - 7.5f + moveX, screenHeight / 2f - 7.5f + moveY, 0, 0, 16, 16, 16, 16);
+            preciseBlit(guiGraphics, Mod.loc("textures/screens/point.png"), w / 2f - 7.5f + moveX, h / 2f - 7.5f + moveY, 0, 0, 16, 16, 16, 16);
             if (!player.isSprinting() || ClientEventHandler.cantSprint > 0) {
                 if (data.projectileAmount() > 1) {
                     shotgunCrossHair(guiGraphics, finPosX, finPosY, finLength);
                 } else {
-                    normalCrossHair(guiGraphics, screenWidth, screenHeight, spread, moveX, moveY);
+                    normalCrossHair(guiGraphics, w, h, spread, moveX, moveY);
                 }
             }
         }
 
         if (stack.is(ModItems.BOCEK.get())) {
             if (ClientEventHandler.zoomPos < 0.7) {
-                preciseBlit(guiGraphics, Mod.loc("textures/screens/point.png"), screenWidth / 2f - 7.5f + moveX, screenHeight / 2f - 7.5f + moveY, 0, 0, 16, 16, 16, 16);
+                preciseBlit(guiGraphics, Mod.loc("textures/screens/point.png"), w / 2f - 7.5f + moveX, h / 2f - 7.5f + moveY, 0, 0, 16, 16, 16, 16);
                 if (!player.isSprinting() || ClientEventHandler.cantSprint > 0 || ClientEventHandler.bowPullPos > 0) {
                     if (ClientEventHandler.zoomTime < 0.1) {
                         if (perk instanceof AmmoPerk ammoPerk && ammoPerk.slug) {
-                            normalCrossHair(guiGraphics, screenWidth, screenHeight, spread, moveX, moveY);
+                            normalCrossHair(guiGraphics, w, h, spread, moveX, moveY);
                         } else {
                             shotgunCrossHair(guiGraphics, finPosX, finPosY, finLength);
                         }
                     } else {
-                        normalCrossHair(guiGraphics, screenWidth, screenHeight, spread, moveX, moveY);
+                        normalCrossHair(guiGraphics, w, h, spread, moveX, moveY);
                     }
                 }
             }
@@ -115,7 +125,7 @@ public class CrossHairOverlay implements IGuiOverlay {
 
         // 在开启伤害指示器时才进行渲染
         if (DisplayConfig.KILL_INDICATION.get() && !(player.getVehicle() instanceof Ah6Entity ah6Entity && ah6Entity.getFirstPassenger() == player)) {
-            renderKillIndicator(guiGraphics, screenWidth, screenHeight, moveX, moveY);
+            renderKillIndicator(guiGraphics, w, h, moveX, moveY);
         }
 
         RenderSystem.depthMask(true);
@@ -182,7 +192,8 @@ public class CrossHairOverlay implements IGuiOverlay {
         }
     }
 
-    public static void handleRenderDamageIndicator() {
+    @SubscribeEvent
+    public static void onClientTick(ClientTickEvent.Post event) {
         HEAD_INDICATOR = Math.max(0, HEAD_INDICATOR - 1);
         HIT_INDICATOR = Math.max(0, HIT_INDICATOR - 1);
         KILL_INDICATOR = Math.max(0, KILL_INDICATOR - 1);

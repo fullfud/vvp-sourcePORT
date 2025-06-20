@@ -1,13 +1,13 @@
 package com.atsuishio.superbwarfare.tools;
 
 import com.atsuishio.superbwarfare.config.server.SeekConfig;
-import com.atsuishio.superbwarfare.entity.projectile.DecoyEntity;
-import com.atsuishio.superbwarfare.entity.projectile.DestroyableProjectileEntity;
 import com.atsuishio.superbwarfare.entity.projectile.SmokeDecoyEntity;
 import com.atsuishio.superbwarfare.entity.projectile.SwarmDroneEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.MobileVehicleEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
+import com.atsuishio.superbwarfare.init.ModTags;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.decoration.HangingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -19,7 +19,6 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.registries.ForgeRegistries;
 
 import java.util.Comparator;
 import java.util.List;
@@ -30,8 +29,7 @@ public class SeekTool {
 
     public static List<Entity> getVehicleWithinRange(Player player, Level level, double range) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
-                .filter(e -> e.position().distanceTo(player.getEyePosition()) <= range
-                        && e instanceof MobileVehicleEntity)
+                .filter(e -> e.position().distanceTo(player.getEyePosition()) <= range && e instanceof MobileVehicleEntity)
                 .toList();
     }
 
@@ -44,17 +42,24 @@ public class SeekTool {
     public static Entity seekEntity(Entity entity, Level level, double seekRange, double seekAngle) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
                 .filter(e -> {
-                    if (e.distanceTo(entity) <= seekRange && calculateAngle(e, entity) < seekAngle
+                    if (e.distanceTo(entity) <= seekRange
+                            && calculateAngle(e, entity) < seekAngle
                             && e != entity
                             && baseFilter(e)
                             && smokeFilter(e)
                             && e.getVehicle() == null
                     ) {
-                        return level.clip(new ClipContext(entity.getEyePosition(), e.getEyePosition(),
-                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity)).getType() != HitResult.Type.BLOCK;
+                        return level.clip(new ClipContext(
+                                entity.getEyePosition(),
+                                e.getEyePosition(),
+                                ClipContext.Block.COLLIDER,
+                                ClipContext.Fluid.NONE, entity)
+                        ).getType() != HitResult.Type.BLOCK;
                     }
                     return false;
-                }).min(Comparator.comparingDouble(e -> calculateAngle(e, entity))).orElse(null);
+                })
+                .min(Comparator.comparingDouble(e -> calculateAngle(e, entity)))
+                .orElse(null);
     }
 
     public static Entity seekCustomSizeEntity(Entity entity, Level level, double seekRange, double seekAngle, double size, boolean checkOnGround) {
@@ -78,7 +83,8 @@ public class SeekTool {
     public static Entity seekLivingEntity(Entity entity, Level level, double seekRange, double seekAngle) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
                 .filter(e -> {
-                    if (e.distanceTo(entity) <= seekRange && calculateAngle(e, entity) < seekAngle
+                    if (e.distanceTo(entity) <= seekRange
+                            && calculateAngle(e, entity) < seekAngle
                             && e != entity
                             && baseFilter(e)
                             && smokeFilter(e)
@@ -89,20 +95,28 @@ public class SeekTool {
                                 ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity)).getType() != HitResult.Type.BLOCK;
                     }
                     return false;
-                }).min(Comparator.comparingDouble(e -> calculateAngle(e, entity))).orElse(null);
+                })
+                .min(Comparator.comparingDouble(e -> calculateAngle(e, entity)))
+                .orElse(null);
     }
 
     public static List<Entity> seekLivingEntities(Entity entity, Level level, double seekRange, double seekAngle) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
                 .filter(e -> {
-                    if (e.distanceTo(entity) <= seekRange && calculateAngle(e, entity) < seekAngle
+                    if (e.distanceTo(entity) <= seekRange
+                            && calculateAngle(e, entity) < seekAngle
                             && e != entity
                             && baseFilter(e)
                             && smokeFilter(e)
                             && e.getVehicle() == null
-                            && (!e.isAlliedTo(entity) || e.getTeam() == null || e.getTeam().getName().equals("TDM"))) {
-                        return level.clip(new ClipContext(entity.getEyePosition(), e.getEyePosition(),
-                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, entity)).getType() != HitResult.Type.BLOCK;
+                            && (!e.isAlliedTo(entity) || e.getTeam() == null || e.getTeam().getName().equals("TDM"))
+                    ) {
+                        return level.clip(new ClipContext(
+                                entity.getEyePosition(),
+                                e.getEyePosition(),
+                                ClipContext.Block.COLLIDER,
+                                ClipContext.Fluid.NONE, entity)
+                        ).getType() != HitResult.Type.BLOCK;
                     }
                     return false;
                 }).toList();
@@ -129,32 +143,41 @@ public class SeekTool {
     public static Entity vehicleSeekEntity(VehicleEntity vehicle, Level level, double seekRange, double seekAngle) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
                 .filter(e -> {
-                    if (e.distanceTo(vehicle) <= seekRange && calculateAngleVehicle(e, vehicle) < seekAngle
+                    if (e.distanceTo(vehicle) <= seekRange
+                            && calculateAngleVehicle(e, vehicle) < seekAngle
                             && e != vehicle
                             && baseFilter(e)
                             && smokeFilter(e)
                             && e.getVehicle() == null
                             && (!e.isAlliedTo(vehicle) || e.getTeam() == null || e.getTeam().getName().equals("TDM"))) {
-                        return level.clip(new ClipContext(vehicle.getNewEyePos(1), vehicle.getNewEyePos(1),
-                                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, vehicle)).getType() != HitResult.Type.BLOCK;
+                        return level.clip(new ClipContext(
+                                vehicle.getNewEyePos(1),
+                                vehicle.getNewEyePos(1),
+                                ClipContext.Block.COLLIDER,
+                                ClipContext.Fluid.NONE, vehicle)
+                        ).getType() != HitResult.Type.BLOCK;
                     }
                     return false;
-                }).min(Comparator.comparingDouble(e -> calculateAngleVehicle(e, vehicle))).orElse(null);
+                })
+                .min(Comparator.comparingDouble(e -> calculateAngleVehicle(e, vehicle)))
+                .orElse(null);
     }
 
     public static List<Entity> seekLivingEntitiesThroughWall(Entity entity, Level level, double seekRange, double seekAngle) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
-                .filter(e -> e.distanceTo(entity) <= seekRange && calculateAngle(e, entity) < seekAngle
+                .filter(e -> e.distanceTo(entity) <= seekRange
+                        && calculateAngle(e, entity) < seekAngle
                         && e != entity
                         && baseFilter(e)
                         && e.getVehicle() == null
-                        && (!e.isAlliedTo(entity) || e.getTeam() == null || e.getTeam().getName().equals("TDM"))).toList();
+                        && (!e.isAlliedTo(entity) || e.getTeam() == null || e.getTeam().getName().equals("TDM"))
+                ).toList();
     }
 
     public static List<Entity> getEntitiesWithinRange(BlockPos pos, Level level, double range) {
         return StreamSupport.stream(EntityFindUtil.getEntities(level).getAll().spliterator(), false)
                 .filter(e -> e.distanceToSqr(pos.getX(), pos.getY(), pos.getZ()) <= range * range
-                        && baseFilter(e) && smokeFilter(e) && !(e instanceof DecoyEntity))
+                        && baseFilter(e) && smokeFilter(e) && !e.getType().is(ModTags.EntityTypes.DECOY))
                 .toList();
     }
 
@@ -173,7 +196,7 @@ public class SeekTool {
 
     public static boolean baseFilter(Entity entity) {
         return entity.isAlive()
-                && !(entity instanceof HangingEntity || (entity instanceof Projectile && !(entity instanceof DestroyableProjectileEntity)))
+                && !(entity instanceof HangingEntity || (entity instanceof Projectile && !entity.getType().is(ModTags.EntityTypes.DESTROYABLE_PROJECTILE)))
                 && !(entity instanceof Player player && player.isSpectator())
                 && !isInBlackList(entity);
     }
@@ -230,8 +253,7 @@ public class SeekTool {
     }
 
     public static boolean isInBlackList(Entity entity) {
-        var type = ForgeRegistries.ENTITY_TYPES.getKey(entity.getType());
-        if (type == null) return false;
+        var type = BuiltInRegistries.ENTITY_TYPE.getKey(entity.getType());
         return SeekConfig.SEEK_BLACKLIST.get().contains(type.toString());
     }
 }

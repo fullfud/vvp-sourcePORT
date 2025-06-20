@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -55,10 +55,10 @@ public class SvdItemModel extends CustomGunModel<SvdItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone bolt = getAnimationProcessor().getBone("bolt");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone bolt = getAnimationProcessor().getBone("bolt");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -106,7 +106,9 @@ public class SvdItemModel extends CustomGunModel<SvdItem> {
         gun.setRotZ((float) (0.05f * zpz));
         gun.setScaleZ(1f - (scaleZ * (float) zp));
 
-        CoreGeoBone shen;
+        var data = GunData.from(stack);
+
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -140,20 +142,20 @@ public class SvdItemModel extends CustomGunModel<SvdItem> {
 
         bolt.setPosZ(4.5f * (float) fp);
 
-        if (GunData.from(stack).holdOpen.get()) {
+        if (data.holdOpen.get()) {
             bolt.setPosZ(3.5f);
         }
 
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
         rotXBipod = Mth.lerp(1.5f * times, rotXBipod, isProne(player) ? -90 : 0);
         l.setRotX(rotXBipod * Mth.DEG_TO_RAD);
         r.setRotX(rotXBipod * Mth.DEG_TO_RAD);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.96 * zt);
         float numP = (float) (1 - 0.9 * zt);

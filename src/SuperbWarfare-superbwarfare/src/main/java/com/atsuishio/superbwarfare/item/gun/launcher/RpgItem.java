@@ -1,7 +1,6 @@
 package com.atsuishio.superbwarfare.item.gun.launcher;
 
 import com.atsuishio.superbwarfare.Mod;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.RpgItemRenderer;
 import com.atsuishio.superbwarfare.client.tooltip.component.LauncherImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
@@ -10,16 +9,12 @@ import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
@@ -27,24 +22,22 @@ import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
 import org.jetbrains.annotations.NotNull;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Supplier;
 
 public class RpgItem extends GunItem {
 
     public RpgItem() {
-        super(new Item.Properties().stacksTo(1).rarity(Rarity.RARE));
+        super(new Properties().stacksTo(1).rarity(Rarity.RARE));
     }
 
     @Override
@@ -53,24 +46,8 @@ public class RpgItem extends GunItem {
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (this.renderer == null) {
-                    this.renderer = new RpgItemRenderer();
-                }
-                return this.renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return RpgItemRenderer::new;
     }
 
     private PlayState idlePredicate(AnimationState<RpgItem> event) {
@@ -78,11 +55,12 @@ public class RpgItem extends GunItem {
         if (player == null) return PlayState.STOP;
         ItemStack stack = player.getMainHandItem();
         if (!(stack.getItem() instanceof GunItem)) return PlayState.STOP;
+        var data = GunData.from(stack);
 
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.rpg.idle"));
 
-        if (GunData.from(stack).reload.empty()) {
+        if (data.reload.empty()) {
             return event.setAndContinue(RawAnimation.begin().thenPlayAndHold("animation.rpg.reload"));
         }
 
@@ -109,7 +87,8 @@ public class RpgItem extends GunItem {
     }
 
     @Override
-    public void inventoryTick(@NotNull ItemStack stack, @NotNull Level world, @NotNull Entity entity, int slot, boolean selected) {
+    @ParametersAreNonnullByDefault
+    public void inventoryTick(ItemStack stack, Level world, Entity entity, int slot, boolean selected) {
         var data = GunData.from(stack);
         if (data.draw.get()) {
             data.draw.set(false);
@@ -118,6 +97,8 @@ public class RpgItem extends GunItem {
                 data.isEmpty.set(true);
             }
         }
+
+        data.save();
 
         super.inventoryTick(stack, world, entity, slot, selected);
     }
@@ -139,16 +120,13 @@ public class RpgItem extends GunItem {
 
     @Override
     public boolean shootBullet(Player player, GunData data, double spread, boolean zoom) {
-        if (data.reloading()) return false;
         if (!super.shootBullet(player, data, spread, zoom)) return false;
 
-        if (player.level() instanceof ServerLevel serverLevel) {
-            ParticleTool.sendParticle(serverLevel, ParticleTypes.CLOUD, player.getX() + 1.8 * player.getLookAngle().x,
-                    player.getY() + player.getBbHeight() - 0.1 + 1.8 * player.getLookAngle().y,
-                    player.getZ() + 1.8 * player.getLookAngle().z,
-                    30, 0.4, 0.4, 0.4, 0.005, true);
+        ParticleTool.sendParticle((ServerLevel) player.level(), ParticleTypes.CLOUD, player.getX() + 1.8 * player.getLookAngle().x,
+                player.getY() + player.getBbHeight() - 0.1 + 1.8 * player.getLookAngle().y,
+                player.getZ() + 1.8 * player.getLookAngle().z,
+                30, 0.4, 0.4, 0.4, 0.005, true);
 
-        }
         data.isEmpty.set(true);
         data.closeHammer.set(true);
 

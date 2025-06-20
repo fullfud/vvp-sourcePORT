@@ -4,7 +4,6 @@ import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.client.RenderHelper;
 import com.atsuishio.superbwarfare.client.screens.DogTagEditorScreen;
 import com.atsuishio.superbwarfare.client.tooltip.ClientDogTagImageTooltip;
-import com.atsuishio.superbwarfare.compat.tacz.TACZGunEventHandler;
 import com.atsuishio.superbwarfare.config.client.DisplayConfig;
 import com.atsuishio.superbwarfare.config.client.KillMessageConfig;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ArmedVehicleEntity;
@@ -18,9 +17,12 @@ import com.atsuishio.superbwarfare.tools.DamageTypeTool;
 import com.atsuishio.superbwarfare.tools.PlayerKillRecord;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.ChatFormatting;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.resources.ResourceKey;
@@ -29,20 +31,19 @@ import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 import org.jetbrains.annotations.Nullable;
 import top.theillusivec4.curios.api.CuriosApi;
 
-import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
+import javax.annotation.ParametersAreNonnullByDefault;
+
+import static com.atsuishio.superbwarfare.client.RenderHelper.preciseBlit;
 
 @OnlyIn(Dist.CLIENT)
-public class KillMessageOverlay implements IGuiOverlay {
+public class KillMessageOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_kill_message";
+    public static final ResourceLocation ID = Mod.loc("kill_message");
 
     private static final ResourceLocation HEADSHOT = Mod.loc("textures/screens/damage_types/headshot.png");
 
@@ -62,12 +63,13 @@ public class KillMessageOverlay implements IGuiOverlay {
     private static final ResourceLocation WORLD_PEACE_STAFF = Mod.loc("textures/gun_icon/compat/world_peace_staff.png");
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         if (!KillMessageConfig.SHOW_KILL_MESSAGE.get()) {
             return;
         }
 
-        Player player = gui.getMinecraft().player;
+        Player player = Minecraft.getInstance().player;
 
         if (player == null) {
             return;
@@ -76,6 +78,9 @@ public class KillMessageOverlay implements IGuiOverlay {
         if (KillMessageHandler.QUEUE.isEmpty()) {
             return;
         }
+
+        int screenWidth = guiGraphics.guiWidth();
+        int screenHeight = guiGraphics.guiHeight();
 
         var pos = KillMessageConfig.KILL_MESSAGE_POSITION.get();
         int posX = screenWidth;
@@ -126,7 +131,7 @@ public class KillMessageOverlay implements IGuiOverlay {
         }
 
         for (PlayerKillRecord r : KillMessageHandler.QUEUE) {
-            posY = renderKillMessages(r, guiGraphics, partialTick, posX, posY, left, bottom);
+            posY = renderKillMessages(r, guiGraphics, deltaTracker.getGameTimeDeltaPartialTick(true), posX, posY, left, bottom);
         }
     }
 
@@ -188,7 +193,7 @@ public class KillMessageOverlay implements IGuiOverlay {
             ResourceLocation damageTypeIcon = getDamageTypeIcon(record);
             if (damageTypeIcon != null) {
                 currentPosX -= 18;
-                RenderHelper.preciseBlit(guiGraphics,
+                preciseBlit(guiGraphics,
                         damageTypeIcon,
                         currentPosX,
                         top - 2,
@@ -205,7 +210,7 @@ public class KillMessageOverlay implements IGuiOverlay {
             ResourceLocation currentWeaponIcon = getWeaponIcon(record);
             if (currentWeaponIcon != null) {
                 currentPosX -= 36;
-                RenderHelper.preciseBlit(guiGraphics,
+                preciseBlit(guiGraphics,
                         currentWeaponIcon,
                         currentPosX,
                         top,
@@ -261,7 +266,7 @@ public class KillMessageOverlay implements IGuiOverlay {
             // 渲染武器图标
             ResourceLocation currentWeaponIcon = getWeaponIcon(record);
             if (currentWeaponIcon != null) {
-                RenderHelper.preciseBlit(guiGraphics,
+                preciseBlit(guiGraphics,
                         currentWeaponIcon,
                         currentPosX,
                         top,
@@ -278,7 +283,7 @@ public class KillMessageOverlay implements IGuiOverlay {
             // 渲染伤害类型图标
             ResourceLocation damageTypeIcon = getDamageTypeIcon(record);
             if (damageTypeIcon != null) {
-                RenderHelper.preciseBlit(guiGraphics,
+                preciseBlit(guiGraphics,
                         damageTypeIcon,
                         currentPosX,
                         top - 2,
@@ -327,11 +332,8 @@ public class KillMessageOverlay implements IGuiOverlay {
         if (record.headshot) {
             icon = HEADSHOT;
         } else {
-            if (DamageTypeTool.isCompatGunDamage(record.damageType)) {
+            if (DamageTypeTool.isGunDamage(record.damageType)) {
                 icon = null;
-                if (TACZGunEventHandler.hasMod() && !TACZGunEventHandler.compatCondition()) {
-                    icon = GENERIC;
-                }
             } else {
                 // 如果是其他伤害，则渲染对应图标
                 if (record.damageType == DamageTypes.EXPLOSION || record.damageType == DamageTypes.PLAYER_EXPLOSION || record.damageType == ModDamageTypes.PROJECTILE_BOOM || record.damageType == DamageTypes.FIREWORKS) {
@@ -342,9 +344,9 @@ public class KillMessageOverlay implements IGuiOverlay {
                     icon = BEAST;
                 } else if (record.damageType == ModDamageTypes.MINE) {
                     icon = CLAYMORE;
-                } else if (record.damageType == ResourceKey.create(Registries.DAMAGE_TYPE, new ResourceLocation("dreamaticvoyage", "bleeding"))) {
+                } else if (record.damageType == ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("dreamaticvoyage", "bleeding"))) {
                     icon = BLEEDING;
-                } else if (record.damageType == ResourceKey.create(Registries.DAMAGE_TYPE, new ResourceLocation("dreamaticvoyage", "blood_crystal"))) {
+                } else if (record.damageType == ResourceKey.create(Registries.DAMAGE_TYPE, ResourceLocation.fromNamespaceAndPath("dreamaticvoyage", "blood_crystal"))) {
                     icon = BLOOD_CRYSTAL;
                 } else if (record.damageType == ModDamageTypes.SHOCK) {
                     icon = SHOCK;
@@ -365,20 +367,18 @@ public class KillMessageOverlay implements IGuiOverlay {
     }
 
     public static String getEntityName(Entity entity) {
-        AtomicReference<String> targetName = new AtomicReference<>(entity.getDisplayName().getString());
-        if (!DisplayConfig.DOG_TAG_NAME_VISIBLE.get()) return targetName.get();
+        if (entity.getDisplayName() == null) return "";
+
+        var name = entity.getDisplayName().getString();
+        if (!DisplayConfig.DOG_TAG_NAME_VISIBLE.get()) return name;
+
         if (entity instanceof Player targetPlayer) {
-            CuriosApi.getCuriosInventory(targetPlayer).ifPresent(
-                    c -> c.findFirstCurio(ModItems.DOG_TAG.get()).ifPresent(
-                            s -> {
-                                if (s.stack().hasCustomHoverName()) {
-                                    targetName.set(s.stack().getHoverName().getString());
-                                }
-                            }
-                    )
-            );
+            return CuriosApi.getCuriosInventory(targetPlayer)
+                    .flatMap(c -> c.findFirstCurio(ModItems.DOG_TAG.get()))
+                    .map(s -> s.stack().getHoverName().getString())
+                    .orElse(name);
         }
-        return targetName.get();
+        return name;
     }
 
     @Nullable
@@ -391,16 +391,12 @@ public class KillMessageOverlay implements IGuiOverlay {
             } else {
                 if (record.stack.getItem() instanceof GunItem gunItem) {
                     return gunItem.getGunIcon();
-                } else if (TACZGunEventHandler.compatCondition()) {
-                    return TACZGunEventHandler.getTaczCompatIcon(record.stack);
                 }
             }
         } else {
             // 如果是枪械击杀，则渲染枪械图标
             if (record.stack.getItem() instanceof GunItem gunItem) {
                 return gunItem.getGunIcon();
-            } else if (TACZGunEventHandler.compatCondition()) {
-                return TACZGunEventHandler.getTaczCompatIcon(record.stack);
             }
 
             // TODO 如果是特殊武器击杀，则渲染对应图标
@@ -412,41 +408,31 @@ public class KillMessageOverlay implements IGuiOverlay {
     }
 
     public static boolean shouldRenderDogTagIcon(LivingEntity living) {
-        AtomicBoolean flag = new AtomicBoolean(false);
-        CuriosApi.getCuriosInventory(living).ifPresent(
-                c -> c.findFirstCurio(ModItems.DOG_TAG.get()).ifPresent(
-                        s -> {
-                            var stack = s.stack();
-                            if (ClientDogTagImageTooltip.shouldRenderIcon(stack)) {
-                                flag.set(true);
-                            }
-                        }
-                )
-        );
-        return flag.get() && DisplayConfig.DOG_TAG_ICON_VISIBLE.get();
+        return CuriosApi.getCuriosInventory(living)
+                .flatMap(c -> c.findFirstCurio(ModItems.DOG_TAG.get()))
+                .map(s -> ClientDogTagImageTooltip.shouldRenderIcon(s.stack()))
+                .orElse(false)
+                && DisplayConfig.DOG_TAG_ICON_VISIBLE.get();
     }
 
     public static void renderDogTagIcon(GuiGraphics guiGraphics, LivingEntity living, float x, float y) {
-        CuriosApi.getCuriosInventory(living).ifPresent(
-                c -> c.findFirstCurio(ModItems.DOG_TAG.get()).ifPresent(
-                        s -> {
-                            var stack = s.stack();
-                            short[][] icon = DogTag.getColors(stack);
+        CuriosApi.getCuriosInventory(living).flatMap(c -> c.findFirstCurio(ModItems.DOG_TAG.get())).ifPresent(s -> {
+            short[][] icon = DogTag.getColors(s.stack());
+            guiGraphics.pose().pushPose();
 
-                            guiGraphics.pose().pushPose();
+            for (int i = 0; i < 16; i++) {
+                for (int j = 0; j < 16; j++) {
+                    if (icon[i][j] == -1) continue;
 
-                            for (int i = 0; i < 16; i++) {
-                                for (int j = 0; j < 16; j++) {
-                                    if (icon[i][j] == -1) continue;
-                                    RenderHelper.fill(guiGraphics, RenderType.gui(),
-                                            x + i * 0.6f, y + j * 0.6f, x + (i + 1) * 0.6f, y + (j + 1) * 0.6f,
-                                            0, DogTagEditorScreen.getColorByNum(icon[i][j]));
-                                }
-                            }
+                    var color = ChatFormatting.getById(icon[i][j]);
+                    RenderHelper.fill(guiGraphics, RenderType.gui(),
+                            x + i * 0.6f, y + j * 0.6f, x + (i + 1) * 0.6f, y + (j + 1) * 0.6f,
+                            0, DogTagEditorScreen.getColorFromFormatting(color)
+                    );
+                }
+            }
 
-                            guiGraphics.pose().popPose();
-                        }
-                )
-        );
+            guiGraphics.pose().popPose();
+        });
     }
 }

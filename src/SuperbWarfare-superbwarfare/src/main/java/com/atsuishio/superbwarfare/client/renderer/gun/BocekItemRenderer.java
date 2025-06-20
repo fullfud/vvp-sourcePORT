@@ -15,12 +15,13 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.texture.OverlayTexture;
+import net.minecraft.util.FastColor;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import org.joml.Matrix4f;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.cache.object.GeoBone;
-import software.bernie.geckolib.util.RenderUtils;
+import software.bernie.geckolib.util.RenderUtil;
 
 public class BocekItemRenderer extends CustomGunRenderer<BocekItem> {
 
@@ -30,33 +31,34 @@ public class BocekItemRenderer extends CustomGunRenderer<BocekItem> {
 
     @Override
     public void illuminatedRender(PoseStack poseStack, BocekItem animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight,
-                                  int packedOverlay, float red, float green, float blue, float alpha) {
+                                  int packedOverlay, int color) {
         if (bone.isTrackingMatrices()) {
             Matrix4f poseState = new Matrix4f(poseStack.last().pose());
 
-            bone.setModelSpaceMatrix(RenderUtils.invertAndMultiplyMatrices(poseState, this.modelRenderTranslations));
-            bone.setLocalSpaceMatrix(RenderUtils.invertAndMultiplyMatrices(poseState, this.itemRenderTranslations));
+            bone.setModelSpaceMatrix(RenderUtil.invertAndMultiplyMatrices(poseState, this.modelRenderTranslations));
+            bone.setLocalSpaceMatrix(RenderUtil.invertAndMultiplyMatrices(poseState, this.itemRenderTranslations));
         }
 
         poseStack.pushPose();
-        RenderUtils.prepMatrixForBone(poseStack, bone);
+        RenderUtil.prepMatrixForBone(poseStack, bone);
 
         if (bone.getName().endsWith("_illuminated")) {
             renderCubesOfBone(poseStack, bone, bufferSource.getBuffer(ModRenderTypes.ILLUMINATED.apply(this.getTextureLocation(animatable))),
-                    packedLight, OverlayTexture.NO_OVERLAY, red, green, blue, alpha);
+                    packedLight, OverlayTexture.NO_OVERLAY, color);
         }
 
         if (bone.getName().equals("power_light")) {
+            var power = Math.round((float) ClientEventHandler.bowPower * 255);
+            var c = FastColor.ARGB32.color(color & 0xFF, power, power, power);
             renderCubesOfBone(poseStack, bone, bufferSource.getBuffer(ModRenderTypes.ILLUMINATED.apply(this.getTextureLocation(animatable))),
-                    packedLight, OverlayTexture.NO_OVERLAY, (float) ClientEventHandler.bowPower, (float) ClientEventHandler.bowPower, (float) ClientEventHandler.bowPower, alpha);
+                    packedLight, OverlayTexture.NO_OVERLAY, c);
         }
-        this.illuminatedRenderChildBones(poseStack, animatable, bone, renderType, bufferSource, buffer, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        this.illuminatedRenderChildBones(poseStack, animatable, bone, renderType, bufferSource, buffer, partialTick, packedLight, packedOverlay, color);
         poseStack.popPose();
     }
 
     @Override
-    public void renderRecursively(PoseStack stack, BocekItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, float red,
-                                  float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack stack, BocekItem animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, int color) {
         Minecraft mc = Minecraft.getInstance();
         String name = bone.getName();
         boolean renderingArms = false;
@@ -109,6 +111,6 @@ public class BocekItemRenderer extends CustomGunRenderer<BocekItem> {
         if (renderingArms) {
             AnimationHelper.renderArms(player, this.renderPerspective, stack, name, bone, buffer, type, packedLightIn, false);
         }
-        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, color);
     }
 }

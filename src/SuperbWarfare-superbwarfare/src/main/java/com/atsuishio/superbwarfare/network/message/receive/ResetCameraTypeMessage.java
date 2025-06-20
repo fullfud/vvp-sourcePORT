@@ -1,32 +1,29 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record ResetCameraTypeMessage(int msgType) implements CustomPacketPayload {
+    public static final Type<ResetCameraTypeMessage> TYPE = new Type<>(Mod.loc("reset_camera_type"));
 
-public class ResetCameraTypeMessage {
+    public static final StreamCodec<ByteBuf, ResetCameraTypeMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            ResetCameraTypeMessage::msgType,
+            ResetCameraTypeMessage::new
+    );
 
-    private final int type;
-
-    public ResetCameraTypeMessage(int type) {
-        this.type = type;
+    public static void handler(ResetCameraTypeMessage message, final IPayloadContext context) {
+        ClientPacketHandler.handleResetCameraType();
     }
 
-    public static void encode(ResetCameraTypeMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-    }
-
-    public static ResetCameraTypeMessage decode(FriendlyByteBuf buffer) {
-        return new ResetCameraTypeMessage(buffer.readInt());
-    }
-
-    public static void handler(ResetCameraTypeMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandler.handleResetCameraType(ctx)));
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

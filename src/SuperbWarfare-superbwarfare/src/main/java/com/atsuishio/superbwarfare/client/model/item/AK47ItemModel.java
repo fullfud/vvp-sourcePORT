@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -55,12 +55,12 @@ public class AK47ItemModel extends CustomGunModel<AK47Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone scope = getAnimationProcessor().getBone("Scope1");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
-        CoreGeoBone scope3 = getAnimationProcessor().getBone("Scope3");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone scope = getAnimationProcessor().getBone("Scope1");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone scope3 = getAnimationProcessor().getBone("Scope3");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -111,7 +111,7 @@ public class AK47ItemModel extends CustomGunModel<AK47Item> {
         scope2.setScaleZ(1f - (0.3f * (float) zp));
         scope3.setScaleZ(1f - (0.7f * (float) zp));
 
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -143,19 +143,19 @@ public class AK47ItemModel extends CustomGunModel<AK47Item> {
 
         CrossHairOverlay.gunRot = shen.getRotZ();
 
-        CoreGeoBone shuan = getAnimationProcessor().getBone("shuan");
+        GeoBone shuan = getAnimationProcessor().getBone("shuan");
         shuan.setPosZ(2.4f * (float) ClientEventHandler.firePos);
 
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
         rotXBipod = Mth.lerp(1.5f * times, rotXBipod, isProne(player) ? -90 : 0);
         l.setRotX(rotXBipod * Mth.DEG_TO_RAD);
         r.setRotX(rotXBipod * Mth.DEG_TO_RAD);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.98 * zt);
         float numP = (float) (1 - 0.92 * zt);

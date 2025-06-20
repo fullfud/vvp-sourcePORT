@@ -8,6 +8,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.AbstractContainerMenu;
 import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 
 public class VehicleMenu extends AbstractContainerMenu {
 
@@ -50,21 +51,21 @@ public class VehicleMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player pPlayer, int pIndex) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player pPlayer, int pIndex) {
         ItemStack itemstack = ItemStack.EMPTY;
         Slot slot = this.slots.get(pIndex);
         if (slot.hasItem()) {
-            ItemStack itemstack1 = slot.getItem();
-            itemstack = itemstack1.copy();
+            ItemStack stack = slot.getItem();
+            itemstack = stack.copy();
             if (pIndex < this.containerRows * 17 + 3) {
-                if (!this.moveItemStackTo(itemstack1, this.containerRows * 17 + 3, this.slots.size(), true)) {
+                if (!this.moveItemStackTo(stack, this.containerRows * 17 + 3, this.slots.size(), true)) {
                     return ItemStack.EMPTY;
                 }
-            } else if (!this.moveItemStackTo(itemstack1, 0, this.containerRows * 17, false)) {
+            } else if (!this.moveItemStackTo(stack, 0, this.containerRows * 17, false)) {
                 return ItemStack.EMPTY;
             }
 
-            if (itemstack1.isEmpty()) {
+            if (stack.isEmpty()) {
                 slot.setByPlayer(ItemStack.EMPTY);
             } else {
                 slot.setChanged();
@@ -75,7 +76,7 @@ public class VehicleMenu extends AbstractContainerMenu {
     }
 
     @Override
-    public boolean stillValid(Player pPlayer) {
+    public boolean stillValid(@NotNull Player pPlayer) {
         return this.container.stillValid(pPlayer);
     }
 }

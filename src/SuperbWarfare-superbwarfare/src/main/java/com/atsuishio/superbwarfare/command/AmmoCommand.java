@@ -1,7 +1,6 @@
 
 package com.atsuishio.superbwarfare.command;
 
-import com.atsuishio.superbwarfare.network.PlayerVariable;
 import com.atsuishio.superbwarfare.tools.Ammo;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
@@ -9,7 +8,7 @@ import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.commands.arguments.EntityArgument;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.server.command.EnumArgument;
+import net.neoforged.neoforge.server.command.EnumArgument;
 
 public class AmmoCommand {
 
@@ -41,7 +40,7 @@ public class AmmoCommand {
                     var value = IntegerArgumentType.getInteger(context, "value");
 
                     for (var player : players) {
-                        PlayerVariable.modify(player, capability -> type.set(capability, value));
+                        type.set(player, value);
                     }
 
                     context.getSource().sendSuccess(() -> Component.translatable("commands.ammo.set", Component.translatable(type.translationKey), value, players.size()), true);
@@ -53,7 +52,7 @@ public class AmmoCommand {
                     var value = IntegerArgumentType.getInteger(context, "value");
 
                     for (var player : players) {
-                        PlayerVariable.modify(player, capability -> type.add(capability, value));
+                        type.add(player, value);
                     }
 
                     context.getSource().sendSuccess(() -> Component.translatable("commands.ammo.add", Component.translatable(type.translationKey), value, players.size()), true);

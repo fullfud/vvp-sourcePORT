@@ -21,7 +21,7 @@ public abstract class BeastMixin implements BeastEntityKiller {
         this.sbw$beastKilled = true;
     }
 
-    @Inject(method = "isDeadOrDying", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "isDeadOrDying", at = @At("HEAD"), cancellable = true, order = Integer.MAX_VALUE)
     public void isDeadOrDying(CallbackInfoReturnable<Boolean> cir) {
         if (this.sbw$beastKilled) {
             cir.cancel();
@@ -29,7 +29,7 @@ public abstract class BeastMixin implements BeastEntityKiller {
         }
     }
 
-    @Inject(method = "getHealth", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "getHealth", at = @At("HEAD"), cancellable = true, order = Integer.MAX_VALUE)
     public void getHealth(CallbackInfoReturnable<Float> cir) {
         if (this.sbw$beastKilled) {
             cir.cancel();
@@ -37,7 +37,7 @@ public abstract class BeastMixin implements BeastEntityKiller {
         }
     }
 
-    @Inject(method = "remove", at = @At("RETURN"))
+    @Inject(method = "remove", at = @At("RETURN"), order = Integer.MAX_VALUE)
     public void onRemove(Entity.RemovalReason reason, CallbackInfo ci) {
         if (this.sbw$beastKilled) {
             ((LivingEntity) (Object) this).setRemoved(reason);

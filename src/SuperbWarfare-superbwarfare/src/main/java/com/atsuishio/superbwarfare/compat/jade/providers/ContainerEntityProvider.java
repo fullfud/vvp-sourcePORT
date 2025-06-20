@@ -28,16 +28,16 @@ public enum ContainerEntityProvider implements IBlockComponentProvider {
         // 所需尺寸显示
         var entityType = EntityType.byString(registerName).orElse(null);
         if (entityType != null) {
-            float w = (float) Math.ceil(entityType.getDimensions().width / 2) * 2;
+            float w = (float) Math.ceil(entityType.getDimensions().width() / 2) * 2;
             if ((int) w % 2 == 0) w++;
-            int h = (int) (entityType.getDimensions().height + 1);
+            int h = (int) (entityType.getDimensions().height() + 1);
             if (h != 0) {
                 iTooltip.add(Component.literal((int) w + " x " + (int) w + " x " + h).withStyle(ChatFormatting.YELLOW));
             }
         }
 
         // 空间不足提示
-        if (!ContainerBlock.canOpen(blockAccessor.getLevel(), container.getBlockPos(), container.entityType, container.entity)) {
+        if (!ContainerBlock.canOpen(blockAccessor.getLevel(), container.getBlockPos(), container.entityType)) {
             iTooltip.add(Component.translatable("des.superbwarfare.container.fail.open").withStyle(ChatFormatting.RED));
         }
 

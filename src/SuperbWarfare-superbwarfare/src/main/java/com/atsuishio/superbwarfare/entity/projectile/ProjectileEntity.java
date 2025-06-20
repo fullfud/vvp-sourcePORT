@@ -1,26 +1,26 @@
 package com.atsuishio.superbwarfare.entity.projectile;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.block.BarbedWireBlock;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.config.server.ProjectileConfig;
 import com.atsuishio.superbwarfare.entity.DPSGeneratorEntity;
+import com.atsuishio.superbwarfare.entity.OBBEntity;
 import com.atsuishio.superbwarfare.entity.TargetEntity;
 import com.atsuishio.superbwarfare.entity.mixin.ICustomKnockback;
+import com.atsuishio.superbwarfare.entity.mixin.OBBHitter;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.*;
 import com.atsuishio.superbwarfare.item.Beast;
-import com.atsuishio.superbwarfare.item.Transcript;
 import com.atsuishio.superbwarfare.network.message.receive.ClientIndicatorMessage;
 import com.atsuishio.superbwarfare.network.message.receive.ClientMotionSyncMessage;
 import com.atsuishio.superbwarfare.tools.*;
+import com.mojang.datafixers.util.Pair;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.Holder;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.nbt.ListTag;
-import net.minecraft.nbt.Tag;
-import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.RegistryFriendlyByteBuf;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.syncher.EntityDataAccessor;
@@ -30,15 +30,18 @@ import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.tags.EntityTypeTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.MobType;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.monster.Monster;
+import net.minecraft.world.entity.monster.Ravager;
+import net.minecraft.world.entity.monster.Vex;
+import net.minecraft.world.entity.monster.Witch;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
@@ -49,15 +52,15 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.*;
 import net.minecraft.world.phys.shapes.VoxelShape;
-import net.minecraftforge.common.Tags;
-import net.minecraftforge.entity.IEntityAdditionalSpawnData;
-import net.minecraftforge.entity.PartEntity;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.common.Tags;
+import net.neoforged.neoforge.entity.IEntityWithComplexSpawn;
+import net.neoforged.neoforge.entity.PartEntity;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
@@ -66,8 +69,10 @@ import java.util.function.BiFunction;
 import java.util.function.Function;
 import java.util.function.Predicate;
 
+import static com.atsuishio.superbwarfare.tools.ParticleTool.sendParticle;
+
 @SuppressWarnings({"unused", "UnusedReturnValue", "SuspiciousNameCombination"})
-public class ProjectileEntity extends Projectile implements IEntityAdditionalSpawnData, GeoEntity, CustomSyncMotionEntity {
+public class ProjectileEntity extends Projectile implements IEntityWithComplexSpawn, GeoEntity, CustomSyncMotionEntity {
 
     public static final EntityDataAccessor<Float> COLOR_R = SynchedEntityData.defineId(ProjectileEntity.class, EntityDataSerializers.FLOAT);
     public static final EntityDataAccessor<Float> COLOR_G = SynchedEntityData.defineId(ProjectileEntity.class, EntityDataSerializers.FLOAT);
@@ -93,6 +98,8 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
     private boolean zoom = false;
     private float bypassArmorRate = 0.0f;
     private float undeadMultiple = 1.0f;
+    private float illagerMultiple = 1.0f;
+    private int riotLevel = 0;
     private int jhpLevel = 0;
     private int heLevel = 0;
     private int fireLevel = 0;
@@ -108,10 +115,6 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
     }
 
     public ProjectileEntity(Level level) {
-        super(ModEntities.PROJECTILE.get(), level);
-    }
-
-    public ProjectileEntity(PlayMessages.SpawnEntity packet, Level level) {
         super(ModEntities.PROJECTILE.get(), level);
     }
 
@@ -135,7 +138,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         for (Entity entity : entities) {
             if (entity.equals(this.shooter)) continue;
             if (entity.equals(this.shooter.getVehicle())) continue;
-            if (entity.getVehicle() == this.shooter.getVehicle()) continue;
+
             if (entity instanceof TargetEntity && entity.getEntityData().get(TargetEntity.DOWN_TIME) > 0) continue;
             if (entity instanceof DPSGeneratorEntity && entity.getEntityData().get(DPSGeneratorEntity.DOWN_TIME) > 0)
                 continue;
@@ -165,7 +168,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
                 this,
                 this.getBoundingBox()
                         .expandTowards(this.getDeltaMovement())
-                        .inflate(this.beast ? 3 : 1),
+                        .inflate(1),
                 PROJECTILE_TARGETS
         );
         for (Entity entity : entities) {
@@ -185,36 +188,55 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
     @Nullable
     private EntityResult getHitResult(Entity entity, Vec3 startVec, Vec3 endVec) {
         double expandHeight = entity instanceof Player && !entity.isCrouching() ? 0.0625 : 0.0;
-        AABB boundingBox = entity.getBoundingBox();
-        Vec3 velocity = new Vec3(entity.getX() - entity.xOld, entity.getY() - entity.yOld, entity.getZ() - entity.zOld);
 
-        if (entity instanceof ServerPlayer player && this.shooter instanceof ServerPlayer serverPlayerOwner) {
-            int ping = Mth.floor((serverPlayerOwner.latency / 1000.0) * 20.0 + 0.5);
-            boundingBox = HitboxHelper.getBoundingBox(player, ping);
-            velocity = HitboxHelper.getVelocity(player, ping);
-        }
-        boundingBox = boundingBox.expandTowards(0, expandHeight, 0);
+        Vec3 hitPos = null;
+        if (entity instanceof OBBEntity obbEntity) {
+            for (OBB obb : obbEntity.getOBBs()) {
+                var obbVec = obb.clip(startVec.toVector3f(), endVec.toVector3f()).orElse(null);
+                if (obbVec != null) {
+                    hitPos = new Vec3(obbVec);
+                    if (this.level() instanceof ServerLevel serverLevel) {
+                        this.level().playSound(null, BlockPos.containing(hitPos), ModSounds.HIT.get(), SoundSource.PLAYERS, 1, 1);
+                        sendParticle(serverLevel, ModParticleTypes.FIRE_STAR.get(), hitPos.x, hitPos.y, hitPos.z, 2, 0, 0, 0, 0.2, false);
+                        sendParticle(serverLevel, ParticleTypes.SMOKE, hitPos.x, hitPos.y, hitPos.z, 2, 0, 0, 0, 0.01, false);
+                    }
 
-        boundingBox = boundingBox.expandTowards(velocity.x, velocity.y, velocity.z);
-
-        double playerHitboxOffset = 3;
-        if (entity instanceof ServerPlayer) {
-            if (entity.getVehicle() != null) {
-                boundingBox = boundingBox.move(velocity.multiply(playerHitboxOffset / 2, playerHitboxOffset / 2, playerHitboxOffset / 2));
+                    var acc = OBBHitter.getInstance(this);
+                    acc.sbw$setCurrentHitPart(obb.part());
+                }
             }
-            boundingBox = boundingBox.move(velocity.multiply(playerHitboxOffset, playerHitboxOffset, playerHitboxOffset));
-        }
+        } else {
+            AABB boundingBox = entity.getBoundingBox();
+            Vec3 velocity = new Vec3(entity.getX() - entity.xOld, entity.getY() - entity.yOld, entity.getZ() - entity.zOld);
 
-        if (entity.getVehicle() != null) {
-            boundingBox = boundingBox.move(velocity.multiply(-2.5, -2.5, -2.5));
-        }
-        boundingBox = boundingBox.move(velocity.multiply(-5, -5, -5));
+            if (entity instanceof ServerPlayer player && this.shooter instanceof ServerPlayer serverPlayerOwner) {
+                int ping = Mth.floor((serverPlayerOwner.connection.latency() / 1000.0) * 20.0 + 0.5);
+                boundingBox = HitboxHelper.getBoundingBox(player, ping);
+                velocity = HitboxHelper.getVelocity(player, ping);
+            }
+            boundingBox = boundingBox.expandTowards(0, expandHeight, 0);
+            boundingBox = boundingBox.expandTowards(velocity.x, velocity.y, velocity.z);
 
-        if (this.beast) {
-            boundingBox = boundingBox.inflate(3);
-        }
+            double playerHitboxOffset = 3;
+            if (entity instanceof ServerPlayer) {
+                if (entity.getVehicle() != null) {
+                    boundingBox = boundingBox.move(velocity.multiply(playerHitboxOffset / 2, playerHitboxOffset / 2, playerHitboxOffset / 2));
+                }
+                boundingBox = boundingBox.move(velocity.multiply(playerHitboxOffset, playerHitboxOffset, playerHitboxOffset));
+            }
 
-        Vec3 hitPos = boundingBox.clip(startVec, endVec).orElse(null);
+            if (entity.getVehicle() != null) {
+                boundingBox = boundingBox.move(velocity.multiply(-2.5, -2.5, -2.5));
+            }
+            boundingBox = boundingBox.move(velocity.multiply(-5, -5, -5));
+
+            if (this.beast) {
+                boundingBox = boundingBox.inflate(3);
+            }
+
+            hitPos = boundingBox.clip(startVec, endVec).orElse(null);
+
+        }
 
         if (hitPos == null) {
             return null;
@@ -231,14 +253,19 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
             legShot = true;
         }
 
+        if (heLevel > 0) {
+            explosionBullet(this, this.damage, heLevel, monsterMultiplier + 1, hitPos);
+        }
+
         return new EntityResult(entity, hitPos, headshot, legShot);
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(COLOR_R, 1.0f);
-        this.entityData.define(COLOR_G, 222 / 255f);
-        this.entityData.define(COLOR_B, 39 / 255f);
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        builder.define(COLOR_R, 1.0f)
+                .define(COLOR_G, 222 / 255f)
+                .define(COLOR_B, 39 / 255f);
+
     }
 
     @Override
@@ -314,7 +341,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
     @Override
     public void syncMotion() {
         if (!this.level().isClientSide) {
-            Mod.PACKET_HANDLER.send(PacketDistributor.ALL.noArg(), new ClientMotionSyncMessage(this));
+            PacketDistributor.sendToAllPlayers(new ClientMotionSyncMessage(this));
         }
     }
 
@@ -326,6 +353,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         this.legShot = tag.getFloat("LegShot");
         this.bypassArmorRate = tag.getFloat("BypassArmorRate");
         this.undeadMultiple = tag.getFloat("UndeadMultiple");
+        this.illagerMultiple = tag.getFloat("illagerMultiple");
         this.knockback = tag.getFloat("Knockback");
 
         this.beast = tag.getBoolean("Beast");
@@ -344,6 +372,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         tag.putFloat("LegShot", this.legShot);
         tag.putFloat("BypassArmorRate", this.bypassArmorRate);
         tag.putFloat("UndeadMultiple", this.undeadMultiple);
+        tag.putFloat("illagerMultiple", this.illagerMultiple);
         tag.putFloat("Knockback", this.knockback);
 
         tag.putBoolean("Beast", this.beast);
@@ -371,7 +400,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
             }
 
             if (ProjectileConfig.ALLOW_PROJECTILE_DESTROY_GLASS.get()) {
-                if (state.is(Tags.Blocks.GLASS) || state.is(Tags.Blocks.GLASS_PANES)) {
+                if (state.is(Tags.Blocks.GLASS_BLOCKS) || state.is(Tags.Blocks.GLASS_PANES)) {
                     this.level().destroyBlock(resultPos, false, this.getShooter());
                 }
             }
@@ -386,7 +415,7 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
 
             this.onHitBlock(hitVec);
             if (heLevel > 0) {
-                explosionBulletBlock(this, this.damage, heLevel, monsterMultiplier + 1, hitVec);
+                explosionBullet(this, this.damage, heLevel, monsterMultiplier + 1, hitVec);
             }
             if (fireLevel > 0 && this.level() instanceof ServerLevel serverLevel) {
                 ParticleTool.sendParticle(serverLevel, ParticleTypes.LAVA, hitVec.x, hitVec.y, hitVec.z,
@@ -441,33 +470,25 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         if (!this.shooter.level().isClientSide() && this.shooter instanceof ServerPlayer serverPlayer) {
             var holder = score == 10 ? Holder.direct(ModSounds.HEADSHOT.get()) : Holder.direct(ModSounds.INDICATION.get());
             serverPlayer.connection.send(new ClientboundSoundPacket(holder, SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 1f, 1f, player.level().random.nextLong()));
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> (ServerPlayer) player), new ClientIndicatorMessage(score == 10 ? 1 : 0, 5));
+            PacketDistributor.sendToPlayer(serverPlayer, new ClientIndicatorMessage(score == 10 ? 1 : 0, 5));
         }
 
         ItemStack stack = player.getOffhandItem();
+
         if (stack.is(ModItems.TRANSCRIPT.get())) {
             final int size = 10;
 
-            ListTag tags = stack.getOrCreateTag().getList(Transcript.TAG_SCORES, Tag.TAG_COMPOUND);
+            var scores = stack.get(ModDataComponents.TRANSCRIPT_SCORE);
+            if (scores == null) scores = List.of();
 
-            Queue<CompoundTag> queue = new ArrayDeque<>();
-            for (int i = 0; i < tags.size(); i++) {
-                queue.add(tags.getCompound(i));
-            }
-
-            CompoundTag tag = new CompoundTag();
-            tag.putInt("Score", score);
-            tag.putDouble("Distance", distance);
-            queue.offer(tag);
+            Queue<Pair<Integer, Double>> queue = new ArrayDeque<>(scores);
+            queue.offer(new Pair<>(score, distance));
 
             while (queue.size() > size) {
                 queue.poll();
             }
 
-            ListTag newTags = new ListTag();
-            newTags.addAll(queue);
-
-            stack.getOrCreateTag().put(Transcript.TAG_SCORES, newTags);
+            stack.set(ModDataComponents.TRANSCRIPT_SCORE, List.copyOf(queue));
         }
     }
 
@@ -508,21 +529,26 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
             this.damage *= mMultiple;
         }
 
-        if (entity instanceof LivingEntity living && living.getMobType() == MobType.UNDEAD) {
+        if (entity instanceof LivingEntity living && living.getType().is(EntityTypeTags.UNDEAD)) {
             this.damage *= this.undeadMultiple;
+        }
+
+        if (entity instanceof LivingEntity living && (living.getType().is(EntityTypeTags.ILLAGER) || living instanceof Vex || living instanceof Ravager || living instanceof Witch)) {
+            this.damage *= this.illagerMultiple;
+        }
+
+        if (entity instanceof LivingEntity living && riotLevel > 0 && !entity.level().isClientSide()) {
+            living.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SLOWDOWN, 20 + riotLevel * 10, (int) (riotLevel * 0.25), false, false), this.shooter);
+            living.addEffect(new MobEffectInstance(MobEffects.WEAKNESS, 20 + riotLevel * 10, (int) (riotLevel * 0.25), false, false), this.shooter);
         }
 
         if (entity instanceof LivingEntity living && jhpLevel > 0) {
             this.damage *= (1.0f + 0.12f * jhpLevel) * ((float) (10 / (living.getAttributeValue(Attributes.ARMOR) + 10)) + 0.25f);
         }
 
-        if (heLevel > 0) {
-            explosionBulletEntity(this, entity, this.damage, heLevel, mMultiple);
-        }
-
         if (fireLevel > 0) {
             if (!entity.level().isClientSide() && entity instanceof LivingEntity living) {
-                living.addEffect(new MobEffectInstance(ModMobEffects.BURN.get(), 60 + fireLevel * 20, fireLevel, false, false), this.shooter);
+                living.addEffect(new MobEffectInstance(ModMobEffects.BURN, 60 + fireLevel * 20, fireLevel, false, false), this.shooter);
             }
         }
 
@@ -530,15 +556,14 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
             if (!this.shooter.level().isClientSide() && this.shooter instanceof ServerPlayer player) {
                 var holder = Holder.direct(ModSounds.HEADSHOT.get());
                 player.connection.send(new ClientboundSoundPacket(holder, SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 1f, 1f, player.level().random.nextLong()));
-
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(1, 5));
+                PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(1, 5));
             }
             performOnHit(entity, this.damage, true, this.knockback);
         } else {
             if (!this.shooter.level().isClientSide() && this.shooter instanceof ServerPlayer player) {
                 var holder = Holder.direct(ModSounds.INDICATION.get());
                 player.connection.send(new ClientboundSoundPacket(holder, SoundSource.PLAYERS, player.getX(), player.getY(), player.getZ(), 1f, 1f, player.level().random.nextLong()));
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
             }
 
             if (legShot) {
@@ -582,24 +607,14 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         }
     }
 
-    protected void explosionBulletBlock(Entity projectile, float damage, int heLevel, float monsterMultiple, Vec3 hitVec) {
+    protected void explosionBullet(Entity projectile, float damage, int heLevel, float monsterMultiple, Vec3 hitVec) {
         CustomExplosion explosion = new CustomExplosion(projectile.level(), projectile,
                 ModDamageTypes.causeProjectileBoomDamage(projectile.level().registryAccess(), projectile, this.getShooter()), (float) ((0.9 * damage) * (1 + 0.1 * heLevel)),
                 hitVec.x, hitVec.y, hitVec.z, (float) ((1.5 + 0.02 * damage) * (1 + 0.05 * heLevel))).setDamageMultiplier(monsterMultiple).bulletExplode();
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(projectile.level(), explosion);
+        EventHooks.onExplosionStart(projectile.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnMiniExplosionParticles(this.level(), hitVec);
-    }
-
-    protected void explosionBulletEntity(Entity projectile, Entity target, float damage, int heLevel, float monsterMultiple) {
-        CustomExplosion explosion = new CustomExplosion(projectile.level(), projectile,
-                ModDamageTypes.causeProjectileBoomDamage(projectile.level().registryAccess(), projectile, this.getShooter()), (float) ((0.8 * damage) * (1 + 0.1 * heLevel)),
-                target.getX(), target.getY(), target.getZ(), (float) ((1.5 + 0.02 * damage) * (1 + 0.05 * heLevel))).setDamageMultiplier(monsterMultiple).bulletExplode();
-        explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(projectile.level(), explosion);
-        explosion.finalizeExplosion(false);
-        ParticleTool.spawnMiniExplosionParticles(target.level(), target.position());
     }
 
     public void setDamage(float damage) {
@@ -747,12 +762,13 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         }
     }
 
+
     @Override
-    public void writeSpawnData(FriendlyByteBuf buffer) {
+    public void readSpawnData(@NotNull RegistryFriendlyByteBuf additionalData) {
     }
 
     @Override
-    public void readSpawnData(FriendlyByteBuf additionalData) {
+    public void writeSpawnData(@NotNull RegistryFriendlyByteBuf buffer) {
     }
 
     public static class EntityResult {
@@ -845,6 +861,11 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
         return this;
     }
 
+    public ProjectileEntity riotBullet(int riotLevel) {
+        this.riotLevel = riotLevel;
+        return this;
+    }
+
     public ProjectileEntity jhpBullet(int jhpLevel) {
         this.jhpLevel = jhpLevel;
         return this;
@@ -873,6 +894,11 @@ public class ProjectileEntity extends Projectile implements IEntityAdditionalSpa
 
     public ProjectileEntity undeadMultiple(float undeadMultiple) {
         this.undeadMultiple = undeadMultiple;
+        return this;
+    }
+
+    public ProjectileEntity illagerMultiple(float illagerMultiple) {
+        this.illagerMultiple = illagerMultiple;
         return this;
     }
 

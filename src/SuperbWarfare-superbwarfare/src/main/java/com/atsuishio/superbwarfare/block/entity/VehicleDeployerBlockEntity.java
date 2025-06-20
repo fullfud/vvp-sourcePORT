@@ -3,15 +3,16 @@ package com.atsuishio.superbwarfare.block.entity;
 import com.atsuishio.superbwarfare.block.VehicleDeployerBlock;
 import com.atsuishio.superbwarfare.init.ModBlockEntities;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.HolderLookup;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.UUID;
 
 public class VehicleDeployerBlockEntity extends BlockEntity {
@@ -23,8 +24,9 @@ public class VehicleDeployerBlockEntity extends BlockEntity {
     }
 
     @Override
-    protected void saveAdditional(@NotNull CompoundTag tag) {
-        super.saveAdditional(tag);
+    @ParametersAreNonnullByDefault
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
 
         if (this.entityData.contains("EntityType")) {
             tag.putString("EntityType", this.entityData.getString("EntityType"));
@@ -35,8 +37,9 @@ public class VehicleDeployerBlockEntity extends BlockEntity {
     }
 
     @Override
-    public void load(@NotNull CompoundTag tag) {
-        super.load(tag);
+    @ParametersAreNonnullByDefault
+    protected void loadAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.loadAdditional(tag, registries);
 
         this.entityData = tag.copy();
     }
@@ -67,9 +70,9 @@ public class VehicleDeployerBlockEntity extends BlockEntity {
     }
 
     public void writeEntityInfo(ItemStack stack) {
-        var tag = BlockItem.getBlockEntityData(stack);
+        var tag = stack.get(DataComponents.BLOCK_ENTITY_DATA);
         if (tag == null) return;
 
-        this.entityData = tag.copy();
+        this.entityData = tag.copyTag();
     }
 }

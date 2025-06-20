@@ -55,11 +55,15 @@
 					"pivot": [0, 0, 0]
 				},
 				{
-					"name": "cross",
-					"parent": "0",
-					"pivot": [0, 3.92156, -298.5]
-				},
-				{
+                  "name": "cross",
+                  "parent": "0",
+                  "pivot": [
+                    0,
+                    3.92156,
+                    -298.5
+                  ]
+                },
+              {
 					"name": "Barrel",
 					"parent": "0",
 					"pivot": [0, 0, 0]

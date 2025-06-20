@@ -1,5 +1,6 @@
 package com.atsuishio.superbwarfare.item;
 
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import net.minecraft.ChatFormatting;
 import net.minecraft.core.BlockPos;
 import net.minecraft.network.chat.Component;
@@ -13,12 +14,14 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.context.UseOnContext;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
 public class FiringParameters extends Item {
+
+    public record Parameters(BlockPos pos, boolean isDepressed) {
+    }
 
     public FiringParameters() {
         super(new Properties().stacksTo(1));
@@ -26,18 +29,17 @@ public class FiringParameters extends Item {
 
     @Override
     public @NotNull InteractionResult useOn(UseOnContext pContext) {
-        ItemStack stack = pContext.getItemInHand();
-        BlockPos pos = pContext.getClickedPos();
-        pos = pos.relative(pContext.getClickedFace());
         Player player = pContext.getPlayer();
         if (player == null) return InteractionResult.PASS;
 
-        if (player.isShiftKeyDown()) {
-            stack.getOrCreateTag().putDouble("TargetX", pos.getX());
-            stack.getOrCreateTag().putDouble("TargetY", pos.getY());
-            stack.getOrCreateTag().putDouble("TargetZ", pos.getZ());
-        }
+        ItemStack stack = pContext.getItemInHand();
+        BlockPos pos = pContext.getClickedPos();
+        pos = pos.relative(pContext.getClickedFace());
 
+        var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+        var isDepressed = parameters != null && parameters.isDepressed();
+
+        stack.set(ModDataComponents.FIRING_PARAMETERS, new Parameters(pos, isDepressed));
         return InteractionResult.SUCCESS;
     }
 
@@ -47,10 +49,11 @@ public class FiringParameters extends Item {
         if (!player.isCrouching()) return InteractionResultHolder.pass(player.getItemInHand(usedHand));
 
         var stack = player.getItemInHand(usedHand);
-        var isDepressed = !stack.getOrCreateTag().getBoolean("IsDepressed");
+        var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+        if (parameters == null) return InteractionResultHolder.fail(stack);
 
-        stack.getOrCreateTag().putBoolean("IsDepressed", isDepressed);
-
+        var isDepressed = !parameters.isDepressed();
+        stack.set(ModDataComponents.FIRING_PARAMETERS, new Parameters(parameters.pos(), isDepressed));
         player.displayClientMessage(Component.translatable(
                 isDepressed
                         ? "tips.superbwarfare.mortar.target_pos.depressed_trajectory"
@@ -61,15 +64,22 @@ public class FiringParameters extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
-        pTooltipComponents.add(Component.translatable("tips.superbwarfare.mortar.target_pos").withStyle(ChatFormatting.GRAY)
-                .append(Component.literal("[" + pStack.getOrCreateTag().getInt("TargetX")
-                        + "," + pStack.getOrCreateTag().getInt("TargetY")
-                        + "," + pStack.getOrCreateTag().getInt("TargetZ") + "]")));
+    public void appendHoverText(ItemStack stack, @NotNull TooltipContext context, @NotNull List<Component> tooltipComponents, @NotNull TooltipFlag tooltipFlag) {
+        var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+        if (parameters == null) return;
 
+        var pos = parameters.pos();
+        tooltipComponents.add(Component.translatable("tips.superbwarfare.mortar.target_pos")
+                .withStyle(ChatFormatting.GRAY)
+                .append(Component.literal("["
+                        + pos.getX() + ","
+                        + pos.getY() + ","
+                        + pos.getZ() + "]")
+                )
+        );
 
-        pTooltipComponents.add(Component.translatable(
-                pStack.getOrCreateTag().getBoolean("IsDepressed")
+        tooltipComponents.add(Component.translatable(
+                parameters.isDepressed
                         ? "tips.superbwarfare.mortar.target_pos.depressed_trajectory"
                         : "tips.superbwarfare.mortar.target_pos.lofted_trajectory"
         ).withStyle(ChatFormatting.GRAY));

@@ -8,6 +8,7 @@ import com.atsuishio.superbwarfare.network.dataslot.ContainerEnergyData;
 import com.atsuishio.superbwarfare.tools.SeekTool;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
+import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ClientboundBlockEntityDataPacket;
@@ -25,20 +26,19 @@ import net.minecraft.world.inventory.ContainerLevelAccess;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.entity.BlockEntity;
 import net.minecraft.world.level.block.state.BlockState;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.energy.EnergyStorage;
+import net.neoforged.neoforge.energy.EnergyStorage;
+import net.neoforged.neoforge.energy.IEnergyStorage;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import software.bernie.geckolib.animatable.GeoBlockEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.network.SerializableDataTicket;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
+import software.bernie.geckolib.constant.dataticket.SerializableDataTicket;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
+
 
 public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoBlockEntity {
 
@@ -60,7 +60,7 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
 
     public static final int MAX_DATA_COUNT = 5;
 
-    private LazyOptional<EnergyStorage> energyHandler;
+    private final IEnergyStorage energyStorage;
 
     public FuncType type = FuncType.NORMAL;
     public int time = 0;
@@ -69,11 +69,10 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
     public float yRot0 = 0;
 
     protected final ContainerEnergyData dataAccess = new ContainerEnergyData() {
-
         @Override
-        public long get(int pIndex) {
+        public int get(int pIndex) {
             return switch (pIndex) {
-                case 0 -> FuMO25BlockEntity.this.energyHandler.map(EnergyStorage::getEnergyStored).orElse(0);
+                case 0 -> FuMO25BlockEntity.this.energyStorage.getEnergyStored();
                 case 1 -> FuMO25BlockEntity.this.type.ordinal();
                 case 2 -> FuMO25BlockEntity.this.time;
                 case 3 -> FuMO25BlockEntity.this.powered ? 1 : 0;
@@ -83,14 +82,13 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
         }
 
         @Override
-        public void set(int pIndex, long pValue) {
+        public void set(int pIndex, int pValue) {
             switch (pIndex) {
-                case 0 ->
-                        FuMO25BlockEntity.this.energyHandler.ifPresent(handler -> handler.receiveEnergy((int) pValue, false));
-                case 1 -> FuMO25BlockEntity.this.type = FuncType.values()[(int) pValue];
-                case 2 -> FuMO25BlockEntity.this.time = (int) pValue;
+                case 0 -> FuMO25BlockEntity.this.energyStorage.receiveEnergy(pValue, false);
+                case 1 -> FuMO25BlockEntity.this.type = FuncType.values()[pValue];
+                case 2 -> FuMO25BlockEntity.this.time = pValue;
                 case 3 -> FuMO25BlockEntity.this.powered = pValue == 1;
-                case 4 -> FuMO25BlockEntity.this.tick = (int) pValue;
+                case 4 -> FuMO25BlockEntity.this.tick = pValue;
             }
         }
 
@@ -102,16 +100,22 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
 
     public FuMO25BlockEntity(BlockPos pPos, BlockState pBlockState) {
         super(ModBlockEntities.FUMO_25.get(), pPos, pBlockState);
-        this.energyHandler = LazyOptional.of(() -> new EnergyStorage(MAX_ENERGY));
+        this.energyStorage = new EnergyStorage(MAX_ENERGY);
+    }
+
+    public IEnergyStorage getEnergyStorage(@Nullable Direction direction) {
+        return this.energyStorage;
     }
 
     public static void serverTick(Level pLevel, BlockPos pPos, BlockState pState, FuMO25BlockEntity blockEntity) {
-        int energy = blockEntity.energyHandler.map(EnergyStorage::getEnergyStored).orElse(0);
-
         if (pState.getValue(FuMO25Block.POWERED)) {
             blockEntity.tick++;
             blockEntity.setAnimData(FUMO25_TICK, blockEntity.tick);
         }
+
+        var energyStorage = blockEntity.getEnergyStorage(null);
+        var energy = energyStorage.getEnergyStored();
+        blockEntity.tick++;
 
         FuncType funcType = blockEntity.type;
         int energyCost;
@@ -141,7 +145,7 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
                     setChanged(pLevel, pPos, pState);
                 }
             } else {
-                blockEntity.energyHandler.ifPresent(handler -> handler.extractEnergy(energyCost, false));
+                energyStorage.extractEnergy(energyCost, false);
                 if (blockEntity.tick == 200) {
                     pLevel.playSound(null, pPos, ModSounds.RADAR_SEARCH_IDLE.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
                 }
@@ -181,25 +185,27 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
     }
 
     @Override
-    public void load(@NotNull CompoundTag pTag) {
-        super.load(pTag);
+    protected void loadAdditional(@NotNull CompoundTag tag, HolderLookup.@NotNull Provider registries) {
+        super.loadAdditional(tag, registries);
 
-        if (pTag.contains("Energy")) {
-            getCapability(ForgeCapabilities.ENERGY).ifPresent(handler -> ((EnergyStorage) handler).deserializeNBT(pTag.get("Energy")));
+        var energyTag = tag.get("Energy");
+        if (energyTag != null) {
+            ((EnergyStorage) energyStorage).deserializeNBT(registries, energyTag);
         }
-        this.type = FuncType.values()[Mth.clamp(pTag.getInt("Type"), 0, 3)];
-        this.time = pTag.getInt("Time");
-        this.powered = pTag.getBoolean("Powered");
+        this.type = FuncType.values()[Mth.clamp(tag.getInt("Type"), 0, 3)];
+        this.time = tag.getInt("Time");
+        this.powered = tag.getBoolean("Powered");
     }
 
     @Override
-    protected void saveAdditional(@NotNull CompoundTag pTag) {
-        super.saveAdditional(pTag);
+    @ParametersAreNonnullByDefault
+    protected void saveAdditional(CompoundTag tag, HolderLookup.Provider registries) {
+        super.saveAdditional(tag, registries);
 
-        getCapability(ForgeCapabilities.ENERGY).ifPresent(handler -> pTag.put("Energy", ((EnergyStorage) handler).serializeNBT()));
-        pTag.putInt("Type", this.type.ordinal());
-        pTag.putInt("Time", this.time);
-        pTag.putBoolean("Powered", this.powered);
+        tag.put("Energy", ((EnergyStorage) energyStorage).serializeNBT(registries));
+        tag.putInt("Type", this.type.ordinal());
+        tag.putInt("Time", this.time);
+        tag.putBoolean("Powered", this.powered);
     }
 
     @Override
@@ -209,8 +215,7 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
 
     @Nullable
     @Override
-    @ParametersAreNonnullByDefault
-    public AbstractContainerMenu createMenu(int pContainerId, Inventory pPlayerInventory, Player pPlayer) {
+    public AbstractContainerMenu createMenu(int pContainerId, @NotNull Inventory pPlayerInventory, @NotNull Player pPlayer) {
         if (this.level == null) return null;
         return new FuMO25Menu(pContainerId, pPlayerInventory, ContainerLevelAccess.create(this.level, this.getBlockPos()), this.dataAccess);
     }
@@ -222,26 +227,6 @@ public class FuMO25BlockEntity extends BlockEntity implements MenuProvider, GeoB
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar data) {
-    }
-
-    @Override
-    public <T> @NotNull LazyOptional<T> getCapability(@NotNull Capability<T> cap, Direction side) {
-        if (cap == ForgeCapabilities.ENERGY) {
-            return energyHandler.cast();
-        }
-        return super.getCapability(cap, side);
-    }
-
-    @Override
-    public void invalidateCaps() {
-        super.invalidateCaps();
-        this.energyHandler.invalidate();
-    }
-
-    @Override
-    public void reviveCaps() {
-        super.reviveCaps();
-        this.energyHandler = LazyOptional.of(() -> new EnergyStorage(MAX_ENERGY));
     }
 
     @Override

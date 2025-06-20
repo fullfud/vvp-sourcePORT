@@ -12,8 +12,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class VectorItemModel extends CustomGunModel<VectorItem> {
 
@@ -53,11 +53,11 @@ public class VectorItemModel extends CustomGunModel<VectorItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone scope = getAnimationProcessor().getBone("Scope1");
-        CoreGeoBone kmj = getAnimationProcessor().getBone("kuaimanji");
-        CoreGeoBone sight1fold = getAnimationProcessor().getBone("SightFold1");
-        CoreGeoBone sight2fold = getAnimationProcessor().getBone("SightFold2");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone scope = getAnimationProcessor().getBone("Scope1");
+        GeoBone kmj = getAnimationProcessor().getBone("kuaimanji");
+        GeoBone sight1fold = getAnimationProcessor().getBone("SightFold1");
+        GeoBone sight2fold = getAnimationProcessor().getBone("SightFold2");
 
         var data = GunData.from(stack);
 
@@ -67,7 +67,7 @@ public class VectorItemModel extends CustomGunModel<VectorItem> {
             case AUTO -> kmj.setRotX(0);
         }
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -90,7 +90,7 @@ public class VectorItemModel extends CustomGunModel<VectorItem> {
         gun.setScaleZ(1f - (0.5f * (float) zp));
         scope.setScaleZ(1f - (0.2f * (float) zp));
 
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -127,8 +127,8 @@ public class VectorItemModel extends CustomGunModel<VectorItem> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.92 * zt);
         float numP = (float) (1 - 0.88 * zt);

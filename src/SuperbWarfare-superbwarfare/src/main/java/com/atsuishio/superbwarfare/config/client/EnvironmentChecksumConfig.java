@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class EnvironmentChecksumConfig {
 
-    public static ForgeConfigSpec.ConfigValue<String> ENVIRONMENT_CHECKSUM;
+    public static ModConfigSpec.ConfigValue<String> ENVIRONMENT_CHECKSUM;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("checksum");
 
         builder.comment("System environment checksum, do not edit");

@@ -13,7 +13,6 @@ import software.bernie.geckolib.renderer.GeoRenderer;
 import software.bernie.geckolib.renderer.layer.GeoRenderLayer;
 
 public class DPSGeneratorLayer extends GeoRenderLayer<DPSGeneratorEntity> {
-
     private static final ResourceLocation LAYER = Mod.loc("textures/entity/dps_generator_e.png");
 
     public DPSGeneratorLayer(GeoRenderer<DPSGeneratorEntity> entityRenderer) {
@@ -23,6 +22,6 @@ public class DPSGeneratorLayer extends GeoRenderLayer<DPSGeneratorEntity> {
     @Override
     public void render(PoseStack poseStack, DPSGeneratorEntity animatable, BakedGeoModel bakedModel, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, float partialTick, int packedLight, int packedOverlay) {
         RenderType glowRenderType = RenderType.eyes(LAYER);
-        getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 1, 1, 1, 1);
+        getRenderer().reRender(getDefaultBakedModel(animatable), poseStack, bufferSource, animatable, glowRenderType, bufferSource.getBuffer(glowRenderType), partialTick, packedLight, OverlayTexture.NO_OVERLAY, 0xFFFFFFFF);
     }
 }

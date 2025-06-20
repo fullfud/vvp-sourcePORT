@@ -3,18 +3,19 @@ package com.atsuishio.superbwarfare.datagen;
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModBlocks;
 import com.atsuishio.superbwarfare.init.ModItems;
+import com.atsuishio.superbwarfare.item.common.BlueprintItem;
 import net.minecraft.client.renderer.block.model.BlockModel;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.data.PackOutput;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.level.block.Block;
-import net.minecraftforge.client.model.generators.ItemModelBuilder;
-import net.minecraftforge.client.model.generators.ItemModelProvider;
-import net.minecraftforge.client.model.generators.ModelFile;
-import net.minecraftforge.common.data.ExistingFileHelper;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.client.model.generators.ItemModelBuilder;
+import net.neoforged.neoforge.client.model.generators.ItemModelProvider;
+import net.neoforged.neoforge.client.model.generators.ModelFile;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 @SuppressWarnings({"ConstantConditions", "UnusedReturnValue", "SameParameterValue", "unused"})
 public class ModItemModelProvider extends ItemModelProvider {
@@ -113,9 +114,9 @@ public class ModItemModelProvider extends ItemModelProvider {
         simpleItem(ModItems.TRANSCRIPT);
         simpleItem(ModItems.RAW_SILVER);
         simpleItem(ModItems.SILVER_INGOT);
-        handheldItem(ModItems.BEAST);
-        handheldItem(ModItems.CROWBAR);
-        handheldItem(ModItems.DEFUSER);
+        handheldItem(ModItems.BEAST.getId());
+        handheldItem(ModItems.CROWBAR.getId());
+        handheldItem(ModItems.DEFUSER.getId());
         simpleItem(ModItems.FIRING_PARAMETERS);
         simpleItem(ModItems.BEAM_TEST);
         simpleItem(ModItems.HANDGUN_AMMO);
@@ -134,22 +135,11 @@ public class ModItemModelProvider extends ItemModelProvider {
         simpleItem(ModItems.LARGE_BATTERY_PACK);
 
         simpleItem(ModItems.TUNGSTEN_ROD);
-        simpleItem(ModItems.IRON_BARREL);
-        simpleItem(ModItems.IRON_ACTION);
-        simpleItem(ModItems.IRON_TRIGGER);
-        simpleItem(ModItems.IRON_SPRING);
-        simpleItem(ModItems.STEEL_BARREL);
-        simpleItem(ModItems.STEEL_ACTION);
-        simpleItem(ModItems.STEEL_TRIGGER);
-        simpleItem(ModItems.STEEL_SPRING);
-        simpleItem(ModItems.CEMENTED_CARBIDE_BARREL);
-        simpleItem(ModItems.CEMENTED_CARBIDE_ACTION);
-        simpleItem(ModItems.CEMENTED_CARBIDE_TRIGGER);
-        simpleItem(ModItems.CEMENTED_CARBIDE_SPRING);
-        simpleItem(ModItems.NETHERITE_BARREL);
-        simpleItem(ModItems.NETHERITE_ACTION);
-        simpleItem(ModItems.NETHERITE_TRIGGER);
-        simpleItem(ModItems.NETHERITE_SPRING);
+
+        simpleMaterials(ModItems.IRON_MATERIALS);
+        simpleMaterials(ModItems.STEEL_MATERIALS);
+        simpleMaterials(ModItems.CEMENTED_CARBIDE_MATERIALS);
+        simpleMaterials(ModItems.NETHERITE_MATERIALS);
 
         simpleItem(ModItems.COMMON_MATERIAL_PACK);
         simpleItem(ModItems.RARE_MATERIAL_PACK);
@@ -216,52 +206,59 @@ public class ModItemModelProvider extends ItemModelProvider {
         evenSimplerBlockItem(ModBlocks.AIRCRAFT_CATAPULT);
     }
 
-    private ItemModelBuilder simpleItem(RegistryObject<Item> item) {
+    private void simpleMaterials(ModItems.Materials materials) {
+        simpleItem(materials.action());
+        simpleItem(materials.barrel());
+        simpleItem(materials.trigger());
+        simpleItem(materials.spring());
+    }
+
+    private ItemModelBuilder simpleItem(DeferredHolder<Item, ? extends Item> item) {
         return simpleItem(item, "");
     }
 
-    private ItemModelBuilder simpleItem(RegistryObject<Item> item, String location) {
-        return withExistingParent(item.getId().getPath(), new ResourceLocation("item/generated"))
+    private ItemModelBuilder simpleItem(DeferredHolder<Item, ? extends Item> item, String location) {
+        return withExistingParent(item.getId().getPath(), ResourceLocation.withDefaultNamespace("item/generated"))
                 .texture("layer0", Mod.loc("item/" + location + item.getId().getPath()));
     }
 
-    private ItemModelBuilder simpleItem(RegistryObject<Item> item, String location, String renderType) {
-        return withExistingParent(item.getId().getPath(), new ResourceLocation("item/generated"))
+    private ItemModelBuilder simpleItem(DeferredHolder<Item, ? extends Item> item, String location, String renderType) {
+        return withExistingParent(item.getId().getPath(), ResourceLocation.withDefaultNamespace("item/generated"))
                 .texture("layer0", Mod.loc("item/" + location + item.getId().getPath())).renderType(renderType);
     }
 
-    public void evenSimplerBlockItem(RegistryObject<Block> block) {
-        this.withExistingParent(Mod.MODID + ":" + ForgeRegistries.BLOCKS.getKey(block.get()).getPath(),
-                modLoc("block/" + ForgeRegistries.BLOCKS.getKey(block.get()).getPath()));
+    public <T extends Block> void evenSimplerBlockItem(DeferredHolder<Block, T> block) {
+        this.withExistingParent(Mod.MODID + ":" + BuiltInRegistries.BLOCK.getKey(block.get()).getPath(),
+                modLoc("block/" + BuiltInRegistries.BLOCK.getKey(block.get()).getPath()));
     }
 
-    private ItemModelBuilder gunBlueprintItem(RegistryObject<Item> item) {
-        return withExistingParent(item.getId().getPath(), new ResourceLocation("item/generated"))
+    private ItemModelBuilder gunBlueprintItem(DeferredHolder<Item, BlueprintItem> item) {
+        return withExistingParent(item.getId().getPath(), ResourceLocation.withDefaultNamespace("item/generated"))
                 .texture("layer0", Mod.loc("item/gun_blueprint"));
     }
 
-    private ItemModelBuilder cannonBlueprintItem(RegistryObject<Item> item) {
-        return withExistingParent(item.getId().getPath(), new ResourceLocation("item/generated"))
+    private ItemModelBuilder cannonBlueprintItem(DeferredHolder<Item, BlueprintItem> item) {
+        return withExistingParent(item.getId().getPath(), ResourceLocation.withDefaultNamespace("item/generated"))
                 .texture("layer0", Mod.loc("item/cannon_blueprint"));
     }
 
-    private ItemModelBuilder handheldItem(RegistryObject<Item> item) {
-        return withExistingParent(item.getId().getPath(), new ResourceLocation("item/handheld"))
+    private ItemModelBuilder handheldItem(DeferredHolder<Item, Item> item) {
+        return withExistingParent(item.getId().getPath(), ResourceLocation.withDefaultNamespace("item/handheld"))
                 .texture("layer0", Mod.loc("item/" + item.getId().getPath()));
     }
 
-    private ItemModelBuilder gunIcon(RegistryObject<Item> item, String name) {
-        return withExistingParent(item.getId().getPath() + "_icon", new ResourceLocation("item/generated"))
+    private ItemModelBuilder gunIcon(DeferredHolder<Item, ? extends Item> item, String name) {
+        return withExistingParent(item.getId().getPath() + "_icon", ResourceLocation.withDefaultNamespace("item/generated"))
                 .texture("layer0", Mod.loc("item/" + name + "_icon"));
     }
 
-    private ItemModelBuilder gunBase(RegistryObject<Item> item, String name) {
+    private ItemModelBuilder gunBase(DeferredHolder<Item, ? extends Item> item, String name) {
         return getBuilder(item.getId().getPath() + "_base")
                 .parent(new ModelFile.UncheckedModelFile(modLoc("displaysettings/" + name + ".item")))
                 .texture("layer0", Mod.loc("item/" + name));
     }
 
-    private ItemModelBuilder customSeparatedGunModel(RegistryObject<Item> item, String name) {
+    private ItemModelBuilder customSeparatedGunModel(DeferredHolder<Item, ? extends Item> item, String name) {
         String lod = modLoc("lod/" + name).toString();
         String base = modLoc("item/" + name + "_base").toString();
         String icon = modLoc("item/" + name + "_icon").toString();
@@ -279,11 +276,11 @@ public class ModItemModelProvider extends ItemModelProvider {
                 .end();
     }
 
-    public void gunItem(RegistryObject<Item> item) {
+    public void gunItem(DeferredHolder<Item, ? extends Item> item) {
         this.gunItem(item, item.getId().getPath());
     }
 
-    public void gunItem(RegistryObject<Item> item, String name) {
+    public void gunItem(DeferredHolder<Item, ? extends Item> item, String name) {
         this.gunIcon(item, name);
         this.gunBase(item, name);
         this.customSeparatedGunModel(item, name);

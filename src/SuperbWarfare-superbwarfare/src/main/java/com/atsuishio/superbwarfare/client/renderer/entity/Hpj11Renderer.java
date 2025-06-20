@@ -19,6 +19,8 @@ import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoEntityRenderer;
 
+import javax.annotation.ParametersAreNonnullByDefault;
+
 import static com.atsuishio.superbwarfare.entity.vehicle.Hpj11Entity.ANIM_TIME;
 
 public class Hpj11Renderer extends GeoEntityRenderer<Hpj11Entity> {
@@ -36,21 +38,21 @@ public class Hpj11Renderer extends GeoEntityRenderer<Hpj11Entity> {
     }
 
     @Override
-    public void preRender(PoseStack poseStack, Hpj11Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green,
-                          float blue, float alpha) {
+    public void preRender(PoseStack poseStack, Hpj11Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         float scale = 1f;
         this.scaleHeight = scale;
         this.scaleWidth = scale;
-        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void render(Hpj11Entity entityIn, float entityYaw, float partialTicks, PoseStack poseStack, MultiBufferSource bufferIn, int packedLightIn) {
         super.render(entityIn, entityYaw, partialTicks, poseStack, bufferIn, packedLightIn);
     }
 
     @Override
-    public void renderRecursively(PoseStack poseStack, Hpj11Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack poseStack, Hpj11Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         String name = bone.getName();
 
         if (name.equals("root")) {
@@ -82,6 +84,6 @@ public class Hpj11Renderer extends GeoEntityRenderer<Hpj11Entity> {
             bone.setRotZ((float) (0.5 * (Math.random() - 0.5)));
         }
 
-        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 }

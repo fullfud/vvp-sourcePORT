@@ -5,17 +5,20 @@ import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.Button;
+import net.minecraft.client.gui.layouts.Layout;
+import net.minecraft.client.gui.layouts.LinearLayout;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.multiplayer.JoinMultiplayerScreen;
 import net.minecraft.client.gui.screens.multiplayer.WarningScreen;
 import net.minecraft.network.chat.CommonComponents;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.event.ScreenEvent;
-import net.minecraftforge.eventbus.api.EventPriority;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.EventPriority;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.ScreenEvent;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.InetAddress;
 import java.security.MessageDigest;
@@ -23,7 +26,7 @@ import java.util.HexFormat;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
-@Mod.EventBusSubscriber(value = Dist.CLIENT)
+@EventBusSubscriber(value = Dist.CLIENT)
 public class ModSellWarningScreen extends WarningScreen {
 
     private static final String ENVIRONMENT_CHECKSUM = generateEnvironmentHash();
@@ -74,18 +77,6 @@ public class ModSellWarningScreen extends WarningScreen {
         this.lastScreen = lastScreen;
     }
 
-    @Override
-    protected void initButtons(int pYOffset) {
-        AbstractButton proceedButton = this.createProceedButton(pYOffset);
-        this.addRenderableWidget(proceedButton);
-
-        this.addRenderableWidget(
-                Button.builder(CommonComponents.GUI_BACK, button -> Minecraft.getInstance().setScreen(this.lastScreen))
-                        .bounds(this.width / 2 - 155 + 160, 100 + pYOffset, 150, 20)
-                        .build()
-        );
-    }
-
     private AbstractButton createProceedButton(int pYOffset) {
         return Button.builder(CommonComponents.GUI_PROCEED, button -> {
             if (this.stopShowing != null && this.stopShowing.selected()) {
@@ -106,5 +97,20 @@ public class ModSellWarningScreen extends WarningScreen {
         // 拦截多人游戏界面加载
         event.setCanceled(true);
         Minecraft.getInstance().setScreen(new ModSellWarningScreen(event.getCurrentScreen()));
+    }
+
+    @Override
+    protected @NotNull Layout addFooterButtons() {
+        LinearLayout linearlayout = LinearLayout.horizontal().spacing(8);
+        linearlayout.addChild(Button.builder(CommonComponents.GUI_PROCEED, p_280872_ -> {
+            if (this.stopShowing != null && this.stopShowing.selected()) {
+                EnvironmentChecksumConfig.ENVIRONMENT_CHECKSUM.set(ENVIRONMENT_CHECKSUM);
+                EnvironmentChecksumConfig.ENVIRONMENT_CHECKSUM.save();
+            }
+
+            Minecraft.getInstance().setScreen(new JoinMultiplayerScreen(this.lastScreen));
+        }).build());
+        linearlayout.addChild(Button.builder(CommonComponents.GUI_BACK, p_329731_ -> this.onClose()).build());
+        return linearlayout;
     }
 }

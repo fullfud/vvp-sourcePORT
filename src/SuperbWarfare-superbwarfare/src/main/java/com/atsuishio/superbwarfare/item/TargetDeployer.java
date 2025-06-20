@@ -24,13 +24,12 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Objects;
 import java.util.function.Predicate;
 
 public class TargetDeployer extends Item {
     public TargetDeployer() {
-        super(new Item.Properties());
+        super(new Properties());
     }
 
 
@@ -56,7 +55,7 @@ public class TargetDeployer extends Item {
             // 禁止堆叠
             if (!level.getEntities(
                     (Entity) null,
-                    ModEntities.TARGET.get().getAABB(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5),
+                    ModEntities.TARGET.get().getSpawnAABB(pos.getX() + 0.5, pos.getY() + 0.5, pos.getZ() + 0.5),
                     IS_TARGET
             ).isEmpty()) {
                 return InteractionResult.FAIL;
@@ -72,8 +71,7 @@ public class TargetDeployer extends Item {
     }
 
     @Override
-    @ParametersAreNonnullByDefault
-    public @NotNull InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pHand) {
+    public @NotNull InteractionResultHolder<ItemStack> use(@NotNull Level pLevel, Player pPlayer, @NotNull InteractionHand pHand) {
         ItemStack itemstack = pPlayer.getItemInHand(pHand);
         BlockHitResult blockhitresult = getPlayerPOVHitResult(pLevel, pPlayer, ClipContext.Fluid.SOURCE_ONLY);
         if (blockhitresult.getType() != HitResult.Type.BLOCK) {
@@ -88,7 +86,7 @@ public class TargetDeployer extends Item {
                 // 禁止堆叠
                 if (!pLevel.getEntities(
                         (Entity) null,
-                        ModEntities.TARGET.get().getAABB(blockpos.getX() + 0.5, blockpos.getY() + 0.5, blockpos.getZ() + 0.5),
+                        ModEntities.TARGET.get().getSpawnAABB(blockpos.getX() + 0.5, blockpos.getY() + 0.5, blockpos.getZ() + 0.5),
                         IS_TARGET
                 ).isEmpty()) {
                     return InteractionResultHolder.fail(itemstack);

@@ -8,7 +8,6 @@ import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.renderer.culling.Frustum;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.FastColor;
 import net.minecraft.world.phys.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -16,30 +15,233 @@ import org.joml.Vector3f;
 import javax.annotation.Nullable;
 
 public class RenderHelper {
+    // code from GuiGraphics
 
-    public static void preciseBlit(GuiGraphics gui, ResourceLocation pAtlasLocation, float pX, float pY, float pUOffset, float pVOffset, float pWidth, float pHeight, float pTextureWidth, float pTextureHeight) {
-        preciseBlit(gui, pAtlasLocation, pX, pY, 0, pUOffset, pVOffset, pWidth, pHeight, pTextureWidth, pTextureHeight);
+    /**
+     * Blits a portion of the texture specified by the atlas location onto the screen at the given coordinates.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x             the x-coordinate of the blit position.
+     * @param y             the y-coordinate of the blit position.
+     * @param uOffset       the horizontal texture coordinate offset.
+     * @param vOffset       the vertical texture coordinate offset.
+     * @param uWidth        the width of the blitted portion in texture coordinates.
+     * @param vHeight       the height of the blitted portion in texture coordinates.
+     */
+    public static void preciseBlit(GuiGraphics gui, ResourceLocation atlasLocation, float x, float y, float uOffset, float vOffset, float uWidth, float vHeight) {
+        preciseBlit(gui, atlasLocation, x, y, 0, uOffset, vOffset, uWidth, vHeight, 256, 256);
     }
 
-    public static void preciseBlit(GuiGraphics gui, ResourceLocation pAtlasLocation, float pX, float pY, float pBlitOffset, float pUOffset, float pVOffset, float pWidth, float pHeight, float pTextureWidth, float pTextureHeight) {
-        float pX2 = pX + pWidth;
-        float pY2 = pY + pHeight;
+    /**
+     * Blits a portion of the texture specified by the atlas location onto the screen at the given coordinates with a blit offset and texture coordinates.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x             the x-coordinate of the blit position.
+     * @param y             the y-coordinate of the blit position.
+     * @param blitOffset    the z-level offset for rendering order.
+     * @param uOffset       the horizontal texture coordinate offset.
+     * @param vOffset       the vertical texture coordinate offset.
+     * @param uWidth        the width of the blitted portion in texture coordinates.
+     * @param vHeight       the height of the blitted portion in texture coordinates.
+     * @param textureWidth  the width of the texture.
+     * @param textureHeight the height of the texture.
+     */
+    public static void preciseBlit(
+            GuiGraphics gui, ResourceLocation atlasLocation,
+            float x, float y,
+            float blitOffset,
+            float uOffset, float vOffset,
+            float uWidth, float vHeight,
+            float textureWidth, float textureHeight
+    ) {
+        preciseBlit(
+                gui, atlasLocation,
+                x, x + uWidth,
+                y, y + vHeight,
+                blitOffset,
+                uWidth, vHeight,
+                uOffset, vOffset,
+                textureWidth, textureHeight
+        );
+    }
 
-        float pMinU = pUOffset / pTextureWidth;
-        float pMaxU = (pUOffset + pWidth) / pTextureWidth;
-        float pMinV = pVOffset / pTextureHeight;
-        float pMaxV = (pVOffset + pHeight) / pTextureHeight;
+    /**
+     * Blits a portion of the texture specified by the atlas location onto the screen at the given position and dimensions with texture coordinates.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x             the x-coordinate of the top-left corner of the blit
+     *                      position.
+     * @param y             the y-coordinate of the top-left corner of the blit
+     *                      position.
+     * @param width         the width of the blitted portion.
+     * @param height        the height of the blitted portion.
+     * @param uOffset       the horizontal texture coordinate offset.
+     * @param vOffset       the vertical texture coordinate offset.
+     * @param uWidth        the width of the blitted portion in texture coordinates.
+     * @param vHeight       the height of the blitted portion in texture coordinates.
+     * @param textureWidth  the width of the texture.
+     * @param textureHeight the height of the texture.
+     */
+    public static void preciseBlit(
+            GuiGraphics gui, ResourceLocation atlasLocation,
+            float x, float y,
+            float width, float height,
+            float uOffset, float vOffset,
+            float uWidth, float vHeight,
+            float textureWidth, float textureHeight
+    ) {
+        preciseBlit(
+                gui, atlasLocation, x, x + width, y, y + height, 0, uWidth, vHeight, uOffset, vOffset, textureWidth, textureHeight
+        );
+    }
 
-        RenderSystem.setShaderTexture(0, pAtlasLocation);
+    /**
+     * Blits a portion of the texture specified by the atlas location onto the screen at the given position and dimensions with texture coordinates.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x             the x-coordinate of the top-left corner of the blit
+     *                      position.
+     * @param y             the y-coordinate of the top-left corner of the blit
+     *                      position.
+     * @param uOffset       the horizontal texture coordinate offset.
+     * @param vOffset       the vertical texture coordinate offset.
+     * @param width         the width of the blitted portion.
+     * @param height        the height of the blitted portion.
+     * @param textureWidth  the width of the texture.
+     * @param textureHeight the height of the texture.
+     */
+    public static void preciseBlit(
+            GuiGraphics gui,
+            ResourceLocation atlasLocation,
+            float x, float y,
+            float uOffset, float vOffset,
+            float width, float height,
+            float textureWidth, float textureHeight
+    ) {
+        preciseBlit(gui, atlasLocation, x, y, width, height, uOffset, vOffset, width, height, textureWidth, textureHeight);
+    }
+
+    /**
+     * Performs the inner blit operation for rendering a texture with the specified coordinates and texture coordinates.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x1            the x-coordinate of the first corner of the blit position.
+     * @param x2            the x-coordinate of the second corner of the blit position
+     *                      .
+     * @param y1            the y-coordinate of the first corner of the blit position.
+     * @param y2            the y-coordinate of the second corner of the blit position
+     *                      .
+     * @param blitOffset    the z-level offset for rendering order.
+     * @param uWidth        the width of the blitted portion in texture coordinates.
+     * @param vHeight       the height of the blitted portion in texture coordinates.
+     * @param uOffset       the horizontal texture coordinate offset.
+     * @param vOffset       the vertical texture coordinate offset.
+     * @param textureWidth  the width of the texture.
+     * @param textureHeight the height of the texture.
+     */
+    public static void preciseBlit(
+            GuiGraphics gui, ResourceLocation atlasLocation,
+            float x1, float x2,
+            float y1, float y2,
+            float blitOffset,
+            float uWidth, float vHeight,
+            float uOffset, float vOffset,
+            float textureWidth, float textureHeight
+    ) {
+        innerBlit(
+                gui, atlasLocation,
+                x1, x2,
+                y1, y2,
+                blitOffset,
+                (uOffset + 0.0F) / textureWidth,
+                (uOffset + uWidth) / textureWidth,
+                (vOffset + 0.0F) / textureHeight,
+                (vOffset + vHeight) / textureHeight
+        );
+    }
+
+    /**
+     * Performs the inner blit operation for rendering a texture with the specified coordinates and texture coordinates without color tfloating.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x1            the x-coordinate of the first corner of the blit position.
+     * @param x2            the x-coordinate of the second corner of the blit position
+     *                      .
+     * @param y1            the y-coordinate of the first corner of the blit position.
+     * @param y2            the y-coordinate of the second corner of the blit position
+     *                      .
+     * @param blitOffset    the z-level offset for rendering order.
+     * @param minU          the minimum horizontal texture coordinate.
+     * @param maxU          the maximum horizontal texture coordinate.
+     * @param minV          the minimum vertical texture coordinate.
+     * @param maxV          the maximum vertical texture coordinate.
+     */
+    public static void innerBlit(
+            GuiGraphics gui,
+            ResourceLocation atlasLocation,
+            float x1, float x2,
+            float y1, float y2,
+            float blitOffset,
+            float minU, float maxU,
+            float minV, float maxV
+    ) {
+        RenderSystem.setShaderTexture(0, atlasLocation);
         RenderSystem.setShader(GameRenderer::getPositionTexShader);
         Matrix4f matrix4f = gui.pose().last().pose();
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
-        bufferbuilder.vertex(matrix4f, pX, pY, pBlitOffset).uv(pMinU, pMinV).endVertex();
-        bufferbuilder.vertex(matrix4f, pX, pY2, pBlitOffset).uv(pMinU, pMaxV).endVertex();
-        bufferbuilder.vertex(matrix4f, pX2, pY2, pBlitOffset).uv(pMaxU, pMaxV).endVertex();
-        bufferbuilder.vertex(matrix4f, pX2, pY, pBlitOffset).uv(pMaxU, pMinV).endVertex();
-        BufferUploader.drawWithShader(bufferbuilder.end());
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX);
+        bufferbuilder.addVertex(matrix4f, x1, y1, blitOffset).setUv(minU, minV);
+        bufferbuilder.addVertex(matrix4f, x1, y2, blitOffset).setUv(minU, maxV);
+        bufferbuilder.addVertex(matrix4f, x2, y2, blitOffset).setUv(maxU, maxV);
+        bufferbuilder.addVertex(matrix4f, x2, y1, blitOffset).setUv(maxU, minV);
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+    }
+
+    /**
+     * Performs the inner blit operation for rendering a texture with the specified coordinates, texture coordinates, and color tfloat.
+     *
+     * @param atlasLocation the location of the texture atlas.
+     * @param x1            the x-coordinate of the first corner of the blit position.
+     * @param x2            the x-coordinate of the second corner of the blit position
+     *                      .
+     * @param y1            the y-coordinate of the first corner of the blit position.
+     * @param y2            the y-coordinate of the second corner of the blit position
+     *                      .
+     * @param blitOffset    the z-level offset for rendering order.
+     * @param minU          the minimum horizontal texture coordinate.
+     * @param maxU          the maximum horizontal texture coordinate.
+     * @param minV          the minimum vertical texture coordinate.
+     * @param maxV          the maximum vertical texture coordinate.
+     * @param color         color
+     */
+    public static void innerBlit(
+            GuiGraphics gui,
+            ResourceLocation atlasLocation,
+            float x1, float x2,
+            float y1, float y2,
+            float blitOffset,
+            float minU, float maxU,
+            float minV, float maxV,
+            int color
+    ) {
+        RenderSystem.setShaderTexture(0, atlasLocation);
+        RenderSystem.setShader(GameRenderer::getPositionTexColorShader);
+        RenderSystem.enableBlend();
+        Matrix4f matrix4f = gui.pose().last().pose();
+        BufferBuilder bufferbuilder = Tesselator.getInstance().begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
+        bufferbuilder.addVertex(matrix4f, x1, y1, blitOffset)
+                .setUv(minU, minV)
+                .setColor(color);
+        bufferbuilder.addVertex(matrix4f, x1, y2, blitOffset)
+                .setUv(minU, maxV)
+                .setColor(color);
+        bufferbuilder.addVertex(matrix4f, x2, y2, blitOffset)
+                .setUv(maxU, maxV)
+                .setColor(color);
+        bufferbuilder.addVertex(matrix4f, x2, y1, blitOffset)
+                .setUv(maxU, minV)
+                .setColor(color);
+        BufferUploader.drawWithShader(bufferbuilder.buildOrThrow());
+        RenderSystem.disableBlend();
     }
 
     /**
@@ -54,7 +256,7 @@ public class RenderHelper {
         Vector3f transformedPos = frustum.matrix.transformProject(relativePos.x, relativePos.y, relativePos.z, new Vector3f());
 
         double scaleFactor = minecraft.getWindow().getGuiScale();
-        float guiScaleMul = 0.5f / (float) scaleFactor;
+        float guiScaleMul = (float) (0.5f / scaleFactor);
 
         Vector3f screenPos = transformedPos.mul(1.0f, -1.0f, 1.0f).add(1.0f, 1.0f, 0.0f)
                 .mul(guiScaleMul * minecraft.getWindow().getWidth(), guiScaleMul * minecraft.getWindow().getHeight(), 1.0f);
@@ -62,118 +264,37 @@ public class RenderHelper {
         return transformedPos.z < 1.0f ? new Vec3(screenPos.x, screenPos.y, transformedPos.z) : null;
     }
 
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX, float pY, float pUOffset, float pVOffset, float pWidth, float pHeight, float pTextureWidth, float pTextureHeight, int color) {
-        blit(pose, pAtlasLocation, pX, pY, pWidth, pHeight, pUOffset, pVOffset, pWidth, pHeight, pTextureWidth, pTextureHeight, color);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX, float pY, float pWidth, float pHeight, float pUOffset, float pVOffset, float pUWidth, float pVHeight, float pTextureWidth, float pTextureHeight, int color) {
-        blit(pose, pAtlasLocation, pX, pX + pWidth, pY, pY + pHeight, 0, pUWidth, pVHeight, pUOffset, pVOffset, pTextureWidth, pTextureHeight, color);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pUWidth, float pVHeight, float pUOffset, float pVOffset, float pTextureWidth, float pTextureHeight, int color) {
-        innerBlit(pose, pAtlasLocation, pX1, pX2, pY1, pY2, pBlitOffset, (pUOffset + 0.0F) / pTextureWidth, (pUOffset + pUWidth) / pTextureWidth, (pVOffset + 0.0F) / pTextureHeight, (pVOffset + pVHeight) / pTextureHeight, color);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX, float pY, float pUOffset, float pVOffset, float pWidth, float pHeight, float pTextureWidth, float pTextureHeight, float alpha, boolean opposite) {
-        blit(pose, pAtlasLocation, pX, pY, pWidth, pHeight, pUOffset, pVOffset, pWidth, pHeight, pTextureWidth, pTextureHeight, alpha, opposite);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX, float pY, float pUOffset, float pVOffset, float pWidth, float pHeight, float pTextureWidth, float pTextureHeight, float alpha) {
-        blit(pose, pAtlasLocation, pX, pY, pUOffset, pVOffset, pWidth, pHeight, pTextureWidth, pTextureHeight, alpha, false);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX, float pY, float pWidth, float pHeight, float pUOffset, float pVOffset, float pUWidth, float pVHeight, float pTextureWidth, float pTextureHeight, float alpha, boolean opposite) {
-        blit(pose, pAtlasLocation, pX, pX + pWidth, pY, pY + pHeight, 0, pUWidth, pVHeight, pUOffset, pVOffset, pTextureWidth, pTextureHeight, alpha, opposite);
-    }
-
-    public static void blit(PoseStack pose, ResourceLocation pAtlasLocation, float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pUWidth, float pVHeight, float pUOffset, float pVOffset, float pTextureWidth, float pTextureHeight, float alpha, boolean opposite) {
-        innerBlit(pose, pAtlasLocation, pX1, pX2, pY1, pY2, pBlitOffset, (pUOffset + 0.0F) / pTextureWidth, (pUOffset + pUWidth) / pTextureWidth, (pVOffset + 0.0F) / pTextureHeight, (pVOffset + pVHeight) / pTextureHeight, alpha, opposite);
-    }
-
-    private static void innerBlit(PoseStack pose, ResourceLocation pAtlasLocation, float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pMinU, float pMaxU, float pMinV, float pMaxV, int color) {
-        RenderSystem.setShaderTexture(0, pAtlasLocation);
-        RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
-
-        Matrix4f matrix4f = pose.last().pose();
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
-
-        vertexC(pX1, pX2, pY1, pY2, pBlitOffset, pMinU, pMaxU, pMinV, pMaxV, color, matrix4f, bufferbuilder);
-
-        BufferUploader.drawWithShader(bufferbuilder.end());
-    }
-
-    private static void innerBlit(PoseStack pose, ResourceLocation pAtlasLocation, float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pMinU, float pMaxU, float pMinV, float pMaxV, float alpha, boolean opposite) {
-        RenderSystem.setShaderTexture(0, pAtlasLocation);
-        RenderSystem.setShader(GameRenderer::getPositionColorTexShader);
-        RenderSystem.enableBlend();
-        Matrix4f matrix4f = pose.last().pose();
-        BufferBuilder bufferbuilder = Tesselator.getInstance().getBuilder();
-        bufferbuilder.begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR_TEX);
-
-        if (opposite) {
-            vertex(pX1, pX2, pY1, pY2, pBlitOffset, pMaxU, pMinU, pMinV, pMaxV, alpha, matrix4f, bufferbuilder);
-        } else {
-            vertex(pX1, pX2, pY1, pY2, pBlitOffset, pMinU, pMaxU, pMinV, pMaxV, alpha, matrix4f, bufferbuilder);
-        }
-
-        BufferUploader.drawWithShader(bufferbuilder.end());
-        RenderSystem.disableBlend();
-    }
-
-    private static void vertex(float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pMinU, float pMaxU, float pMinV, float pMaxV, float alpha, Matrix4f matrix4f, BufferBuilder bufferBuilder) {
-        bufferBuilder.vertex(matrix4f, pX1, pY1, pBlitOffset).color(1f, 1f, 1f, alpha).uv(pMinU, pMinV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX1, pY2, pBlitOffset).color(1f, 1f, 1f, alpha).uv(pMinU, pMaxV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX2, pY2, pBlitOffset).color(1f, 1f, 1f, alpha).uv(pMaxU, pMaxV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX2, pY1, pBlitOffset).color(1f, 1f, 1f, alpha).uv(pMaxU, pMinV).endVertex();
-    }
-
-    private static void vertexC(float pX1, float pX2, float pY1, float pY2, float pBlitOffset, float pMinU, float pMaxU, float pMinV, float pMaxV, int color, Matrix4f matrix4f, BufferBuilder bufferBuilder) {
-        float r = (color >> 16 & 255) / 255.0F;
-        float g = (color >> 8 & 255) / 255.0F;
-        float b = (color & 255) / 255.0F;
-
-        bufferBuilder.vertex(matrix4f, pX1, pY1, pBlitOffset).color(r, g, b, 1f).uv(pMinU, pMinV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX1, pY2, pBlitOffset).color(r, g, b, 1f).uv(pMinU, pMaxV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX2, pY2, pBlitOffset).color(r, g, b, 1f).uv(pMaxU, pMaxV).endVertex();
-        bufferBuilder.vertex(matrix4f, pX2, pY1, pBlitOffset).color(r, g, b, 1f).uv(pMaxU, pMinV).endVertex();
-    }
-
     /**
-     * Fills a rectangle with the specified color and z-level using the given render type and coordinates as the
-     * boundaries.
+     * Fills a rectangle with the specified color and z-level using the given render type and coordinates as the boundaries.
      *
-     * @param pRenderType the render type to use.
-     * @param pMinX       the minimum x-coordinate of the rectangle.
-     * @param pMinY       the minimum y-coordinate of the rectangle.
-     * @param pMaxX       the maximum x-coordinate of the rectangle.
-     * @param pMaxY       the maximum y-coordinate of the rectangle.
-     * @param pZ          the z-level of the rectangle.
-     * @param pColor      the color to fill the rectangle with.
+     * @param renderType the render type to use.
+     * @param minX       the minimum x-coordinate of the rectangle.
+     * @param minY       the minimum y-coordinate of the rectangle.
+     * @param maxX       the maximum x-coordinate of the rectangle.
+     * @param maxY       the maximum y-coordinate of the rectangle.
+     * @param z          the z-level of the rectangle.
+     * @param color      the color to fill the rectangle with.
      */
-    public static void fill(GuiGraphics guiGraphics, RenderType pRenderType, float pMinX, float pMinY, float pMaxX, float pMaxY, float pZ, int pColor) {
+    public static void fill(GuiGraphics guiGraphics, RenderType renderType, float minX, float minY, float maxX, float maxY, float z, int color) {
         Matrix4f matrix4f = guiGraphics.pose().last().pose();
-        if (pMinX < pMaxX) {
-            float i = pMinX;
-            pMinX = pMaxX;
-            pMaxX = i;
+        if (minX < maxX) {
+            float i = minX;
+            minX = maxX;
+            maxX = i;
         }
 
-        if (pMinY < pMaxY) {
-            float j = pMinY;
-            pMinY = pMaxY;
-            pMaxY = j;
+        if (minY < maxY) {
+            float j = minY;
+            minY = maxY;
+            maxY = j;
         }
 
-        float f3 = (float) FastColor.ARGB32.alpha(pColor) / 255.0F;
-        float f = (float) FastColor.ARGB32.red(pColor) / 255.0F;
-        float f1 = (float) FastColor.ARGB32.green(pColor) / 255.0F;
-        float f2 = (float) FastColor.ARGB32.blue(pColor) / 255.0F;
-        VertexConsumer vertexconsumer = guiGraphics.bufferSource().getBuffer(pRenderType);
-        vertexconsumer.vertex(matrix4f, pMinX, pMinY, pZ).color(f, f1, f2, f3).endVertex();
-        vertexconsumer.vertex(matrix4f, pMinX, pMaxY, pZ).color(f, f1, f2, f3).endVertex();
-        vertexconsumer.vertex(matrix4f, pMaxX, pMaxY, pZ).color(f, f1, f2, f3).endVertex();
-        vertexconsumer.vertex(matrix4f, pMaxX, pMinY, pZ).color(f, f1, f2, f3).endVertex();
+        VertexConsumer vertexconsumer = guiGraphics.bufferSource().getBuffer(renderType);
+        vertexconsumer.addVertex(matrix4f, minX, minY, z).setColor(color);
+        vertexconsumer.addVertex(matrix4f, minX, maxY, z).setColor(color);
+        vertexconsumer.addVertex(matrix4f, maxX, maxY, z).setColor(color);
+        vertexconsumer.addVertex(matrix4f, maxX, minY, z).setColor(color);
+
         guiGraphics.flush();
     }
 }

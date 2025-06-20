@@ -4,23 +4,26 @@ import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.item.DogTag;
 import com.atsuishio.superbwarfare.menu.DogTagEditorMenu;
 import com.atsuishio.superbwarfare.network.message.send.DogTagFinishEditMessage;
+import net.minecraft.ChatFormatting;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.EditBox;
 import net.minecraft.client.gui.narration.NarrationElementOutput;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.protocol.game.ServerboundRenameItemPacket;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
-import javax.annotation.ParametersAreNonnullByDefault;
+import java.util.ArrayList;
 import java.util.Arrays;
 
 @OnlyIn(Dist.CLIENT)
@@ -56,10 +59,11 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
 
         for (int x = 0; x < this.icon.length; x++) {
             for (int y = 0; y < this.icon.length; y++) {
-                short num = this.icon[x][y];
+                int num = this.icon[x][y];
                 if (num != -1) {
+                    var color = ChatFormatting.getById(num);
                     pGuiGraphics.fill(i + 66 + x * 9, j + 44 + y * 9, i + 58 + x * 9, j + 36 + y * 9,
-                            getColorByNum(num));
+                            getColorFromFormatting(color));
                 }
             }
         }
@@ -68,9 +72,8 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
     }
 
     @Override
-    @ParametersAreNonnullByDefault
-    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        this.renderBackground(pGuiGraphics);
+    public void render(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         this.name.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         this.renderTooltip(pGuiGraphics, pMouseX, pMouseY);
@@ -108,7 +111,7 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
     @Override
     public void containerTick() {
         super.containerTick();
-        this.name.tick();
+//        this.name.tick();
         if (!this.init) {
             if (!this.stack.isEmpty()) {
                 this.name.setValue(this.stack.getHoverName().getString());
@@ -149,6 +152,7 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
         this.name.setBordered(false);
         this.name.setMaxLength(30);
         this.name.setResponder(this::onNameChanged);
+//        this.name.setValue(this.stack.getHoverName().getString());
         this.addWidget(this.name);
         this.setInitialFocus(this.name);
         this.name.setEditable(true);
@@ -157,7 +161,7 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
     private void onNameChanged(String name) {
         String s = name;
         ItemStack stack = DogTagEditorScreen.this.menu.stack;
-        if (!stack.hasCustomHoverName() && name.equals(stack.getHoverName().getString())) {
+        if (!stack.has(DataComponents.CUSTOM_NAME)) {
             s = "";
         }
 
@@ -225,7 +229,15 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
         @Override
         public void onPress() {
             if (!DogTagEditorScreen.this.init) return;
-            Mod.PACKET_HANDLER.sendToServer(new DogTagFinishEditMessage(DogTagEditorScreen.this.icon, DogTagEditorScreen.this.name.getValue()));
+            var colors = new ArrayList<Short>(DogTagEditorScreen.this.icon.length * DogTagEditorScreen.this.icon[0].length);
+
+            for (var row : DogTagEditorScreen.this.icon) {
+                for (var color : row) {
+                    colors.add(color);
+                }
+            }
+
+            PacketDistributor.sendToServer(new DogTagFinishEditMessage(colors, DogTagEditorScreen.this.name.getValue()));
         }
 
         @Override
@@ -241,24 +253,27 @@ public class DogTagEditorScreen extends AbstractContainerScreen<DogTagEditorMenu
         }
     }
 
-    public static int getColorByNum(short num) {
-        return switch (num) {
-            case 0 -> 0xFF000000;
-            case 1 -> 0xFFFFFFFF;
-            case 2 -> 0xFF808080;
-            case 3 -> 0xFFD42424;
-            case 4 -> 0xFFFFAA00;
-            case 5 -> 0xFFFFFF00;
-            case 6 -> 0xFF3CE03C;
-            case 7 -> 0xFF66CCFF;
-            case 8 -> 0xFF3A4FFF;
-            case 9 -> 0xFFB654FF;
-            case 10 -> 0xFF7D5841;
-            case 11 -> 0xFFFF97A7;
-            case 12 -> 0xFF76945E;
-            case 13 -> 0xFFFFC400;
-            case 14 -> 0xFF4C425B;
-            case 15 -> 0xFFF8E4D0;
+    public static int getColorFromFormatting(ChatFormatting chatFormatting) {
+        if (chatFormatting == null) {
+            return -1;
+        }
+        return switch (chatFormatting) {
+            case BLACK -> 0xFF000000;
+            case DARK_BLUE -> 0xFF0000AA;
+            case DARK_GREEN -> 0xFF00AA00;
+            case DARK_AQUA -> 0xFF00AAAA;
+            case DARK_RED -> 0xFFAA0000;
+            case DARK_PURPLE -> 0xFFAA00AA;
+            case GOLD -> 0xFFFFAA00;
+            case GRAY -> 0xFFAAAAAA;
+            case DARK_GRAY -> 0xFF555555;
+            case BLUE -> 0xFF5555FF;
+            case GREEN -> 0xFF55FF55;
+            case AQUA -> 0xFF55FFFF;
+            case RED -> 0xFFFF5555;
+            case LIGHT_PURPLE -> 0xFFFF55FF;
+            case YELLOW -> 0xFFFFFF55;
+            case WHITE -> 0xFFFFFFFF;
             default -> -1;
         };
     }

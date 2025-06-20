@@ -1,6 +1,5 @@
 package com.atsuishio.superbwarfare.entity.projectile;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
 import com.atsuishio.superbwarfare.init.ModEntities;
@@ -12,11 +11,10 @@ import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.LivingEntity;
@@ -30,16 +28,15 @@ import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class SmallCannonShellEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
-
     private float damage = 40.0f;
     private float explosionDamage = 80f;
     private float explosionRadius = 5f;
@@ -60,17 +57,13 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
         this.aa = aa;
     }
 
-    public SmallCannonShellEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.SMALL_CANNON_SHELL.get(), level);
-    }
-
     public SmallCannonShellEntity setBlockInteraction(Explosion.BlockInteraction blockInteraction) {
         this.blockInteraction = blockInteraction;
         return this;
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag pCompound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
         pCompound.putFloat("Damage", this.damage);
         pCompound.putFloat("ExplosionDamage", this.explosionDamage);
@@ -78,7 +71,7 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag pCompound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.readAdditionalSaveData(pCompound);
         if (pCompound.contains("Damage")) {
             this.damage = pCompound.getFloat("Damage");
@@ -92,12 +85,7 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
+    protected @NotNull Item getDefaultItem() {
         return ModItems.SMALL_SHELL.get();
     }
 
@@ -107,14 +95,16 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
     }
 
     @Override
-    protected void onHitEntity(EntityHitResult result) {
+    protected void onHitEntity(@NotNull EntityHitResult result) {
         Entity entity = result.getEntity();
-        if (this.level() instanceof ServerLevel) {
 
+        if (this.getOwner() != null && this.getOwner().getVehicle() != null && entity == this.getOwner().getVehicle())
+            return;
+        if (this.level() instanceof ServerLevel) {
             if (this.getOwner() instanceof LivingEntity living) {
                 if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
                     living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
-                    Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                    PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
                 }
             }
 
@@ -133,9 +123,21 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
 
     @Override
     public void onHitBlock(BlockHitResult blockHitResult) {
-        super.onHitBlock(blockHitResult);
         BlockPos resultPos = blockHitResult.getBlockPos();
         BlockState state = this.level().getBlockState(resultPos);
+
+        if (this.level() instanceof ServerLevel) {
+            float hardness = this.level().getBlockState(resultPos).getBlock().defaultDestroyTime();
+            if (hardness != -1) {
+                if (ExplosionConfig.EXPLOSION_DESTROY.get() && this.blockInteraction == null) {
+                    boolean destroy = Math.random() < Mth.clamp(1 - (hardness / 50), 0.1, 1);
+                    if (destroy) {
+                        this.level().destroyBlock(resultPos, true);
+                    }
+                }
+            }
+        }
+
         if (state.getBlock() instanceof BellBlock bell) {
             bell.attemptToRing(this.level(), resultPos, blockHitResult.getDirection());
         }
@@ -158,7 +160,7 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
                 hitEntity ? Explosion.BlockInteraction.KEEP : (ExplosionConfig.EXPLOSION_DESTROY.get() ? (this.blockInteraction != null ? this.blockInteraction : Explosion.BlockInteraction.DESTROY) : Explosion.BlockInteraction.KEEP)
         ).setDamageMultiplier(1.25f);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnSmallExplosionParticles(this.level(), vec3);
     }
@@ -198,7 +200,6 @@ public class SmallCannonShellEntity extends FastThrowableProjectile implements G
                     .toList();
             for (var entity : entities) {
                 causeExplode(entity.position(), false);
-
                 entity.discard();
                 this.discard();
             }

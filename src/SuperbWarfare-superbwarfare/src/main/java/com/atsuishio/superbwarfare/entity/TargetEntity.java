@@ -1,6 +1,6 @@
 package com.atsuishio.superbwarfare.entity;
 
-import com.atsuishio.superbwarfare.init.ModEntities;
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.tools.FormatTool;
@@ -25,29 +25,21 @@ import net.minecraft.world.entity.projectile.ThrownPotion;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.living.LivingDeathEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.LivingDeathEvent;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-@Mod.EventBusSubscriber
+@EventBusSubscriber(modid = Mod.MODID)
 public class TargetEntity extends LivingEntity implements GeoEntity {
 
     public static final EntityDataAccessor<Integer> DOWN_TIME = SynchedEntityData.defineId(TargetEntity.class, EntityDataSerializers.INT);
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-
-    public TargetEntity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.TARGET.get(), world);
-    }
 
     public TargetEntity(EntityType<TargetEntity> type, Level world) {
         super(type, world);
@@ -55,15 +47,11 @@ public class TargetEntity extends LivingEntity implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(DOWN_TIME, 0);
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DOWN_TIME, 0);
     }
 
-    @Override
-    public @NotNull MobType getMobType() {
-        return super.getMobType();
-    }
 
     @Override
     public @NotNull Iterable<ItemStack> getArmorSlots() {
@@ -120,8 +108,6 @@ public class TargetEntity extends LivingEntity implements GeoEntity {
         var entity = event.getEntity();
         var sourceEntity = event.getSource().getEntity();
 
-        if (entity == null) return;
-
         if (entity instanceof TargetEntity targetEntity) {
             event.setCanceled(true);
             targetEntity.setHealth(targetEntity.getMaxHealth());
@@ -130,7 +116,7 @@ public class TargetEntity extends LivingEntity implements GeoEntity {
 
             if (sourceEntity instanceof Player player) {
                 player.displayClientMessage(Component.translatable("tips.superbwarfare.target.down",
-                        FormatTool.format1D((entity.position()).distanceTo((sourceEntity.position())), "m")), true);
+                        FormatTool.format1D(entity.position().distanceTo(sourceEntity.position()), "m")), true);
                 SoundTool.playLocalSound(player, ModSounds.TARGET_DOWN.get(), 1, 1);
                 targetEntity.entityData.set(DOWN_TIME, 40);
             }
@@ -230,7 +216,7 @@ public class TargetEntity extends LivingEntity implements GeoEntity {
         ++this.deathTime;
         if (this.deathTime >= 100) {
             this.spawnAtLocation(new ItemStack(ModItems.TARGET_DEPLOYER.get()));
-            this.remove(TargetEntity.RemovalReason.KILLED);
+            this.remove(RemovalReason.KILLED);
         }
     }
 

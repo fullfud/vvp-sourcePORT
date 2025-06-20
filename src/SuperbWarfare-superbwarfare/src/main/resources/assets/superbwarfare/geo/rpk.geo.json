@@ -57,7 +57,11 @@
 				{
 					"name": "cross",
 					"parent": "0",
-					"pivot": [0, 4.75, -140]
+					"pivot": [
+						0,
+						4.75,
+						-140
+					]
 				},
 				{
 					"name": "shell",

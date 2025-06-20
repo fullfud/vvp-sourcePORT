@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.server;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ProjectileConfig {
 
-    public static ForgeConfigSpec.BooleanValue ALLOW_PROJECTILE_DESTROY_GLASS;
+    public static ModConfigSpec.BooleanValue ALLOW_PROJECTILE_DESTROY_GLASS;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("projectile");
 
         builder.comment("Set true to allow projectiles to destroy glasses");

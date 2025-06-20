@@ -1,49 +1,54 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.data.gun.DefaultGunData;
 import com.atsuishio.superbwarfare.tools.BufferSerializer;
 import com.atsuishio.superbwarfare.tools.GunsTool;
 import net.minecraft.network.FriendlyByteBuf;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class GunsDataMessage {
+public record GunsDataMessage(List<DefaultGunData> data) implements CustomPacketPayload {
+    public static final Type<GunsDataMessage> TYPE = new Type<>(Mod.loc("set_guns_data"));
 
-    public final List<DefaultGunData> data;
 
-    private GunsDataMessage(List<DefaultGunData> data) {
-        this.data = data;
-    }
+    public static final StreamCodec<FriendlyByteBuf, GunsDataMessage> STREAM_CODEC = StreamCodec.ofMember(
+            (obj, buf) -> {
+                buf.writeVarInt(obj.data.size());
+                for (var data : obj.data) {
+                    buf.writeBytes(BufferSerializer.serialize(data).copy());
+                }
+            },
+            (buf) -> {
+                var size = buf.readVarInt();
+                var list = new ArrayList<DefaultGunData>();
+                for (var i = 0; i < size; i++) {
+                    list.add(BufferSerializer.deserialize(buf, new DefaultGunData()));
+                }
+                return new GunsDataMessage(list);
+            }
+    );
 
     public static GunsDataMessage create() {
         return new GunsDataMessage(GunsTool.gunsData.values().stream().toList());
     }
 
-    public static void encode(GunsDataMessage message, FriendlyByteBuf buf) {
-        var obj = message.data;
-
-        buf.writeVarInt(obj.size());
-        for (var data : obj) {
-            buf.writeBytes(BufferSerializer.serialize(data).copy());
-        }
-    }
-
-    public static GunsDataMessage decode(FriendlyByteBuf buffer) {
-        var size = buffer.readVarInt();
-        var list = new ArrayList<DefaultGunData>();
-        for (var i = 0; i < size; i++) {
-            list.add(BufferSerializer.deserialize(buffer, new DefaultGunData()));
-        }
-        return new GunsDataMessage(list);
-    }
-
-    public static void handler(GunsDataMessage message) {
+    public static void handler(final GunsDataMessage message, final IPayloadContext context) {
         GunsTool.gunsData.clear();
 
         for (var entry : message.data) {
             if (GunsTool.gunsData.containsKey(entry.id)) continue;
             GunsTool.gunsData.put(entry.id, entry);
         }
+    }
+
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

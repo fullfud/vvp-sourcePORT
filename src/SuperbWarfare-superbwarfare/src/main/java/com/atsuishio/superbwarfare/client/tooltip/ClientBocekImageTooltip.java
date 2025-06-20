@@ -24,7 +24,7 @@ public class ClientBocekImageTooltip extends ClientGunImageTooltip {
             slug = true;
         }
 
-        double damage = getGunData().damage();
+        double damage = data.damage();
 
         if (slug) {
             return super.getDamageComponent();
@@ -32,11 +32,11 @@ public class ClientBocekImageTooltip extends ClientGunImageTooltip {
             double shotDamage = damage * 0.1;
             double extraDamage = -1;
             for (var type : Perk.Type.values()) {
-                var instance = getGunData().perk.getInstance(type);
+                var instance = data.perk.getInstance(type);
                 if (instance != null) {
-                    shotDamage = instance.perk().getDisplayDamage(shotDamage, getGunData(), instance);
-                    if (instance.perk().getExtraDisplayDamage(shotDamage, getGunData(), instance) >= 0) {
-                        extraDamage = instance.perk().getExtraDisplayDamage(shotDamage, getGunData(), instance);
+                    shotDamage = instance.perk().getDisplayDamage(shotDamage, data, instance);
+                    if (instance.perk().getExtraDisplayDamage(shotDamage, data, instance) >= 0) {
+                        extraDamage = instance.perk().getExtraDisplayDamage(shotDamage, data, instance);
                     }
                 }
             }

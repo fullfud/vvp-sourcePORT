@@ -55,11 +55,15 @@
 					"pivot": [0, 0, 0]
 				},
 				{
-					"name": "cross",
-					"parent": "mosinnagant",
-					"pivot": [0, 4.146, -99.61558]
-				},
-				{
+                  "name": "cross",
+                  "parent": "mosinnagant",
+                  "pivot": [
+                    0,
+                    4.146,
+                    -99.61558
+                  ]
+                },
+              {
 					"name": "flare",
 					"parent": "mosinnagant",
 					"pivot": [0, 2.41125, -38.13516]

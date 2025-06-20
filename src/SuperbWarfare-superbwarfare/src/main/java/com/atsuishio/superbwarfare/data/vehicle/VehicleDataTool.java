@@ -5,16 +5,17 @@ import com.atsuishio.superbwarfare.network.message.receive.VehiclesDataMessage;
 import com.google.gson.Gson;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import java.io.InputStreamReader;
 import java.util.HashMap;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = Mod.MODID)
+@EventBusSubscriber(modid = Mod.MODID)
 public class VehicleDataTool {
     public static HashMap<String, DefaultVehicleData> vehicleData = new HashMap<>();
 
@@ -58,7 +59,7 @@ public class VehicleDataTool {
                 return;
             }
 
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), VehiclesDataMessage.create());
+            PacketDistributor.sendToPlayer(player, VehiclesDataMessage.create());
         }
     }
 
@@ -69,17 +70,16 @@ public class VehicleDataTool {
 
     @SubscribeEvent
     public static void onDataPackSync(OnDatapackSyncEvent event) {
-        var players = event.getPlayerList();
-        var server = players.getServer();
+        var server = event.getPlayerList().getServer();
         initJsonData(server.getResourceManager());
 
         var message = VehiclesDataMessage.create();
-        for (var player : players.getPlayers()) {
+        for (var player : event.getRelevantPlayers().toList()) {
             if (server.isSingleplayerOwner(player.getGameProfile())) {
                 continue;
             }
 
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), message);
+            PacketDistributor.sendToPlayer(player, message);
         }
     }
 }

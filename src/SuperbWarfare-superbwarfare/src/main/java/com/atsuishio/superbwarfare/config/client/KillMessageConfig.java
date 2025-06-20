@@ -1,16 +1,16 @@
 package com.atsuishio.superbwarfare.config.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class KillMessageConfig {
 
-    public static ForgeConfigSpec.BooleanValue SHOW_KILL_MESSAGE;
-    public static ForgeConfigSpec.IntValue KILL_MESSAGE_COUNT;
-    public static ForgeConfigSpec.IntValue KILL_MESSAGE_MARGIN_X;
-    public static ForgeConfigSpec.IntValue KILL_MESSAGE_MARGIN_Y;
-    public static ForgeConfigSpec.EnumValue<KillMessagePosition> KILL_MESSAGE_POSITION;
+    public static ModConfigSpec.BooleanValue SHOW_KILL_MESSAGE;
+    public static ModConfigSpec.IntValue KILL_MESSAGE_COUNT;
+    public static ModConfigSpec.IntValue KILL_MESSAGE_MARGIN_X;
+    public static ModConfigSpec.IntValue KILL_MESSAGE_MARGIN_Y;
+    public static ModConfigSpec.EnumValue<KillMessagePosition> KILL_MESSAGE_POSITION;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("kill_message");
 
         builder.comment("Set true if you want to show kill message");

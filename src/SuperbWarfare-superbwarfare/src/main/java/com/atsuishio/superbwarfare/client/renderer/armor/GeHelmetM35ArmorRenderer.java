@@ -9,13 +9,13 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoArmorRenderer;
 
 public class GeHelmetM35ArmorRenderer extends GeoArmorRenderer<GeHelmetM35> {
-	public GeHelmetM35ArmorRenderer() {
-		super(new GeHelmetM35Model());
-		this.head = new GeoBone(null, "", false, (double) 0, false, false);
-	}
+    public GeHelmetM35ArmorRenderer() {
+        super(new GeHelmetM35Model());
+        this.head = new GeoBone(null, "", false, (double) 0, false, false);
+    }
 
-	@Override
-	public RenderType getRenderType(GeHelmetM35 animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
-		return RenderType.entityTranslucent(getTextureLocation(animatable));
-	}
+    @Override
+    public RenderType getRenderType(GeHelmetM35 animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
+        return RenderType.entityTranslucent(getTextureLocation(animatable));
+    }
 }

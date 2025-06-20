@@ -3,7 +3,6 @@ package com.atsuishio.superbwarfare.perk.functional;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.entity.projectile.ProjectileEntity;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.perk.PerkInstance;
 import net.minecraft.world.damagesource.DamageSource;
@@ -30,10 +29,10 @@ public class FourthTimesCharm extends Perk {
             int mag = data.magazine();
             if (mag > 0) {
                 data.ammo.set(Math.min(mag, data.ammo.get() + 2));
-            } else if (living != null){
+            } else if (living != null) {
                 var ammoType = data.ammoTypeInfo().playerAmmoType();
                 if (ammoType != null) {
-                    PlayerVariable.modify(living, capability -> ammoType.add(capability, 2));
+                    ammoType.add(living, 2);
                 }
             }
         }

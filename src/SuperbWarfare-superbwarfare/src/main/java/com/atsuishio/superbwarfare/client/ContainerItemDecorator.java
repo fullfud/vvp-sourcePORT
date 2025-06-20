@@ -5,22 +5,27 @@ import com.atsuishio.superbwarfare.item.ContainerBlockItem;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.IItemDecorator;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.client.IItemDecorator;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
 public class ContainerItemDecorator implements IItemDecorator {
 
     @Override
+    @ParametersAreNonnullByDefault
     public boolean render(GuiGraphics guiGraphics, Font font, ItemStack stack, int xOffset, int yOffset) {
         if (!(stack.getItem() instanceof ContainerBlockItem)) return false;
-        var tag = BlockItem.getBlockEntityData(stack);
-        if (tag == null) return false;
+        var data = stack.get(DataComponents.BLOCK_ENTITY_DATA);
+        if (data == null) return false;
+        var tag = data.copyTag();
+
         EntityType<?> entityType = null;
         if (tag.contains("EntityType")) {
             entityType = EntityType.byString(tag.getString("EntityType")).orElse(null);

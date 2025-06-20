@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config;
 
 import com.atsuishio.superbwarfare.config.server.*;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ServerConfig {
 
-    public static ForgeConfigSpec init() {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+    public static ModConfigSpec init() {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         SpawnConfig.init(builder);
         ProjectileConfig.init(builder);

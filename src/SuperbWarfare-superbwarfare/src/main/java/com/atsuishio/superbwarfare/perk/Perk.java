@@ -9,7 +9,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import org.jetbrains.annotations.Nullable;
 
 public class Perk {
@@ -41,9 +41,9 @@ public class Perk {
         this.name = builder.toString();
     }
 
-    public RegistryObject<Item> getItem() {
+    public DeferredHolder<Item, ? extends Item> getItem() {
         var result = ModItems.PERKS.getEntries().stream().filter(p -> {
-            if (p.get() instanceof PerkItem perkItem) {
+            if (p.get() instanceof PerkItem<?> perkItem) {
                 return perkItem.getPerk() == this;
             }
             return false;

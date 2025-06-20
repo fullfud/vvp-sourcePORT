@@ -3,7 +3,7 @@
 	"minecraft:geometry": [
 		{
 			"description": {
-				"identifier": "geometry.qbz_95",
+              "identifier": "geometry.qbz_95",
 				"texture_width": 256,
 				"texture_height": 256,
 				"visible_bounds_width": 41,
@@ -67,7 +67,11 @@
 				{
 					"name": "cross",
 					"parent": "0",
-					"pivot": [0, 8.15156, -318.5]
+					"pivot": [
+						0,
+						8.15156,
+						-318.5
+					]
 				},
 				{
 					"name": "Barrel",

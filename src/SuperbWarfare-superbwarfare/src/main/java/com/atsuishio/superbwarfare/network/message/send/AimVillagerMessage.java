@@ -1,45 +1,41 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
-import net.minecraft.network.FriendlyByteBuf;
+import com.atsuishio.superbwarfare.Mod;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.ai.gossip.GossipType;
 import net.minecraft.world.entity.npc.AbstractVillager;
 import net.minecraft.world.entity.npc.Villager;
 import net.minecraft.world.entity.schedule.Activity;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record AimVillagerMessage(int villagerId) implements CustomPacketPayload {
+    public static final Type<AimVillagerMessage> TYPE = new Type<>(Mod.loc("aim_villager"));
 
-public class AimVillagerMessage {
+    public static final StreamCodec<ByteBuf, AimVillagerMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            AimVillagerMessage::villagerId,
+            AimVillagerMessage::new
+    );
 
-    private final int villagerId;
+    public static void handler(AimVillagerMessage message, final IPayloadContext context) {
+        var sender = context.player();
 
-    public AimVillagerMessage(int villagerId) {
-        this.villagerId = villagerId;
-    }
-
-    public static void encode(AimVillagerMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.villagerId);
-    }
-
-    public static AimVillagerMessage decode(FriendlyByteBuf buffer) {
-        return new AimVillagerMessage(buffer.readInt());
-    }
-
-    public static void handler(AimVillagerMessage message, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            var sender = context.get().getSender();
-            if (sender == null) return;
-
-            Entity entity = sender.level().getEntity(message.villagerId);
-            if (entity instanceof AbstractVillager abstractVillager) {
-                if (entity instanceof Villager villager) {
-                    villager.getGossips().add(sender.getUUID(), GossipType.MINOR_NEGATIVE, 10);
-                }
-                abstractVillager.getBrain().setActiveActivityIfPossible(Activity.PANIC);
+        Entity entity = sender.level().getEntity(message.villagerId);
+        if (entity instanceof AbstractVillager abstractVillager) {
+            if (entity instanceof Villager villager) {
+                villager.getGossips().add(sender.getUUID(), GossipType.MINOR_NEGATIVE, 10);
             }
+            abstractVillager.getBrain().setActiveActivityIfPossible(Activity.PANIC);
+        }
+    }
 
-        });
-        context.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

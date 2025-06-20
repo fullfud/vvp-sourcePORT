@@ -33,12 +33,11 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
     }
 
     @Override
-    public void preRender(PoseStack poseStack, Yx100Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green,
-                          float blue, float alpha) {
+    public void preRender(PoseStack poseStack, Yx100Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         float scale = 1f;
         this.scaleHeight = scale;
         this.scaleWidth = scale;
-        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     @Override
@@ -52,7 +51,7 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
     }
 
     @Override
-    public void renderRecursively(PoseStack poseStack, Yx100Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack poseStack, Yx100Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         String name = bone.getName();
         for (int i = 0; i < 9; i++) {
             if (name.equals("wheelL" + i)) {
@@ -77,7 +76,7 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -103,7 +102,7 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -111,8 +110,8 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
 
             bone.setRotX(Mth.clamp(
                     -Mth.lerp(partialTick, animatable.gunXRotO, animatable.getGunXRot()) * Mth.DEG_TO_RAD
-                    - r * animatable.getPitch(partialTick) * Mth.DEG_TO_RAD
-                    - r2 * animatable.getRoll(partialTick) * Mth.DEG_TO_RAD,
+                            - r * animatable.getPitch(partialTick) * Mth.DEG_TO_RAD
+                            - r2 * animatable.getRoll(partialTick) * Mth.DEG_TO_RAD,
                     -10 * Mth.DEG_TO_RAD, 60 * Mth.DEG_TO_RAD)
             );
         }
@@ -137,7 +136,7 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -204,9 +203,8 @@ public class Yx100Renderer extends GeoEntityRenderer<Yx100Entity> {
             }
 
         }
-        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
-
 
 
     public float getBoneRotX(float t) {

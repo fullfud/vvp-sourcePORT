@@ -4,9 +4,10 @@ import com.google.common.base.Preconditions;
 import com.google.gson.JsonObject;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
-import net.minecraftforge.client.model.generators.CustomLoaderBuilder;
-import net.minecraftforge.client.model.generators.ModelBuilder;
-import net.minecraftforge.common.data.ExistingFileHelper;
+import net.neoforged.neoforge.client.model.generators.CustomLoaderBuilder;
+import net.neoforged.neoforge.client.model.generators.ModelBuilder;
+import net.neoforged.neoforge.common.data.ExistingFileHelper;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -21,7 +22,7 @@ public class CustomSeparateModelBuilder<T extends ModelBuilder<T>> extends Custo
     private final Map<String, String> childModels = new LinkedHashMap<>();
 
     protected CustomSeparateModelBuilder(T parent, ExistingFileHelper existingFileHelper) {
-        super(new ResourceLocation("forge:separate_transforms"), parent, existingFileHelper);
+        super(ResourceLocation.parse("neoforge:separate_transforms"), parent, existingFileHelper, true);
     }
 
     public CustomSeparateModelBuilder<T> base(String location) {
@@ -38,7 +39,7 @@ public class CustomSeparateModelBuilder<T extends ModelBuilder<T>> extends Custo
     }
 
     @Override
-    public JsonObject toJson(JsonObject json) {
+    public @NotNull JsonObject toJson(@NotNull JsonObject json) {
         json = super.toJson(json);
 
         if (this.base != null) {

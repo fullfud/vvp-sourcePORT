@@ -9,6 +9,7 @@ import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.EventHooks;
 
 import javax.annotation.Nullable;
 
@@ -21,7 +22,7 @@ public class ProjectileTool {
                 target.getZ(),
                 radius, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP).setDamageMultiplier(damageMultiplier);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(projectile.level(), explosion);
+        EventHooks.onExplosionStart(projectile.level(), explosion);
         explosion.finalizeExplosion(false);
 
         if (radius <= 5) {
@@ -35,7 +36,7 @@ public class ProjectileTool {
         Vec3 pos = projectile.position().add(projectile.getDeltaMovement().scale(0.5));
 
         if (projectile.level() instanceof ServerLevel) {
-            projectile.level().explode(source == null ? null : source.getEntity(), pos.x, pos.y, pos.z, 0.5f * radius , ExplosionConfig.EXPLOSION_DESTROY.get() ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
+            projectile.level().explode(source == null ? null : source.getEntity(), pos.x, pos.y, pos.z, 0.5f * radius, ExplosionConfig.EXPLOSION_DESTROY.get() ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
         }
 
         projectile.discard();

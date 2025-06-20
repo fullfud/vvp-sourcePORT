@@ -4,7 +4,9 @@ import com.atsuishio.superbwarfare.Mod;
 import net.minecraft.ChatFormatting;
 import net.minecraft.advancements.*;
 import net.minecraft.advancements.critereon.*;
+import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.item.Item;
@@ -12,12 +14,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ItemLike;
 import net.minecraft.world.level.block.Block;
 
+import java.util.Optional;
 import java.util.function.Consumer;
 import java.util.function.UnaryOperator;
 
 /**
  * Codes Based on @Create
  */
+@SuppressWarnings("unused")
 public class ModAdvancement {
 
     public static final ResourceLocation MAIN_BACKGROUND = Mod.loc("textures/block/sandbag.png");
@@ -25,7 +29,7 @@ public class ModAdvancement {
 
     private final Advancement.Builder builder;
     private ModAdvancement parent;
-    public Advancement result;
+    public AdvancementHolder result;
     private final String id;
     private final Group group;
 
@@ -37,19 +41,19 @@ public class ModAdvancement {
         b.apply(builtInBuilder);
         this.group = builtInBuilder.group;
 
-        ResourceLocation bg = null;
+        Optional<ResourceLocation> bg = Optional.empty();
         if (id.equals("root")) {
             if (group == Group.MAIN) {
-                bg = MAIN_BACKGROUND;
+                bg = Optional.of(MAIN_BACKGROUND);
             }
             if (group == Group.LEGENDARY) {
-                bg = LEGENDARY_BACKGROUND;
+                bg = Optional.of(LEGENDARY_BACKGROUND);
             }
         }
 
-        builder.display(builtInBuilder.icon, titleComponent(),
+        builder.display(new DisplayInfo(builtInBuilder.icon, titleComponent(),
                 Component.translatable(description()), bg,
-                builtInBuilder.type.frame, builtInBuilder.type.toast, builtInBuilder.type.announce, builtInBuilder.type.hide);
+                builtInBuilder.type.frame, builtInBuilder.type.toast, builtInBuilder.type.announce, builtInBuilder.type.hide));
 
         ModAdvancementProvider.ADVANCEMENTS.add(this);
     }
@@ -69,28 +73,31 @@ public class ModAdvancement {
         return title() + ".des";
     }
 
-    public void save(Consumer<Advancement> t) {
+    public void save(Consumer<AdvancementHolder> t) {
         if (parent != null) {
             builder.parent(parent.result);
         }
-        result = builder.save(t, Mod.loc(group.path + "/" + id).toString());
+
+        AdvancementHolder advancementholder = builder.build(Mod.loc(group.path + "/" + id));
+        t.accept(advancementholder);
+        result = advancementholder;
     }
 
     enum Type {
-        DEFAULT(FrameType.TASK, true, true, false),
-        DEFAULT_NO_ANNOUNCE(FrameType.TASK, true, false, false),
-        DEFAULT_CHALLENGE(FrameType.CHALLENGE, true, true, false),
-        SILENT(FrameType.TASK, false, false, false),
-        GOAL(FrameType.GOAL, true, true, false),
-        SECRET(FrameType.TASK, true, true, true),
-        SECRET_CHALLENGE(FrameType.CHALLENGE, true, true, true);
+        DEFAULT(AdvancementType.TASK, true, true, false),
+        DEFAULT_NO_ANNOUNCE(AdvancementType.TASK, true, false, false),
+        DEFAULT_CHALLENGE(AdvancementType.CHALLENGE, true, true, false),
+        SILENT(AdvancementType.TASK, false, false, false),
+        GOAL(AdvancementType.GOAL, true, true, false),
+        SECRET(AdvancementType.TASK, true, true, true),
+        SECRET_CHALLENGE(AdvancementType.CHALLENGE, true, true, true);
 
-        private final FrameType frame;
+        private final AdvancementType frame;
         private final boolean toast;
         private final boolean announce;
         private final boolean hide;
 
-        Type(FrameType frame, boolean toast, boolean announce, boolean hide) {
+        Type(AdvancementType frame, boolean toast, boolean announce, boolean hide) {
             this.frame = frame;
             this.toast = toast;
             this.announce = announce;
@@ -149,8 +156,7 @@ public class ModAdvancement {
 
         Builder whenItemCollected(TagKey<Item> tag) {
             return externalTrigger(InventoryChangeTrigger.TriggerInstance
-                    .hasItems(new ItemPredicate(tag, null, MinMaxBounds.Ints.ANY, MinMaxBounds.Ints.ANY,
-                            EnchantmentPredicate.NONE, EnchantmentPredicate.NONE, null, NbtPredicate.ANY)));
+                    .hasItems(ItemPredicate.Builder.item().of(tag).build()));
         }
 
         Builder whenItemConsumed(ItemLike itemProvider) {
@@ -165,18 +171,18 @@ public class ModAdvancement {
             return externalTrigger(PlayerTrigger.TriggerInstance.tick());
         }
 
-        Builder whenEffectChanged(MobEffectsPredicate predicate) {
+        Builder whenEffectChanged(MobEffectsPredicate.Builder predicate) {
             return externalTrigger(EffectsChangedTrigger.TriggerInstance.hasEffects(predicate));
         }
 
-        Builder externalTrigger(CriterionTriggerInstance trigger) {
+        Builder externalTrigger(Criterion<?> trigger) {
             builder.addCriterion(String.valueOf(keyIndex), trigger);
             keyIndex++;
             return this;
         }
 
-        Builder requirement(RequirementsStrategy strategy) {
-            builder.requirements(strategy);
+        Builder requirement(AdvancementRequirements requirements) {
+            builder.requirements(requirements);
             return this;
         }
 
@@ -191,7 +197,7 @@ public class ModAdvancement {
         }
 
         Builder rewardLootTable(ResourceLocation location) {
-            builder.rewards(AdvancementRewards.Builder.loot(location).build());
+            builder.rewards(AdvancementRewards.Builder.loot(ResourceKey.create(Registries.LOOT_TABLE, location)).build());
             return this;
         }
     }

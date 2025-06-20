@@ -1,11 +1,13 @@
 package com.atsuishio.superbwarfare.tools;
 
-import com.atsuishio.superbwarfare.network.ModVariables;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
+import com.atsuishio.superbwarfare.capability.player.PlayerVariable;
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponentType;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.item.ItemStack;
+import net.neoforged.neoforge.registries.DeferredHolder;
 
 public enum Ammo {
     HANDGUN(ChatFormatting.GREEN),
@@ -33,6 +35,7 @@ public enum Ammo {
     public final String displayName;
 
     public final ChatFormatting color;
+    public DeferredHolder<DataComponentType<?>, DataComponentType<Integer>> dataComponent;
 
     Ammo(ChatFormatting color) {
         this.color = color;
@@ -70,15 +73,16 @@ public enum Ammo {
 
     // ItemStack
     public int get(ItemStack stack) {
-        return get(stack.getOrCreateTag());
+        var count = stack.get(this.dataComponent);
+        return count == null ? 0 : count;
     }
 
     public void set(ItemStack stack, int count) {
-        set(stack.getOrCreateTag(), count);
+        stack.set(this.dataComponent, count);
     }
 
     public void add(ItemStack stack, int count) {
-        add(stack.getOrCreateTag(), count);
+        set(stack, safeAdd(get(stack), count));
     }
 
     // NBTTag
@@ -95,21 +99,6 @@ public enum Ammo {
         set(tag, safeAdd(get(tag), count));
     }
 
-    public int get(Player player) {
-        return player.getCapability(ModVariables.PLAYER_VARIABLE)
-                .map(this::get)
-                .orElse(0);
-    }
-
-    public void set(Player player, int count) {
-        PlayerVariable.modify(player, c -> set(c, Math.max(0, count)));
-    }
-
-    public void add(Player player, int count) {
-        set(player, safeAdd(get(player), count));
-    }
-
-
     // PlayerVariables
     public int get(PlayerVariable variable) {
         return variable.ammo.getOrDefault(this, 0);
@@ -124,6 +113,25 @@ public enum Ammo {
     public void add(PlayerVariable variable, int count) {
         set(variable, safeAdd(get(variable), count));
     }
+
+
+    // Entity
+    public int get(Entity entity) {
+        return get(entity.getData(ModAttachments.PLAYER_VARIABLE));
+    }
+
+    public void set(Entity entity, int count) {
+        var cap = entity.getData(ModAttachments.PLAYER_VARIABLE).watch();
+
+        set(cap, count);
+        entity.setData(ModAttachments.PLAYER_VARIABLE, cap);
+        cap.sync(entity);
+    }
+
+    public void add(Entity entity, int count) {
+        set(entity, safeAdd(get(entity), count));
+    }
+
 
     private int safeAdd(int a, int b) {
         var newCount = (long) a + (long) b;

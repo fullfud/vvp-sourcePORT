@@ -34,16 +34,15 @@ public class KillMessageClothConfig {
                         KillMessageConfig.KillMessagePosition.class,
                         KillMessageConfig.KILL_MESSAGE_POSITION.get())
                 .setDefaultValue(KillMessageConfig.KillMessagePosition.RIGHT_TOP)
-                .setEnumNameProvider(pos -> {
-                    if (pos.equals(KillMessageConfig.KillMessagePosition.LEFT_BOTTOM)) {
-                        return Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.left_bottom");
-                    } else if (pos.equals(KillMessageConfig.KillMessagePosition.RIGHT_TOP)) {
-                        return Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.right_top");
-                    } else if (pos.equals(KillMessageConfig.KillMessagePosition.RIGHT_BOTTOM)) {
-                        return Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.right_bottom");
-                    } else {
-                        return Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.left_top");
-                    }
+                .setEnumNameProvider(pos -> switch (pos) {
+                    case KillMessageConfig.KillMessagePosition.LEFT_BOTTOM ->
+                            Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.left_bottom");
+                    case KillMessageConfig.KillMessagePosition.RIGHT_TOP ->
+                            Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.right_top");
+                    case KillMessageConfig.KillMessagePosition.RIGHT_BOTTOM ->
+                            Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.right_bottom");
+                    default ->
+                            Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.left_top");
                 })
                 .setSaveConsumer(KillMessageConfig.KILL_MESSAGE_POSITION::set)
                 .setTooltip(Component.translatable("config.superbwarfare.client.kill_message.kill_message_position.des"))

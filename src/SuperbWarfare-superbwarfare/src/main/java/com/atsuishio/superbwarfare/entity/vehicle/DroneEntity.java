@@ -1,19 +1,20 @@
 package com.atsuishio.superbwarfare.entity.vehicle;
 
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
-import com.atsuishio.superbwarfare.entity.C4Entity;
 import com.atsuishio.superbwarfare.entity.projectile.*;
 import com.atsuishio.superbwarfare.entity.vehicle.base.MobileVehicleEntity;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
-import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.item.Monitor;
 import com.atsuishio.superbwarfare.item.common.ammo.MortarShell;
 import com.atsuishio.superbwarfare.tools.CustomExplosion;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.ChatFormatting;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.registries.Registries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
@@ -38,28 +39,24 @@ import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.ItemStack;
-import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.capabilities.Capability;
-import net.minecraftforge.common.util.LazyOptional;
-import net.minecraftforge.event.ForgeEventFactory;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
 import org.joml.Vector3f;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.Objects;
 import java.util.UUID;
 
@@ -85,10 +82,6 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
     public int holdTickY;
     public int holdTickZ;
 
-    public DroneEntity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.DRONE.get(), world);
-    }
-
     public DroneEntity(EntityType<DroneEntity> type, Level world) {
         super(type, world);
     }
@@ -106,30 +99,16 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
     }
 
     @Override
-    public boolean sendFireStarParticleOnHurt() {
-        return false;
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(DELTA_X_ROT, 0f)
+                .define(CONTROLLER, "undefined")
+                .define(LINKED, false)
+                .define(KAMIKAZE_MODE, 0);
     }
 
     @Override
-    public boolean playHitSoundOnHurt() {
-        return false;
-    }
-
-    public DroneEntity(EntityType<? extends DroneEntity> type, Level world, float moveX, float moveY, float moveZ) {
-        super(type, world);
-    }
-
-    @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(DELTA_X_ROT, 0f);
-        this.entityData.define(CONTROLLER, "undefined");
-        this.entityData.define(LINKED, false);
-        this.entityData.define(KAMIKAZE_MODE, 0);
-    }
-
-    @Override
-    public boolean causeFallDamage(float l, float d, DamageSource source) {
+    public boolean causeFallDamage(float l, float d, @NotNull DamageSource source) {
         return false;
     }
 
@@ -142,13 +121,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         compound.putInt("KamikazeMode", this.entityData.get(KAMIKAZE_MODE));
 
         CompoundTag item = new CompoundTag();
-        this.currentItem.save(item);
+        if (!item.isEmpty()) {
+            this.currentItem.save(level().registryAccess(), item);
+        }
         compound.put("Item", item);
-    }
-
-    @Override
-    public @NotNull <T> LazyOptional<T> getCapability(@NotNull Capability<T> cap) {
-        return LazyOptional.empty();
     }
 
     @Override
@@ -163,7 +139,8 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         if (compound.contains("KamikazeMode"))
             this.entityData.set(KAMIKAZE_MODE, compound.getInt("KamikazeMode"));
         if (compound.contains("Item"))
-            this.currentItem = ItemStack.of(compound.getCompound("Item"));
+            this.currentItem = ItemStack.parse(level().registryAccess(), compound.getCompound("Item"))
+                    .orElse(ItemStack.EMPTY);
     }
 
     @Override
@@ -189,10 +166,12 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
 
         Player controller = EntityFindUtil.findPlayer(this.level(), this.entityData.get(CONTROLLER));
 
+
         if (!this.onGround()) {
             if (controller != null) {
                 ItemStack stack = controller.getMainHandItem();
-                if (!stack.is(ModItems.MONITOR.get()) || !stack.getOrCreateTag().getBoolean("Using")) {
+                var tag = NBTTool.getTag(stack);
+                if (!stack.is(ModItems.MONITOR.get()) || !tag.getBoolean("Using")) {
                     upInputDown = false;
                     downInputDown = false;
                     forwardInputDown = false;
@@ -204,7 +183,7 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                 if (tickCount % 5 == 0) {
                     controller.getInventory().items.stream().filter(pStack -> pStack.getItem() == ModItems.MONITOR.get())
                             .forEach(pStack -> {
-                                if (pStack.getOrCreateTag().getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
+                                if (tag.getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
                                     Monitor.getDronePos(pStack, this.position());
                                 }
                             });
@@ -225,8 +204,11 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
             }
             if (this.entityData.get(KAMIKAZE_MODE) != 0) {
                 if (controller != null) {
-                    if (controller.getMainHandItem().is(ModItems.MONITOR.get())) {
-                        Monitor.disLink(controller.getMainHandItem(), controller);
+                    var stack = controller.getMainHandItem();
+                    if (stack.is(ModItems.MONITOR.get())) {
+                        var tag = NBTTool.getTag(stack);
+                        Monitor.disLink(tag, controller);
+                        NBTTool.saveTag(stack, tag);
                     }
                     this.hurt(new DamageSource(level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.EXPLOSION), controller), 10000);
                 }
@@ -251,9 +233,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
     public @NotNull InteractionResult interact(Player player, @NotNull InteractionHand hand) {
         ItemStack stack = player.getMainHandItem();
         if (stack.getItem() == ModItems.MONITOR.get()) {
+            var tag = NBTTool.getTag(stack);
             if (!player.isCrouching()) {
                 if (!this.entityData.get(LINKED)) {
-                    if (stack.getOrCreateTag().getBoolean("Linked")) {
+                    if (tag.getBoolean("Linked")) {
                         player.displayClientMessage(Component.translatable("tips.superbwarfare.monitor.already_linked").withStyle(ChatFormatting.RED), true);
                         return InteractionResult.sidedSuccess(this.level().isClientSide());
                     }
@@ -261,7 +244,8 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                     this.entityData.set(LINKED, true);
                     this.entityData.set(CONTROLLER, player.getStringUUID());
 
-                    Monitor.link(stack, this.getStringUUID());
+                    Monitor.link(tag, this.getStringUUID());
+                    NBTTool.saveTag(stack, tag);
                     player.displayClientMessage(Component.translatable("tips.superbwarfare.monitor.linked").withStyle(ChatFormatting.GREEN), true);
 
                     if (player instanceof ServerPlayer serverPlayer) {
@@ -272,7 +256,7 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                 }
             } else {
                 if (this.entityData.get(LINKED)) {
-                    if (!stack.getOrCreateTag().getBoolean("Linked")) {
+                    if (!tag.getBoolean("Linked")) {
                         player.displayClientMessage(Component.translatable("tips.superbwarfare.drone.already_linked").withStyle(ChatFormatting.RED), true);
                         return InteractionResult.sidedSuccess(this.level().isClientSide());
                     }
@@ -280,7 +264,7 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                     this.entityData.set(CONTROLLER, "none");
                     this.entityData.set(LINKED, false);
 
-                    Monitor.disLink(stack, player);
+                    Monitor.disLink(tag, player);
                     player.displayClientMessage(Component.translatable("tips.superbwarfare.monitor.unlinked").withStyle(ChatFormatting.RED), true);
 
                     if (player instanceof ServerPlayer serverPlayer) {
@@ -304,8 +288,9 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
 
             player.getInventory().items.stream().filter(stack_ -> stack_.getItem() == ModItems.MONITOR.get())
                     .forEach(itemStack -> {
-                        if (itemStack.getOrCreateTag().getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
-                            Monitor.disLink(itemStack, player);
+                        var tag = NBTTool.getTag(itemStack);
+                        if (tag.getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
+                            Monitor.disLink(tag, player);
                         }
                     });
 
@@ -389,7 +374,7 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                 holdTickZ = 0;
             }
 
-            this.setDeltaMovement(this.getDeltaMovement().multiply(0.97, 0.94, 0.97));
+            this.setDeltaMovement(this.getDeltaMovement().multiply(0.965, 0.935, 0.965));
         } else {
             this.setDeltaMovement(this.getDeltaMovement().multiply(0.8, 1, 0.8));
             this.setZRot(this.roll * 0.7f);
@@ -441,7 +426,8 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         Player controller = EntityFindUtil.findPlayer(this.level(), this.entityData.get(CONTROLLER));
         if (controller != null) {
             ItemStack stack = controller.getMainHandItem();
-            if (stack.is(ModItems.MONITOR.get()) && stack.getOrCreateTag().getBoolean("Using")) {
+            var tag = NBTTool.getTag(stack);
+            if (stack.is(ModItems.MONITOR.get()) && tag.getBoolean("Using")) {
                 this.setYRot(this.getYRot() + 0.5f * entityData.get(MOUSE_SPEED_X));
                 this.setXRot(Mth.clamp(this.getXRot() + 0.5f * entityData.get(MOUSE_SPEED_Y), -10, 90));
             }
@@ -450,10 +436,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         float f = 0.7f;
         AABB aabb = AABB.ofSize(this.getEyePosition(), f, 0.3, f);
         var level = this.level();
-        final Vec3 center = new Vec3(this.getX(), this.getY(), this.getZ());
-        for (Entity target : level.getEntitiesOfClass(Entity.class, aabb, e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
+        for (var target : level.getEntitiesOfClass(Entity.class, aabb, e -> true)) {
             if (this != target && target != null
-                    && !(target instanceof ItemEntity || target instanceof Projectile || target instanceof ProjectileEntity || target instanceof LaserEntity || target instanceof DecoyEntity || target instanceof AreaEffectCloud || target instanceof C4Entity)) {
+                    && !(target instanceof ItemEntity || target instanceof Projectile || target instanceof ProjectileEntity || target instanceof LaserEntity
+                    || target.getType().is(ModTags.EntityTypes.DECOY) || target instanceof AreaEffectCloud || target instanceof C4Entity)) {
                 hitEntityCrash(controller, target);
             }
         }
@@ -477,7 +463,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
                 }
 
                 if (player != null && player.getMainHandItem().is(ModItems.MONITOR.get())) {
-                    Monitor.disLink(player.getMainHandItem(), player);
+                    var stack = player.getMainHandItem();
+                    var tag = NBTTool.getTag(stack);
+                    Monitor.disLink(tag, player);
+                    NBTTool.saveTag(stack, tag);
                 }
             }
             target.hurt(ModDamageTypes.causeDroneHitDamage(this.level().registryAccess(), this, player), (float) (5 * lastTickSpeed));
@@ -498,6 +487,14 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
 
     @Override
     public float getEngineSoundVolume() {
+        Player player = EntityFindUtil.findPlayer(this.level(), this.entityData.get(CONTROLLER));
+
+        if (player == null) return entityData.get(POWER);
+        ItemStack stack = player.getMainHandItem();
+
+        if (stack.is(ModItems.MONITOR.get()) && NBTTool.getTag(stack).getBoolean("Using") && NBTTool.getTag(stack).getBoolean("Linked")) {
+            return entityData.get(POWER) * 0.25f;
+        }
         return entityData.get(POWER) * 2f;
     }
 
@@ -524,7 +521,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         Player controller = EntityFindUtil.findPlayer(this.level(), this.entityData.get(CONTROLLER));
         if (controller != null) {
             if (controller.getMainHandItem().is(ModItems.MONITOR.get())) {
-                Monitor.disLink(controller.getMainHandItem(), controller);
+                var item = controller.getMainHandItem();
+                var tag = NBTTool.getTag(item);
+                Monitor.disLink(tag, controller);
+                NBTTool.saveTag(item, tag);
             }
         }
 
@@ -559,8 +559,10 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         if (player != null) {
             player.getInventory().items.stream().filter(stack -> stack.getItem() == ModItems.MONITOR.get())
                     .forEach(stack -> {
-                        if (stack.getOrCreateTag().getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
-                            Monitor.disLink(stack, player);
+                        var tag = NBTTool.getTag(stack);
+                        if (tag.getString(Monitor.LINKED_DRONE).equals(this.getStringUUID())) {
+                            Monitor.disLink(tag, player);
+                            NBTTool.saveTag(stack, tag);
                         }
                     });
         }
@@ -569,11 +571,13 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
     }
 
     private void kamikazeExplosion(int mode) {
-        var attacker = EntityFindUtil.findEntity(this.level(), this.entityData.get(LAST_ATTACKER_UUID));
+        Entity attacker = EntityFindUtil.findEntity(this.level(), this.entityData.get(LAST_ATTACKER_UUID));
+        Player controller = EntityFindUtil.findPlayer(this.level(), this.entityData.get(CONTROLLER));
 
-        var mortarShell = new MortarShellEntity(ModEntities.MORTAR_SHELL.get(), level());
-        var c4 = new C4Entity(ModEntities.C_4.get(), level());
-        var rpg = new RpgRocketEntity(ModEntities.RPG_ROCKET.get(), level());
+        assert controller != null;
+        Entity mortarShell = new MortarShellEntity(controller, level());
+        Entity c4 = new C4Entity(controller, level());
+        Entity rpg = new RpgRocketEntity(controller, level());
 
         CustomExplosion explosion = switch (mode) {
             case 1 -> new CustomExplosion(this.level(), this,
@@ -594,13 +598,13 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         if (explosion == null) return;
 
         explosion.explode();
-        ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         if (mode == 1) {
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
 
             if (this.currentItem.getItem() instanceof MortarShell) {
-                this.createAreaCloud(PotionUtils.getPotion(this.currentItem), this.level(), ExplosionConfig.DRONE_KAMIKAZE_EXPLOSION_DAMAGE.get(), ExplosionConfig.DRONE_KAMIKAZE_EXPLOSION_RADIUS.get());
+                this.createAreaCloud(this.currentItem.get(DataComponents.POTION_CONTENTS), this.level(), ExplosionConfig.DRONE_KAMIKAZE_EXPLOSION_DAMAGE.get(), ExplosionConfig.DRONE_KAMIKAZE_EXPLOSION_RADIUS.get());
             }
         }
 
@@ -609,11 +613,15 @@ public class DroneEntity extends MobileVehicleEntity implements GeoEntity {
         }
     }
 
-    private void createAreaCloud(Potion potion, Level level, int duration, float radius) {
-        if (potion == Potions.EMPTY) return;
+    private void createAreaCloud(PotionContents potion, Level level, int duration, float radius) {
+        if (potion == null || potion.potion().map(p -> p.value() == Potions.WATER.value()).orElse(false)) return;
 
         AreaEffectCloud cloud = new AreaEffectCloud(level, this.getX() + 0.75 * getDeltaMovement().x, this.getY() + 0.5 * getBbHeight() + 0.75 * getDeltaMovement().y, this.getZ() + 0.75 * getDeltaMovement().z);
-        cloud.setPotion(potion);
+
+        for (var effect : potion.potion().map(p -> p.value().getEffects()).orElse(new ArrayList<>())) {
+            cloud.addEffect(effect);
+        }
+
         cloud.setDuration(duration);
         cloud.setRadius(radius);
 

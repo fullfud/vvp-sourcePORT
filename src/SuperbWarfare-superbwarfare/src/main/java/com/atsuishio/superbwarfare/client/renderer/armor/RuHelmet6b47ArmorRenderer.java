@@ -9,13 +9,13 @@ import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoArmorRenderer;
 
 public class RuHelmet6b47ArmorRenderer extends GeoArmorRenderer<RuHelmet6b47> {
-	public RuHelmet6b47ArmorRenderer() {
-		super(new RuHelmet6b47Model());
-		this.head = new GeoBone(null, "", false, (double) 0, false, false);
-	}
+    public RuHelmet6b47ArmorRenderer() {
+        super(new RuHelmet6b47Model());
+        this.head = new GeoBone(null, "", false, (double) 0, false, false);
+    }
 
-	@Override
-	public RenderType getRenderType(RuHelmet6b47 animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
-		return RenderType.entityTranslucent(getTextureLocation(animatable));
-	}
+    @Override
+    public RenderType getRenderType(RuHelmet6b47 animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
+        return RenderType.entityTranslucent(getTextureLocation(animatable));
+    }
 }

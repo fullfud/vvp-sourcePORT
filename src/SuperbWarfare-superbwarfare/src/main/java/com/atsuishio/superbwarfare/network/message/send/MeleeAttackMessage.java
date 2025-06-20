@@ -1,45 +1,41 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.tools.EntityFindUtil;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.core.UUIDUtil;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.UUID;
-import java.util.function.Supplier;
 
-public class MeleeAttackMessage {
+public record MeleeAttackMessage(UUID uuid) implements CustomPacketPayload {
+    public static final Type<MeleeAttackMessage> TYPE = new Type<>(Mod.loc("melee_attack"));
 
-    private final UUID uuid;
+    public static final StreamCodec<ByteBuf, MeleeAttackMessage> STREAM_CODEC = StreamCodec.composite(
+            UUIDUtil.STREAM_CODEC,
+            MeleeAttackMessage::uuid,
+            MeleeAttackMessage::new
+    );
 
-    public MeleeAttackMessage(UUID uuid) {
-        this.uuid = uuid;
+    public static void handler(MeleeAttackMessage message, final IPayloadContext context) {
+        Player player = context.player();
+
+        Entity lookingEntity = EntityFindUtil.findEntity(player.level(), String.valueOf(message.uuid));
+        if (lookingEntity != null) {
+            player.level().playSound(null, lookingEntity.getOnPos(), ModSounds.MELEE_HIT.get(), SoundSource.PLAYERS, 1, (float) ((2 * org.joml.Math.random() - 1) * 0.1f + 1.0f));
+            player.attack(lookingEntity);
+        }
     }
 
-    public static MeleeAttackMessage decode(FriendlyByteBuf buffer) {
-        return new MeleeAttackMessage(buffer.readUUID());
-    }
-
-    public static void encode(MeleeAttackMessage message, FriendlyByteBuf buffer) {
-        buffer.writeUUID(message.uuid);
-    }
-
-    public static void handler(MeleeAttackMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            if (context.getSender() != null) {
-                Player player = context.getSender();
-
-                Entity lookingEntity = EntityFindUtil.findEntity(player.level(), String.valueOf(message.uuid));
-                if (lookingEntity != null) {
-                    player.level().playSound(null, lookingEntity.getOnPos(), ModSounds.MELEE_HIT.get(), SoundSource.PLAYERS, 1, (float) ((2 * org.joml.Math.random() - 1) * 0.1f + 1.0f));
-                    player.attack(lookingEntity);
-                }
-            }
-        });
-        context.setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

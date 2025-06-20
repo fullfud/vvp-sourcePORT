@@ -33,12 +33,11 @@ public class Bmp2Renderer extends GeoEntityRenderer<Bmp2Entity> {
     }
 
     @Override
-    public void preRender(PoseStack poseStack, Bmp2Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green,
-                          float blue, float alpha) {
+    public void preRender(PoseStack poseStack, Bmp2Entity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         float scale = 1f;
         this.scaleHeight = scale;
         this.scaleWidth = scale;
-        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     @Override
@@ -52,7 +51,7 @@ public class Bmp2Renderer extends GeoEntityRenderer<Bmp2Entity> {
     }
 
     @Override
-    public void renderRecursively(PoseStack poseStack, Bmp2Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack poseStack, Bmp2Entity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         String name = bone.getName();
         for (int i = 0; i < 8; i++) {
             if (name.equals("wheelL" + i)) {
@@ -82,7 +81,7 @@ public class Bmp2Renderer extends GeoEntityRenderer<Bmp2Entity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -119,7 +118,7 @@ public class Bmp2Renderer extends GeoEntityRenderer<Bmp2Entity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -181,7 +180,7 @@ public class Bmp2Renderer extends GeoEntityRenderer<Bmp2Entity> {
             }
 
         }
-        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     public float getBoneRotX(float t) {

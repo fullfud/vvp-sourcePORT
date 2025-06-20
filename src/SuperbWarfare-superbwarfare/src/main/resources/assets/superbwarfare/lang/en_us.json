@@ -294,6 +294,7 @@
   "des.superbwarfare.vehicle_deployer.success": "Vehicle info set successfully!",
   "des.superbwarfare.vehicle_deployer.fail": "Please click with a container!",
   "block.superbwarfare.aircraft_catapult": "Aircraft Catapult",
+  "block.superbwarfare.superb_item_interface": "Superb Item Interface",
 
   "item.superbwarfare.high_energy_explosives": "High Energy Explosives",
   "item.superbwarfare.grain": "Grain",
@@ -350,6 +351,8 @@
   "des.superbwarfare.micro_missile": "Fires a high-speed projectile without gravity.",
   "item.superbwarfare.cupid_arrow": "Cupid's Arrow",
   "des.superbwarfare.cupid_arrow": "Make the target fall in love after being hit. Deals no damage to living entities.",
+  "item.superbwarfare.riot_bullet": "Riot Bullet",
+  "des.superbwarfare.riot_bullet": "Adds slowness and weakness on the target after hitting, deals extra damage to illager entities.",
 
   "item.superbwarfare.heal_clip": "Heal Clip",
   "des.superbwarfare.heal_clip": "Reloading after defeating a mob will heal you and your nearby allies.",
@@ -568,6 +571,7 @@
   "container.superbwarfare.charging_station": "Charging Station",
   "container.superbwarfare.charging_station.show_range": "Show Range",
   "container.superbwarfare.charging_station.hide_range": "Hide Range",
+  "container.superbwarfare.superb_item_interface": "Superb Item Interface",
 
   "config.superbwarfare.title": "SuperbWarfare: Config",
   "config.superbwarfare.client.reload": "Reload Config",
@@ -694,7 +698,6 @@
   "warning.title.example": "[SuperbWarfare Mod Warning]",
   "warning.content.example": "This mod is Free And Open-Source, No Commercial Use\nCode: GPL-3.0 License; Asserts: Private (No Commercialization)\nBan on paid downloads or EULA-breaking purchases\nReport violations by submitting an issue in the mod's repository",
   "warning.check.example": "I have read and agreed to the content. Do not show this message again",
-
   "superbwarfare.book.superb_warfare_manual": "Superb Warfare Manual",
   "superbwarfare.book.superb_warfare_manual.des": "A tutorial on Superb Warfare mod, teaching you how to become a superb soldier (WIP)",
   "superbwarfare.category.weapon": "Weapons",
@@ -751,6 +754,6 @@
   "superbwarfare.page.vehicle.a_10a1": "$(thing)A-10A Thunderbolt II$() is a single seat attacker with medium armor protection. Carries 4 flare countermeasures to disrupt guided targeting, automatically replenishing flares one by one over time.$(p)Press $(thing)$(k:key.jump)$() to operate landing gears, $(thing)$(k:key.sneak)$() to open speed brake, $(thing)$(k:key.sprint)$() to enable boost.",
   "superbwarfare.page.vehicle.a_10a2": "Requires at least 7 x 7 x 4 space for placement.",
   "superbwarfare.page.vehicle.a_10a3": "$(l)Basic Attributes: $()$(p)Durability - 350$(br)Max Passengers - 1$(br)Climbing Height - 0.5m$(br)Max Energy - 1,000,000FE$(br)Energy Cost - 256FE/tick$(br)Max Speed - 180km/h (No boost) / 300km/h (Boost)",
-  "superbwarfare.page.vehicle.a_10a4": "$(l)Weapon Attributes: $()$(p)Position 1: $(p)(1) 30mm Cannon$(br)Fire Rate - 600RPM$(br)Direct Damage - 30$(br)Explosion Damage - 10$(br)Explosion Radius - 4m$(br)Ammo - $(item)Small Caliber Shells$()$(br)(2) 70mm Rocket$(br)Fire Rate - 120RPM$(br)Direct Damage - 90$(br)Explosion Damage - 50$(br)Explosion Radius - 6m$(br)Ammo - $(item)70mm Rocket$()",
+  "superbwarfare.page.vehicle.a_10a4": "$(l)Weapon Attributes: $()$(p)Position 1: $(p)(1) 30mm Cannon$(br)Fire Rate - 1200RPM$(br)Direct Damage - 30$(br)Explosion Damage - 10$(br)Explosion Radius - 4m$(br)Ammo - $(item)Small Caliber Shells$()$(br)(2) 70mm Rocket$(br)Fire Rate - 120RPM$(br)Direct Damage - 90$(br)Explosion Damage - 50$(br)Explosion Radius - 6m$(br)Ammo - $(item)70mm Rocket$()",
   "superbwarfare.page.vehicle.a_10a5": "(3) MK-82 Aerial Bomb$(br)Explosion Damage - 650$(br)Explosion Radius - 11m$(br)Ammo - $(item)Medium Aerial Bomb$()$(br)(4) AGM-65 Air-to-ground Missile$(br)Direct Damage - 1100$(br)Explosion Damage - 150$(br)Explosion Radius - 9m$(br)Ammo - $(item)Air-to-ground Missile$()"
 }

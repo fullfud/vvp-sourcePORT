@@ -1,6 +1,7 @@
 package com.atsuishio.superbwarfare.item.gun;
 
 import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.tooltip.component.GunImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.data.gun.ProjectileInfo;
@@ -9,28 +10,29 @@ import com.atsuishio.superbwarfare.data.launchable.LaunchableEntityTool;
 import com.atsuishio.superbwarfare.data.launchable.ShootData;
 import com.atsuishio.superbwarfare.entity.projectile.ExplosiveProjectile;
 import com.atsuishio.superbwarfare.entity.projectile.ProjectileEntity;
+import com.atsuishio.superbwarfare.init.ModAttachments;
+import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModPerks;
 import com.atsuishio.superbwarfare.init.ModSounds;
-import com.atsuishio.superbwarfare.init.ModTags;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
+import com.atsuishio.superbwarfare.item.CustomRendererItem;
 import com.atsuishio.superbwarfare.perk.AmmoPerk;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.tools.SoundTool;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import net.minecraft.client.model.HumanoidModel;
+import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.BlockPos;
-import net.minecraft.nbt.CompoundTag;
+import net.minecraft.core.Holder;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.util.Mth;
-import net.minecraft.util.RandomSource;
+import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
@@ -38,17 +40,21 @@ import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.event.entity.player.EntityItemPickupEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoItem;
 import software.bernie.geckolib.animatable.SingletonGeoAnimatable;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.ParametersAreNonnullByDefault;
@@ -56,8 +62,8 @@ import java.util.*;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Consumer;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber
-public abstract class GunItem extends Item implements GeoItem {
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.MOD)
+public abstract class GunItem extends Item implements CustomRendererItem, GeoItem {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
 
@@ -134,14 +140,16 @@ public abstract class GunItem extends Item implements GeoItem {
 
         if ((hasBulletInBarrel && ammoCount > magazine + 1) || (!hasBulletInBarrel && ammoCount > magazine)) {
             int count = ammoCount - magazine - (hasBulletInBarrel ? 1 : 0);
-            PlayerVariable.modify(entity, capability -> {
-                var ammoType = data.ammoTypeInfo().playerAmmoType();
-                if (ammoType != null) {
-                    ammoType.add(capability, count);
-                }
+            var capability = entity.getData(ModAttachments.PLAYER_VARIABLE).watch();
 
-                data.ammo.set(magazine + (hasBulletInBarrel ? 1 : 0));
-            });
+            var ammoType = data.ammoTypeInfo().playerAmmoType();
+            if (ammoType != null) {
+                ammoType.add(capability, count);
+            }
+
+            entity.setData(ModAttachments.PLAYER_VARIABLE, capability);
+            capability.sync(entity);
+            data.ammo.set(magazine + (hasBulletInBarrel ? 1 : 0));
         }
 
         // 冷却
@@ -159,38 +167,43 @@ public abstract class GunItem extends Item implements GeoItem {
         if (data.heat.get() < 80 && data.overHeat.get()) {
             data.overHeat.set(false);
         }
+
+        data.save();
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public boolean shouldCauseReequipAnimation(ItemStack oldStack, ItemStack newStack, boolean slotChanged) {
         return false;
     }
 
-    @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack) {
-        Multimap<Attribute, AttributeModifier> map = super.getAttributeModifiers(slot, stack);
-        UUID uuid = new UUID(slot.toString().hashCode(), 0);
-        if (slot != EquipmentSlot.MAINHAND) return map;
+    private static final ResourceLocation SPEED_ID = Mod.loc("gun_movement_speed");
 
+    @Override
+    public @NotNull ItemAttributeModifiers getDefaultAttributeModifiers(@NotNull ItemStack stack) {
+        var list = new ArrayList<>(super.getDefaultAttributeModifiers(stack).modifiers());
         var data = GunData.from(stack);
-        map = HashMultimap.create(map);
 
         // 移速
-        map.put(Attributes.MOVEMENT_SPEED, new AttributeModifier(
-                uuid, Mod.ATTRIBUTE_MODIFIER,
-                -0.01f - 0.005f * data.weight(),
-                AttributeModifier.Operation.MULTIPLY_BASE
+        list.add(new ItemAttributeModifiers.Entry(
+                Attributes.MOVEMENT_SPEED,
+                new AttributeModifier(SPEED_ID,
+                        -0.01f - 0.005f * data.weight(),
+                        AttributeModifier.Operation.ADD_MULTIPLIED_BASE
+                ),
+                EquipmentSlotGroup.MAINHAND
         ));
 
         // 近战伤害
         if (data.meleeDamage() > 0) {
-            map.put(Attributes.ATTACK_DAMAGE, new AttributeModifier(
-                    BASE_ATTACK_DAMAGE_UUID, Mod.ATTRIBUTE_MODIFIER,
-                    data.meleeDamage(),
-                    AttributeModifier.Operation.ADDITION
+            list.add(new ItemAttributeModifiers.Entry(
+                    Attributes.ATTACK_DAMAGE,
+                    new AttributeModifier(BASE_ATTACK_DAMAGE_ID, data.meleeDamage(), AttributeModifier.Operation.ADD_VALUE),
+                    EquipmentSlotGroup.MAINHAND
             ));
         }
-        return map;
+
+        return new ItemAttributeModifiers(list, true);
     }
 
     @Override
@@ -215,20 +228,14 @@ public abstract class GunItem extends Item implements GeoItem {
         return false;
     }
 
-    @SubscribeEvent
-    public static void onPickup(EntityItemPickupEvent event) {
-        if (event.getItem().getItem().is(ModTags.Items.GUN)) {
-            GunData.from(event.getItem().getItem()).draw.set(true);
-        }
-    }
-
     @Override
     public boolean isEnchantable(@NotNull ItemStack stack) {
         return false;
     }
 
     @Override
-    public boolean canApplyAtEnchantingTable(ItemStack stack, Enchantment enchantment) {
+    @ParametersAreNonnullByDefault
+    public boolean supportsEnchantment(ItemStack stack, Holder<Enchantment> enchantment) {
         return false;
     }
 
@@ -377,34 +384,34 @@ public abstract class GunItem extends Item implements GeoItem {
      * 获取额外总重量加成
      */
     public double getCustomWeight(ItemStack stack) {
-        CompoundTag tag = GunData.from(stack).attachment();
+        var attachment = GunData.from(stack).attachment;
 
-        double scopeWeight = switch (tag.getInt("Scope")) {
+        double scopeWeight = switch (attachment.get(AttachmentType.SCOPE)) {
             case 1 -> 0.5;
             case 2 -> 1;
             case 3 -> 1.5;
             default -> 0;
         };
 
-        double barrelWeight = switch (tag.getInt("Barrel")) {
+        double barrelWeight = switch (attachment.get(AttachmentType.BARREL)) {
             case 1 -> 0.5;
             case 2 -> 1;
             default -> 0;
         };
 
-        double magazineWeight = switch (tag.getInt("Magazine")) {
+        double magazineWeight = switch (attachment.get(AttachmentType.MAGAZINE)) {
             case 1 -> 1;
             case 2 -> 2;
             default -> 0;
         };
 
-        double stockWeight = switch (tag.getInt("Stock")) {
+        double stockWeight = switch (attachment.get(AttachmentType.STOCK)) {
             case 1 -> -2;
             case 2 -> 1.5;
             default -> 0;
         };
 
-        double gripWeight = switch (tag.getInt("Grip")) {
+        double gripWeight = switch (attachment.get(AttachmentType.GRIP)) {
             case 1, 2 -> 0.25;
             case 3 -> 1;
             default -> 0;
@@ -424,7 +431,7 @@ public abstract class GunItem extends Item implements GeoItem {
      * 获取额外音效半径加成
      */
     public double getCustomSoundRadius(ItemStack stack) {
-        return GunData.from(stack).attachment().getInt("Barrel") == 2 ? 0.6 : 1;
+        return GunData.from(stack).attachment.get(AttachmentType.BARREL) == 2 ? 0.6 : 1;
     }
 
     public int getCustomBoltActionTime(ItemStack stack) {
@@ -444,6 +451,7 @@ public abstract class GunItem extends Item implements GeoItem {
     public boolean canSwitchScope(ItemStack stack) {
         return false;
     }
+
 
     /**
      * 右下角弹药显示名称
@@ -552,17 +560,17 @@ public abstract class GunItem extends Item implements GeoItem {
         float soundRadius = (float) data.soundRadius();
         int barrelType = data.attachment.get(AttachmentType.BARREL);
 
-        SoundEvent sound3p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + (barrelType == 2 ? "_fire_3p_s" : "_fire_3p")));
+        SoundEvent sound3p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + (barrelType == 2 ? "_fire_3p_s" : "_fire_3p")));
         if (sound3p != null) {
             player.playSound(sound3p, soundRadius * 0.4f, pitch);
         }
 
-        SoundEvent soundFar = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + (barrelType == 2 ? "_far_s" : "_far")));
+        SoundEvent soundFar = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + (barrelType == 2 ? "_far_s" : "_far")));
         if (soundFar != null) {
             player.playSound(soundFar, soundRadius * 0.7f, pitch);
         }
 
-        SoundEvent soundVeryFar = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + (barrelType == 2 ? "_veryfar_s" : "_veryfar")));
+        SoundEvent soundVeryFar = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + (barrelType == 2 ? "_veryfar_s" : "_veryfar")));
         if (soundVeryFar != null) {
             player.playSound(soundVeryFar, soundRadius, pitch);
         }
@@ -681,13 +689,12 @@ public abstract class GunItem extends Item implements GeoItem {
         if (entity instanceof Projectile projectile) {
             projectile.shoot(x, y, z, velocity, (float) spread);
         } else {
-            var random = RandomSource.create();
             Vec3 vec3 = new Vec3(x, y, z)
                     .normalize()
                     .add(
-                            random.triangle(0.0, 0.0172275 * spread),
-                            random.triangle(0.0, 0.0172275 * spread),
-                            random.triangle(0.0, 0.0172275 * spread)
+                            entity.getRandom().triangle(0.0, 0.0172275 * spread),
+                            entity.getRandom().triangle(0.0, 0.0172275 * spread),
+                            entity.getRandom().triangle(0.0, 0.0172275 * spread)
                     )
                     .scale(velocity);
 
@@ -702,5 +709,32 @@ public abstract class GunItem extends Item implements GeoItem {
 
         level.addFreshEntity(entity);
         return true;
+    }
+
+    @OnlyIn(Dist.CLIENT)
+    public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
+        return PoseTool.pose(entityLiving, hand, stack);
+    }
+
+    @SubscribeEvent
+    private static void registerGunExtensions(RegisterClientExtensionsEvent event) {
+        for (var item : ModItems.GUNS.getEntries()) {
+            if (item.get() instanceof GunItem gun) {
+                event.registerItem(new IClientItemExtensions() {
+                    private final BlockEntityWithoutLevelRenderer renderer = gun.getRenderer().get();
+
+                    @Override
+                    public @NotNull BlockEntityWithoutLevelRenderer getCustomRenderer() {
+                        return renderer;
+                    }
+
+                    @Override
+                    @ParametersAreNonnullByDefault
+                    public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
+                        return gun.getArmPose(entityLiving, hand, stack);
+                    }
+                }, item);
+            }
+        }
     }
 }

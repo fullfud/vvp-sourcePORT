@@ -4,46 +4,44 @@ import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.api.event.ReloadEvent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.data.gun.value.ReloadState;
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.tools.InventoryTool;
 import com.atsuishio.superbwarfare.tools.SoundTool;
-import net.minecraft.core.registries.Registries;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.common.MinecraftForge;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.event.TickEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.registries.ForgeRegistries;
-import net.minecraftforge.registries.MissingMappingsEvent;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import net.neoforged.neoforge.common.NeoForge;
+import net.neoforged.neoforge.event.tick.PlayerTickEvent;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber
+@EventBusSubscriber(modid = Mod.MODID)
 public class GunEventHandler {
 
     @SubscribeEvent
-    public static void onPlayerTick(TickEvent.PlayerTickEvent event) {
-        Player player = event.player;
-        if (player == null) {
-            return;
-        }
+    public static void onPlayerTick(PlayerTickEvent.Post event) {
+        Player player = event.getEntity();
 
         ItemStack stack = player.getMainHandItem();
 
-        if (event.phase == TickEvent.Phase.END && stack.getItem() instanceof GunItem) {
+        if (stack.getItem() instanceof GunItem) {
             var data = GunData.from(stack);
 
             handleGunBolt(data);
             handleGunReload(player, data);
             handleGunSingleReload(player, data);
             handleSentinelCharge(player, data);
+
+            data.save();
         }
     }
 
@@ -75,7 +73,7 @@ public class GunEventHandler {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_bolt"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_bolt"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 2f, 1f);
 
@@ -111,7 +109,7 @@ public class GunEventHandler {
 
         // 启动换弹
         if (reload.reloadStarter.start()) {
-            MinecraftForge.EVENT_BUS.post(new ReloadEvent.Pre(player, data));
+            NeoForge.EVENT_BUS.post(new ReloadEvent.Pre(player, data));
 
             if (gunItem.isOpenBolt(stack)) {
                 if (data.ammo.get() == 0) {
@@ -169,7 +167,7 @@ public class GunEventHandler {
             }
         }
         data.reload.setState(ReloadState.NOT_RELOADING);
-        MinecraftForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
+        NeoForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
     }
 
     public static void playGunEmptyReload(Player player, GunData data) {
@@ -178,20 +176,18 @@ public class GunEventHandler {
         } else {
             data.reload(player);
         }
-        MinecraftForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
+        NeoForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
     }
 
     public static void playGunEmptyReloadSounds(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof GunItem)) {
-            return;
-        }
+        if (!(stack.getItem() instanceof GunItem)) return;
 
         if (!player.level().isClientSide) {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_reload_empty"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_reload_empty"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
             }
@@ -208,7 +204,8 @@ public class GunEventHandler {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_reload_normal"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_reload_normal"));
+
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
             }
@@ -230,9 +227,9 @@ public class GunEventHandler {
 
         // 一阶段
         if (reload.singleReloadStarter.start()) {
-            MinecraftForge.EVENT_BUS.post(new ReloadEvent.Pre(player, data));
+            NeoForge.EVENT_BUS.post(new ReloadEvent.Pre(player, data));
 
-            if (data.defaultPrepareLoadTime() != 0 && data.ammo.get() == 0) {
+            if (data.defaultPrepareLoadTime() != 0 && (data.ammo.get() == 0 || stack.is(ModItems.SECONDARY_CATACLYSM.get()))) {
                 // 此处判断空仓换弹的时候，是否在准备阶段就需要装填一发，如M870
                 playGunPrepareLoadReloadSounds(player);
                 int prepareLoadTime = data.defaultPrepareLoadTime();
@@ -335,7 +332,7 @@ public class GunEventHandler {
             reload.setState(ReloadState.NOT_RELOADING);
             reload.singleReloadStarter.finish();
 
-            MinecraftForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
+            NeoForge.EVENT_BUS.post(new ReloadEvent.Post(player, data));
         }
     }
 
@@ -345,21 +342,21 @@ public class GunEventHandler {
         data.ammo.add(available);
 
         if (!InventoryTool.hasCreativeAmmoBox(player)) {
-            data.consumeBackupAmmo(player, 1);
+            var cap = player.getData(ModAttachments.PLAYER_VARIABLE);
+            data.consumeBackupAmmo(player, available);
+            player.setData(ModAttachments.PLAYER_VARIABLE, cap);
         }
     }
 
     public static void playGunPrepareReloadSounds(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof GunItem)) {
-            return;
-        }
+        if (!(stack.getItem() instanceof GunItem)) return;
 
         if (!player.level().isClientSide) {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_prepare"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_prepare"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
             }
@@ -375,7 +372,7 @@ public class GunEventHandler {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_prepare_empty"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_prepare_empty"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
 
@@ -410,7 +407,7 @@ public class GunEventHandler {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_prepare_load"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_prepare_load"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
 
@@ -446,7 +443,7 @@ public class GunEventHandler {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_loop"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_loop"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
             }
@@ -455,15 +452,13 @@ public class GunEventHandler {
 
     public static void playGunEndReloadSounds(Player player) {
         ItemStack stack = player.getMainHandItem();
-        if (!(stack.getItem() instanceof GunItem)) {
-            return;
-        }
+        if (!(stack.getItem() instanceof GunItem)) return;
 
         if (!player.level().isClientSide) {
             String origin = stack.getItem().getDescriptionId();
             String name = origin.substring(origin.lastIndexOf(".") + 1);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc(name + "_end"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc(name + "_end"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 10f, 1f);
 
@@ -485,7 +480,7 @@ public class GunEventHandler {
         if (data.charge.starter.start()) {
             data.charge.timer.set(127);
 
-            SoundEvent sound1p = ForgeRegistries.SOUND_EVENTS.getValue(Mod.loc("sentinel_charge"));
+            SoundEvent sound1p = BuiltInRegistries.SOUND_EVENT.get(Mod.loc("sentinel_charge"));
             if (sound1p != null && player instanceof ServerPlayer serverPlayer) {
                 SoundTool.playLocalSound(serverPlayer, sound1p, 2f, 1f);
             }
@@ -496,18 +491,14 @@ public class GunEventHandler {
         if (data.charge.timer.get() == 17) {
             for (var cell : player.getInventory().items) {
                 if (cell.is(ModItems.CELL.get())) {
-                    var stackCap = data.stack().getCapability(ForgeCapabilities.ENERGY);
-                    if (!stackCap.isPresent()) continue;
-
-                    var stackStorage = stackCap.resolve().get();
+                    var stackStorage = data.stack().getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (stackStorage == null) continue;
 
                     int stackMaxEnergy = stackStorage.getMaxEnergyStored();
                     int stackEnergy = stackStorage.getEnergyStored();
 
-                    var cellCap = cell.getCapability(ForgeCapabilities.ENERGY);
-                    if (!cellCap.isPresent()) continue;
-
-                    var cellStorage = cellCap.resolve().get();
+                    var cellStorage = cell.getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (cellStorage == null) continue;
                     int cellEnergy = cellStorage.getEnergyStored();
 
                     int stackEnergyNeed = Math.min(cellEnergy, stackMaxEnergy - stackEnergy);
@@ -517,15 +508,6 @@ public class GunEventHandler {
                     }
                     cellStorage.extractEnergy(stackEnergyNeed, false);
                 }
-            }
-        }
-    }
-
-    @SubscribeEvent
-    public static void onMissingMappings(MissingMappingsEvent event) {
-        for (MissingMappingsEvent.Mapping<Item> mapping : event.getAllMappings(Registries.ITEM)) {
-            if (Mod.MODID.equals(mapping.getKey().getNamespace()) && mapping.getKey().getPath().equals("abekiri")) {
-                mapping.remap(ModItems.HOMEMADE_SHOTGUN.get());
             }
         }
     }

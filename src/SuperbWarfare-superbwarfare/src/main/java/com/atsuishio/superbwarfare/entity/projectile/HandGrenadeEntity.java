@@ -1,6 +1,5 @@
 package com.atsuishio.superbwarfare.entity.projectile;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
@@ -12,8 +11,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -28,12 +25,11 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
@@ -59,12 +55,8 @@ public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEnt
         this.fuse = fuse;
     }
 
-    public HandGrenadeEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.HAND_GRENADE.get(), level);
-    }
-
     @Override
-    public void addAdditionalSaveData(CompoundTag pCompound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
         pCompound.putFloat("Damage", this.damage);
         pCompound.putFloat("ExplosionDamage", this.explosionDamage);
@@ -72,7 +64,7 @@ public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag pCompound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.readAdditionalSaveData(pCompound);
         if (pCompound.contains("Damage")) {
             this.damage = pCompound.getFloat("Damage");
@@ -86,12 +78,7 @@ public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
+    protected @NotNull Item getDefaultItem() {
         return ModItems.HAND_GRENADE.get();
     }
 
@@ -129,7 +116,7 @@ public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEnt
                         if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
                             living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
 
-                            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                            PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
                         }
                     }
                     entity.hurt(entity.damageSources().thrown(this, this.getOwner()), this.damage);
@@ -187,7 +174,7 @@ public class HandGrenadeEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    protected float getGravity() {
+    protected double getDefaultGravity() {
         return 0.07F;
     }
 

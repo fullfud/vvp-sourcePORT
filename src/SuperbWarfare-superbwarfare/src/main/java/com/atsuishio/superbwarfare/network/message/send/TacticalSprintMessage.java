@@ -1,30 +1,34 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.MiscConfig;
-import com.atsuishio.superbwarfare.network.PlayerVariable;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraftforge.network.NetworkEvent;
+import com.atsuishio.superbwarfare.init.ModAttachments;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record TacticalSprintMessage(boolean sprint) implements CustomPacketPayload {
+    public static final Type<TacticalSprintMessage> TYPE = new Type<>(Mod.loc("tactical_sprint"));
 
-public record TacticalSprintMessage(boolean sprint) {
+    public static final StreamCodec<ByteBuf, TacticalSprintMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            TacticalSprintMessage::sprint,
+            TacticalSprintMessage::new
+    );
 
-    public static void encode(TacticalSprintMessage message, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(message.sprint);
+    public static void handler(TacticalSprintMessage message, final IPayloadContext context) {
+        var player = context.player();
+
+        var cap = player.getData(ModAttachments.PLAYER_VARIABLE).watch();
+        cap.tacticalSprint = MiscConfig.ALLOW_TACTICAL_SPRINT.get() && message.sprint;
+        cap.sync(player);
     }
 
-    public static TacticalSprintMessage decode(FriendlyByteBuf buffer) {
-        return new TacticalSprintMessage(buffer.readBoolean());
-    }
-
-    public static void handler(TacticalSprintMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            ServerPlayer player = context.getSender();
-            if (player == null) return;
-            PlayerVariable.modify(player, capability -> capability.tacticalSprint = MiscConfig.ALLOW_TACTICAL_SPRINT.get() && message.sprint);
-        });
-        context.setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

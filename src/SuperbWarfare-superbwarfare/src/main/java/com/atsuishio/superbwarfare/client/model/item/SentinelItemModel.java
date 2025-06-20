@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class SentinelItemModel extends CustomGunModel<SentinelItem> {
 
@@ -47,13 +47,13 @@ public class SentinelItemModel extends CustomGunModel<SentinelItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
-        CoreGeoBone scope = getAnimationProcessor().getBone("scope2");
-        CoreGeoBone ammo = getAnimationProcessor().getBone("ammobar");
-        CoreGeoBone cb = getAnimationProcessor().getBone("chamber2");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone scope = getAnimationProcessor().getBone("scope2");
+        GeoBone ammo = getAnimationProcessor().getBone("ammobar");
+        GeoBone cb = getAnimationProcessor().getBone("chamber2");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -70,6 +70,8 @@ public class SentinelItemModel extends CustomGunModel<SentinelItem> {
 
         scope.setScaleZ(1f - (0.8f * (float) zp));
         cb.setRotZ((float) (cb.getRotZ() + times * 10 * ClientEventHandler.chamberRot));
+
+        var data = GunData.from(stack);
 
         shen.setPosX((float) (0.95f * ClientEventHandler.recoilHorizon * fpz * fp));
         shen.setPosY((float) (0.4f * fp + 0.44f * fr));
@@ -88,17 +90,17 @@ public class SentinelItemModel extends CustomGunModel<SentinelItem> {
         CrossHairOverlay.gunRot = shen.getRotZ();
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        if (GunData.from(stack).ammo.get() <= 5) {
-            ammo.setScaleX((float) GunData.from(stack).ammo.get() / 5);
+        if (data.ammo.get() <= 5) {
+            ammo.setScaleX((float) data.ammo.get() / 5);
         }
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.9 * zt);
         float numP = (float) (1 - 0.98 * zt);
 
-        if (GunData.from(stack).reload.time() > 0 || GunData.from(stack).charging()) {
+        if (data.reload.time() > 0 || data.charging()) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

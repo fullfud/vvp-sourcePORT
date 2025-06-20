@@ -1,105 +1,74 @@
 package com.atsuishio.superbwarfare.item.gun.launcher;
 
 import com.atsuishio.superbwarfare.Mod;
-import com.atsuishio.superbwarfare.capability.energy.ItemEnergyProvider;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.TooltipTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.SecondaryCataclysmRenderer;
 import com.atsuishio.superbwarfare.client.tooltip.component.SecondaryCataclysmImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.entity.projectile.GunGrenadeEntity;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
+import com.atsuishio.superbwarfare.init.ModEnumExtensions;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.item.EnergyStorageItem;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.perk.AmmoPerk;
 import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
-import com.atsuishio.superbwarfare.tools.RarityTool;
 import net.minecraft.ChatFormatting;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
 import net.minecraft.core.particles.ParticleTypes;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.Style;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class SecondaryCataclysm extends GunItem {
-
-    private final Supplier<Integer> energyCapacity = () -> 24000;
+public class SecondaryCataclysm extends GunItem implements EnergyStorageItem {
 
     public SecondaryCataclysm() {
-        super(new Properties().stacksTo(1).fireResistant().rarity(RarityTool.LEGENDARY));
+        super(new Properties().stacksTo(1).fireResistant().rarity(ModEnumExtensions.getLegendary()));
     }
 
     @Override
-    public boolean isBarVisible(ItemStack pStack) {
-        if (!pStack.getCapability(ForgeCapabilities.ENERGY).isPresent()) {
-            return false;
-        }
-
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
-        return energy.get() != 0;
+    public boolean isBarVisible(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        return cap != null && cap.getEnergyStored() > 0;
     }
 
     @Override
-    public int getBarWidth(ItemStack pStack) {
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
-
-        return Math.round((float) energy.get() * 13.0F / 24000F);
-    }
-
-    @Override
-    public ICapabilityProvider initCapabilities(ItemStack stack, CompoundTag tag) {
-        return new ItemEnergyProvider(stack, energyCapacity.get());
+    public int getBarWidth(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        return Math.round((float) (cap != null ? cap.getEnergyStored() : 0) * 13.0F / 24000F);
     }
 
     @Override
     @ParametersAreNonnullByDefault
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> list, TooltipFlag flag) {
-        list.add(Component.empty());
-        list.add(Component.translatable("des.superbwarfare.secondary_cataclysm_1").withStyle(ChatFormatting.GRAY).withStyle(ChatFormatting.ITALIC));
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.empty());
+        tooltipComponents.add(Component.translatable("des.superbwarfare.secondary_cataclysm_1").withStyle(ChatFormatting.GRAY).withStyle(ChatFormatting.ITALIC));
 
-        TooltipTool.addHideText(list, Component.empty());
-        TooltipTool.addHideText(list, Component.translatable("des.superbwarfare.trachelium_3").withStyle(ChatFormatting.WHITE));
-        TooltipTool.addHideText(list, Component.translatable("des.superbwarfare.secondary_cataclysm_2").withStyle(Style.EMPTY.withColor(0x68B9F6)));
+        TooltipTool.addHideText(tooltipComponents, Component.empty());
+        TooltipTool.addHideText(tooltipComponents, Component.translatable("des.superbwarfare.trachelium_3").withStyle(ChatFormatting.WHITE));
+        TooltipTool.addHideText(tooltipComponents, Component.translatable("des.superbwarfare.secondary_cataclysm_2").withStyle(Style.EMPTY.withColor(0x68B9F6)));
     }
 
     @Override
@@ -108,24 +77,8 @@ public class SecondaryCataclysm extends GunItem {
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    renderer = new SecondaryCataclysmRenderer();
-                }
-                return renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return SecondaryCataclysmRenderer::new;
     }
 
     private PlayState reloadAnimPredicate(AnimationState<SecondaryCataclysm> event) {
@@ -169,13 +122,14 @@ public class SecondaryCataclysm extends GunItem {
 
         if (player.isSprinting() && player.onGround()
                 && ClientEventHandler.cantSprint == 0
-                && !(data.tag().getBoolean("is_empty_reloading"))
+                && !data.reload.empty()
                 && data.reload.stage() != 1
                 && data.reload.stage() != 2
                 && data.reload.stage() != 3
                 && ClientEventHandler.drawTime < 0.01
                 && ClientEventHandler.gunMelee == 0
-                && !data.reloading()) {
+                && !data.reloading()
+        ) {
             if (ClientEventHandler.tacticalSprint) {
                 return event.setAndContinue(RawAnimation.begin().thenLoop("animation.secondary_cataclysm.run_fast"));
             } else {
@@ -215,25 +169,21 @@ public class SecondaryCataclysm extends GunItem {
         if (entity instanceof Player player) {
             for (var cell : player.getInventory().items) {
                 if (cell.is(ModItems.CELL.get())) {
-                    assert stack.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
-                    var stackStorage = stack.getCapability(ForgeCapabilities.ENERGY).resolve().get();
+                    var stackStorage = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (stackStorage == null) continue;
                     int stackMaxEnergy = stackStorage.getMaxEnergyStored();
                     int stackEnergy = stackStorage.getEnergyStored();
 
-                    assert cell.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
-                    var cellStorage = cell.getCapability(ForgeCapabilities.ENERGY).resolve().get();
+                    var cellStorage = cell.getCapability(Capabilities.EnergyStorage.ITEM);
+                    if (cellStorage == null) continue;
                     int cellEnergy = cellStorage.getEnergyStored();
 
                     int stackEnergyNeed = Math.min(cellEnergy, stackMaxEnergy - stackEnergy);
 
                     if (cellEnergy > 0) {
-                        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                                iEnergyStorage -> iEnergyStorage.receiveEnergy(stackEnergyNeed, false)
-                        );
+                        stackStorage.receiveEnergy(stackEnergyNeed, false);
                     }
-                    cell.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                            cEnergy -> cEnergy.extractEnergy(stackEnergyNeed, false)
-                    );
+                    cellStorage.extractEnergy(stackEnergyNeed, false);
                 }
             }
         }
@@ -265,9 +215,8 @@ public class SecondaryCataclysm extends GunItem {
         if (data.reloading()) return false;
         var stack = data.stack;
 
-        var hasEnoughEnergy = stack.getCapability(ForgeCapabilities.ENERGY)
-                .map(storage -> storage.getEnergyStored() >= 3000)
-                .orElse(false);
+        var stackCap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        var hasEnoughEnergy = stackCap != null && stackCap.getEnergyStored() >= 3000;
 
         boolean isChargedFire = zoom && hasEnoughEnergy;
 
@@ -303,7 +252,10 @@ public class SecondaryCataclysm extends GunItem {
                     4, 0.1, 0.1, 0.1, 0.002, true);
 
             if (isChargedFire) {
-                stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(energy -> energy.extractEnergy(3000, false));
+                var itemCap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+                if (itemCap != null) {
+                    itemCap.extractEnergy(3000, false);
+                }
             }
         }
 
@@ -312,17 +264,22 @@ public class SecondaryCataclysm extends GunItem {
 
     @Override
     public void playFireSounds(GunData data, Player player, boolean zoom) {
-        data.stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(cap -> {
-            if (cap.getEnergyStored() > 3000 && zoom) {
-                float soundRadius = (float) data.soundRadius();
+        var cap = data.stack.getCapability(Capabilities.EnergyStorage.ITEM);
 
-                player.playSound(ModSounds.SECONDARY_CATACLYSM_FIRE_3P_CHARGE.get(), soundRadius * 0.4f, 1f);
-                player.playSound(ModSounds.SECONDARY_CATACLYSM_FAR_CHARGE.get(), soundRadius * 0.7f, 1f);
-                player.playSound(ModSounds.SECONDARY_CATACLYSM_VERYFAR_CHARGE.get(), soundRadius, 1f);
-            } else {
-                super.playFireSounds(data, player, zoom);
-            }
-        });
+        if (cap != null && cap.getEnergyStored() > 3000 && zoom) {
+            float soundRadius = (float) data.soundRadius();
+
+            player.playSound(ModSounds.SECONDARY_CATACLYSM_FIRE_3P_CHARGE.get(), soundRadius * 0.4f, 1f);
+            player.playSound(ModSounds.SECONDARY_CATACLYSM_FAR_CHARGE.get(), soundRadius * 0.7f, 1f);
+            player.playSound(ModSounds.SECONDARY_CATACLYSM_VERYFAR_CHARGE.get(), soundRadius, 1f);
+        } else {
+            super.playFireSounds(data, player, zoom);
+        }
+    }
+
+    @Override
+    public int getMaxEnergy() {
+        return 24000;
     }
 
 }

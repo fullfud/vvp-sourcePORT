@@ -8,7 +8,7 @@ import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.network.chat.MutableComponent;
 import net.minecraft.util.Mth;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
 
 public class ClientEnergyImageTooltip extends ClientGunImageTooltip {
@@ -53,7 +53,7 @@ public class ClientEnergyImageTooltip extends ClientGunImageTooltip {
     }
 
     protected boolean shouldRenderEnergyTooltip() {
-        return stack.getCapability(ForgeCapabilities.ENERGY).isPresent() && stack.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
+        return stack.getCapability(Capabilities.EnergyStorage.ITEM) != null;
     }
 
     protected void renderEnergyTooltip(Font font, GuiGraphics guiGraphics, int x, int y) {
@@ -61,8 +61,8 @@ public class ClientEnergyImageTooltip extends ClientGunImageTooltip {
     }
 
     protected Component getEnergyComponent() {
-        assert stack.getCapability(ForgeCapabilities.ENERGY).resolve().isPresent();
-        var storage = stack.getCapability(ForgeCapabilities.ENERGY).resolve().get();
+        var storage = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        assert storage != null;
         int energy = storage.getEnergyStored();
         int maxEnergy = storage.getMaxEnergyStored();
         float percentage = Mth.clamp((float) energy / maxEnergy, 0, 1);

@@ -1,6 +1,5 @@
 package com.atsuishio.superbwarfare.mobeffect;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
 import com.atsuishio.superbwarfare.init.ModMobEffects;
 import com.atsuishio.superbwarfare.init.ModSounds;
@@ -15,12 +14,13 @@ import net.minecraft.world.effect.MobEffectCategory;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraftforge.event.entity.living.LivingEvent;
-import net.minecraftforge.event.entity.living.MobEffectEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.entity.living.MobEffectEvent;
+import net.neoforged.neoforge.event.tick.EntityTickEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(bus = net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus.FORGE)
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME)
 public class BurnMobEffect extends MobEffect {
 
     public BurnMobEffect() {
@@ -28,7 +28,7 @@ public class BurnMobEffect extends MobEffect {
     }
 
     @Override
-    public void applyEffectTick(LivingEntity entity, int amplifier) {
+    public boolean applyEffectTick(LivingEntity entity, int amplifier) {
         Entity attacker;
         if (!entity.getPersistentData().contains("BurnAttacker")) {
             attacker = null;
@@ -41,13 +41,13 @@ public class BurnMobEffect extends MobEffect {
 
         if (attacker instanceof ServerPlayer player) {
             player.level().playSound(null, player.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+            PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
         }
-
+        return true;
     }
 
     @Override
-    public boolean isDurationEffectTick(int duration, int amplifier) {
+    public boolean shouldApplyEffectTickThisTick(int duration, int amplifier) {
         return duration % 20 == 0;
     }
 
@@ -56,11 +56,14 @@ public class BurnMobEffect extends MobEffect {
         LivingEntity living = event.getEntity();
 
         MobEffectInstance instance = event.getEffectInstance();
-        if (!instance.getEffect().equals(ModMobEffects.BURN.get())) {
+        if (instance != null && !instance.getEffect().value().equals(ModMobEffects.BURN.value())) {
             return;
         }
 
-        living.hurt(new DamageSource(living.level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.IN_FIRE), event.getEffectSource()), 0.6f + (0.3f * instance.getAmplifier()));
+        float amount = 0.6f + (0.3f * (instance == null ? 0 : instance.getAmplifier()));
+
+        living.hurt(new DamageSource(living.level().registryAccess().registryOrThrow(Registries.DAMAGE_TYPE).getHolderOrThrow(DamageTypes.IN_FIRE),
+                event.getEffectSource()), amount);
         living.invulnerableTime = 0;
 
         if (event.getEffectSource() instanceof LivingEntity source) {
@@ -77,7 +80,7 @@ public class BurnMobEffect extends MobEffect {
             return;
         }
 
-        if (instance.getEffect().equals(ModMobEffects.BURN.get())) {
+        if (instance.getEffect().equals(ModMobEffects.BURN)) {
             living.getPersistentData().remove("BurnAttacker");
         }
     }
@@ -91,21 +94,22 @@ public class BurnMobEffect extends MobEffect {
             return;
         }
 
-        if (instance.getEffect().equals(ModMobEffects.BURN.get())) {
+        if (instance.getEffect().equals(ModMobEffects.BURN)) {
             living.getPersistentData().remove("BurnAttacker");
         }
     }
 
     @SubscribeEvent
-    public static void onLivingTick(LivingEvent.LivingTickEvent event) {
-        LivingEntity living = event.getEntity();
+    public static void onLivingTick(EntityTickEvent.Post event) {
+        var entity = event.getEntity();
+        if (!(entity instanceof LivingEntity living)) return;
 
-        if (living.hasEffect(ModMobEffects.BURN.get())) {
+        if (living.hasEffect(ModMobEffects.BURN)) {
             living.setRemainingFireTicks(2);
         }
 
         if (living.isInWater()) {
-            living.removeEffect(ModMobEffects.BURN.get());
+            living.removeEffect(ModMobEffects.BURN);
         }
     }
 }

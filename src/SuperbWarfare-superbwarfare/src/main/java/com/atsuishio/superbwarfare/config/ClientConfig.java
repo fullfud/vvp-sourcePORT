@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config;
 
 import com.atsuishio.superbwarfare.config.client.*;
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ClientConfig {
 
-    public static ForgeConfigSpec init() {
-        ForgeConfigSpec.Builder builder = new ForgeConfigSpec.Builder();
+    public static ModConfigSpec init() {
+        ModConfigSpec.Builder builder = new ModConfigSpec.Builder();
 
         ReloadConfig.init(builder);
         KillMessageConfig.init(builder);

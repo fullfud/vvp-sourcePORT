@@ -8,21 +8,23 @@ import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModKeyMappings;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
 import com.atsuishio.superbwarfare.tools.InventoryTool;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
-public class AmmoBarOverlay implements IGuiOverlay {
-
-    public static final String ID = Mod.MODID + "_ammo_bar";
+public class AmmoBarOverlay implements LayeredDraw.Layer {
+    public static final ResourceLocation ID = Mod.loc("ammo_bar");
 
     private static final ResourceLocation LINE = Mod.loc("textures/gun_icon/fire_mode/line.png");
     private static final ResourceLocation SEMI = Mod.loc("textures/gun_icon/fire_mode/semi.png");
@@ -38,14 +40,6 @@ public class AmmoBarOverlay implements IGuiOverlay {
         return player.isCreative() || InventoryTool.hasCreativeAmmoBox(player);
     }
 
-    private static ResourceLocation getFireMode(GunData data) {
-        return switch (data.fireMode.get()) {
-            case SEMI -> SEMI;
-            case BURST -> BURST;
-            case AUTO -> AUTO;
-        };
-    }
-
     private static String getGunAmmoString(GunData data, Player player) {
         if (data.useBackpackAmmo() && hasCreativeAmmo()) return "∞";
         return data.useBackpackAmmo() ? data.countBackupAmmo(player) + "" : data.ammo.get() + "";
@@ -58,18 +52,22 @@ public class AmmoBarOverlay implements IGuiOverlay {
     }
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         if (!DisplayConfig.AMMO_HUD.get()) return;
 
-        Player player = gui.getMinecraft().player;
+        int w = guiGraphics.guiWidth();
+        int h = guiGraphics.guiHeight();
+        Player player = Minecraft.getInstance().player;
 
         if (player == null) return;
         if (player.isSpectator()) return;
 
         ItemStack stack = player.getMainHandItem();
         if (stack.getItem() instanceof GunItem gunItem && !(player.getVehicle() instanceof ArmedVehicleEntity vehicle && vehicle.banHand(player))) {
-            int x = screenWidth + DisplayConfig.WEAPON_HUD_X_OFFSET.get();
-            int y = screenHeight + DisplayConfig.WEAPON_HUD_Y_OFFSET.get();
+            final var tag = NBTTool.getTag(stack);
+            int x = w + DisplayConfig.WEAPON_HUD_X_OFFSET.get();
+            int y = h + DisplayConfig.WEAPON_HUD_Y_OFFSET.get();
 
             PoseStack poseStack = guiGraphics.pose();
             var data = GunData.from(stack);
@@ -101,7 +99,7 @@ public class AmmoBarOverlay implements IGuiOverlay {
             ResourceLocation fireMode = getFireMode(data);
 
             if (stack.getItem() == ModItems.JAVELIN.get()) {
-                fireMode = stack.getOrCreateTag().getBoolean("TopMode") ? TOP : DIR;
+                fireMode = tag.getBoolean("TopMode") ? TOP : DIR;
             }
 
             if (stack.getItem() == ModItems.MINIGUN.get()) {
@@ -201,5 +199,13 @@ public class AmmoBarOverlay implements IGuiOverlay {
 
             poseStack.popPose();
         }
+    }
+
+    private static ResourceLocation getFireMode(GunData data) {
+        return switch (data.fireMode.get()) {
+            case SEMI -> SEMI;
+            case BURST -> BURST;
+            case AUTO -> AUTO;
+        };
     }
 }

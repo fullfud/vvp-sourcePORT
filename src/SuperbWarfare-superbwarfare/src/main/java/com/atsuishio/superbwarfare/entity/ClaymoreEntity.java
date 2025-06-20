@@ -27,14 +27,16 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
-import java.util.Comparator;
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -58,10 +60,10 @@ public class ClaymoreEntity extends Entity implements GeoEntity, OwnableEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(OWNER_UUID, Optional.empty());
-        this.entityData.define(LAST_ATTACKER_UUID, "undefined");
-        this.entityData.define(HEALTH, 10f);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        builder.define(OWNER_UUID, Optional.empty())
+                .define(LAST_ATTACKER_UUID, "undefined")
+                .define(HEALTH, 10f);
     }
 
     @Override
@@ -153,7 +155,8 @@ public class ClaymoreEntity extends Entity implements GeoEntity, OwnableEntity {
     }
 
     @Override
-    public InteractionResult interact(Player player, InteractionHand hand) {
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResult interact(Player player, InteractionHand hand) {
         if (this.isOwnedBy(player) && player.isShiftKeyDown()) {
             if (!this.level().isClientSide()) {
                 this.discard();
@@ -181,7 +184,7 @@ public class ClaymoreEntity extends Entity implements GeoEntity, OwnableEntity {
 
         if (this.tickCount >= 40) {
             final Vec3 center = new Vec3(x + 1.5 * this.getLookAngle().x, y + 1.5 * this.getLookAngle().y, z + 1.5 * this.getLookAngle().z);
-            for (Entity target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(2.5 / 2d), e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
+            for (var target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(2.5 / 2d), e -> true)) {
                 var condition = this.getOwner() != target
                         && (target instanceof LivingEntity || target instanceof VehicleEntity)
                         && !(target instanceof TargetEntity)
@@ -238,7 +241,7 @@ public class ClaymoreEntity extends Entity implements GeoEntity, OwnableEntity {
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), attacker == null ? this : attacker, attacker == null ? this : attacker), 25.0f,
                     this.getX(), this.getY(), this.getZ(), 5f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
             this.discard();
@@ -250,12 +253,12 @@ public class ClaymoreEntity extends Entity implements GeoEntity, OwnableEntity {
                 ModDamageTypes.causeMineDamage(this.level().registryAccess(), this.getOwner()), 140f,
                 this.getX(), this.getEyeY(), this.getZ(), 4f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
     }
 
     @Override
-    public EntityDimensions getDimensions(Pose p_33597_) {
+    public @NotNull EntityDimensions getDimensions(@NotNull Pose p_33597_) {
         return super.getDimensions(p_33597_).scale((float) 0.5);
     }
 

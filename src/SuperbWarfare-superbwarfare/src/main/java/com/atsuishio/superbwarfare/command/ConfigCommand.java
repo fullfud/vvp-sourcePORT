@@ -1,6 +1,5 @@
 package com.atsuishio.superbwarfare.command;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.config.server.MiscConfig;
 import com.atsuishio.superbwarfare.config.server.ProjectileConfig;
@@ -11,7 +10,7 @@ import com.mojang.brigadier.builder.LiteralArgumentBuilder;
 import net.minecraft.commands.CommandSourceStack;
 import net.minecraft.commands.Commands;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 public class ConfigCommand {
 
@@ -80,7 +79,7 @@ public class ConfigCommand {
                     MiscConfig.ALLOW_TACTICAL_SPRINT.set(value);
                     MiscConfig.ALLOW_TACTICAL_SPRINT.save();
 
-                    Mod.PACKET_HANDLER.send(PacketDistributor.ALL.noArg(), new ClientTacticalSprintSyncMessage(value));
+                    PacketDistributor.sendToAllPlayers(new ClientTacticalSprintSyncMessage(value));
 
                     context.getSource().sendSuccess(() -> Component.translatable(value ? "commands.config.tactical_sprint.enabled" : "commands.config.tactical_sprint.disabled"), true);
                     return 0;

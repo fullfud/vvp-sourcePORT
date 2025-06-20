@@ -35,17 +35,14 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.event.EventHooks;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import java.util.Optional;
@@ -65,10 +62,6 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
 
     public int changeTargetTimer = 60;
 
-    public LaserTowerEntity(PlayMessages.SpawnEntity packet, Level world) {
-        this(ModEntities.LASER_TOWER.get(), world);
-    }
-
     public LaserTowerEntity(EntityType<LaserTowerEntity> type, Level world) {
         super(type, world);
         this.noCulling = true;
@@ -86,13 +79,13 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(TARGET_UUID, "none");
-        this.entityData.define(OWNER_UUID, Optional.empty());
-        this.entityData.define(COOL_DOWN, 0);
-        this.entityData.define(LASER_LENGTH, 0f);
-        this.entityData.define(ACTIVE, false);
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(TARGET_UUID, "none")
+                .define(OWNER_UUID, Optional.empty())
+                .define(COOL_DOWN, 0)
+                .define(LASER_LENGTH, 0f)
+                .define(ACTIVE, false);
     }
 
     @Override
@@ -208,7 +201,7 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
     }
 
     @Override
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps) {
         serverYRot = yaw;
         serverXRot = pitch;
         this.interpolationSteps = 10;
@@ -222,7 +215,7 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), attacker, attacker), 10f,
                     this.getX(), this.getY(), this.getZ(), 3f, Explosion.BlockInteraction.KEEP).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
         }
@@ -301,7 +294,7 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
                 target.invulnerableTime = 0;
                 entityData.set(LASER_LENGTH, distanceTo(target));
                 if (Math.random() < 0.25 && target instanceof LivingEntity living) {
-                    living.setSecondsOnFire(2);
+                    living.setRemainingFireTicks(2);
                 }
 
                 if (target instanceof Projectile) {
@@ -355,7 +348,7 @@ public class LaserTowerEntity extends EnergyVehicleEntity implements GeoEntity, 
                 Explosion.BlockInteraction.KEEP).
                 setDamageMultiplier(1);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnMediumExplosionParticles(this.level(), vec3);
     }

@@ -1,6 +1,7 @@
 package com.atsuishio.superbwarfare.entity.vehicle;
 
 import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.entity.projectile.MortarShellEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.init.ModEntities;
@@ -21,26 +22,19 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.EntityDimensions;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.entity.MoverType;
-import net.minecraft.world.entity.Pose;
 import net.minecraft.world.entity.item.ItemEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.items.ItemHandlerHelper;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
 import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class MortarEntity extends VehicleEntity implements GeoEntity {
@@ -50,10 +44,6 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
     public static final EntityDataAccessor<Float> YAW = SynchedEntityData.defineId(MortarEntity.class, EntityDataSerializers.FLOAT);
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
-
-    public MortarEntity(PlayMessages.SpawnEntity packet, Level level) {
-        this(ModEntities.MORTAR.get(), level);
-    }
 
     public MortarEntity(EntityType<MortarEntity> type, Level level) {
         super(type, level);
@@ -66,30 +56,15 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-        this.entityData.define(FIRE_TIME, 0);
-        this.entityData.define(PITCH, -70f);
-        this.entityData.define(YAW, this.getYRot());
+    protected void defineSynchedData(SynchedEntityData.Builder builder) {
+        super.defineSynchedData(builder);
+        builder.define(FIRE_TIME, 0)
+                .define(PITCH, -70f)
+                .define(YAW, this.getYRot());
     }
 
     @Override
     public boolean canBeCollidedWith() {
-        return false;
-    }
-
-    @Override
-    public boolean isPickable() {
-        return !this.isRemoved();
-    }
-
-    @Override
-    protected float getEyeHeight(Pose pPose, EntityDimensions pSize) {
-        return 0.2F;
-    }
-
-    @Override
-    public boolean sendFireStarParticleOnHurt() {
         return false;
     }
 
@@ -130,8 +105,8 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
                 Level level = this.level();
                 if (level instanceof ServerLevel server) {
                     MortarShellEntity entityToSpawn = shell.createShell(player, level, stack);
-                    entityToSpawn.setPos(this.getX(), this.getEyeY(), this.getZ());
-                    entityToSpawn.shoot(this.getLookAngle().x, this.getLookAngle().y, this.getLookAngle().z, 11.4f, (float) 0.1);
+                    entityToSpawn.setPos(this.getX(), this.getY() + this.getEyeY(), this.getZ());
+                    entityToSpawn.shoot(this.getLookAngle().x, this.getLookAngle().y, this.getLookAngle().z, 11.4f, 0.1f);
                     level.addFreshEntity(entityToSpawn);
                     server.sendParticles(ParticleTypes.CAMPFIRE_COSY_SMOKE, (this.getX() + 3 * this.getLookAngle().x), (this.getY() + 0.1 + 3 * this.getLookAngle().y), (this.getZ() + 3 * this.getLookAngle().z), 8, 0.4, 0.4, 0.4,
                             0.007);
@@ -172,10 +147,14 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
     }
 
     public boolean setTarget(ItemStack stack) {
-        double targetX = stack.getOrCreateTag().getDouble("TargetX");
-        double targetY = stack.getOrCreateTag().getDouble("TargetY");
-        double targetZ = stack.getOrCreateTag().getDouble("TargetZ");
-        boolean isDepressed = stack.getOrCreateTag().getBoolean("IsDepressed");
+        var parameters = stack.get(ModDataComponents.FIRING_PARAMETERS);
+        if (parameters == null) return false;
+
+        var pos = parameters.pos();
+        double targetX = pos.getX();
+        double targetY = pos.getY();
+        double targetZ = pos.getZ();
+        var isDepressed = parameters.isDepressed();
 
         if (!RangeTool.canReach(11.4, 0.146, this.getEyePosition(), new Vec3(targetX, targetY, targetZ), 20, 89, isDepressed)) {
             return false;
@@ -187,7 +166,7 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
                 11.4, 0.146,
                 this.getEyePosition(),
                 new Vec3(targetX, targetY, targetZ),
-                isDepressed
+                parameters.isDepressed()
         ));
 
         return true;
@@ -201,7 +180,7 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
     }
 
     @Override
-    public Vec3 getDeltaMovement() {
+    public @NotNull Vec3 getDeltaMovement() {
         return new Vec3(0, Math.min(super.getDeltaMovement().y, 0), 0);
     }
 
@@ -238,7 +217,7 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
     }
 
     @Override
-    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps, boolean interpolate) {
+    public void lerpTo(double x, double y, double z, float yaw, float pitch, int interpolationSteps) {
         serverYRot = yaw;
         serverXRot = pitch;
         this.interpolationSteps = 10;
@@ -272,13 +251,6 @@ public class MortarEntity extends VehicleEntity implements GeoEntity {
             level.addFreshEntity(mortar);
         }
         super.destroy();
-    }
-
-    public String getSyncedAnimation() {
-        return null;
-    }
-
-    public void setAnimation(String animation) {
     }
 
     @Override

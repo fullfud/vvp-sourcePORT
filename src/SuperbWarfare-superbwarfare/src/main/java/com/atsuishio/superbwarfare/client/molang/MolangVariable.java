@@ -1,6 +1,7 @@
 package com.atsuishio.superbwarfare.client.molang;
 
-import software.bernie.geckolib.core.molang.MolangParser;
+import software.bernie.geckolib.loading.math.MathParser;
+import software.bernie.geckolib.loading.math.value.Variable;
 
 import java.util.function.DoubleSupplier;
 
@@ -15,6 +16,6 @@ public class MolangVariable {
     }
 
     private static void register(String name, DoubleSupplier supplier) {
-        MolangParser.INSTANCE.setMemoizedValue(name, supplier);
+        MathParser.registerVariable(new Variable(name, supplier));
     }
 }

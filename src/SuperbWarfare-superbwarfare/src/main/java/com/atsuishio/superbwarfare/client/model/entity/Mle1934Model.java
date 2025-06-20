@@ -6,9 +6,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.model.GeoModel;
 import software.bernie.geckolib.model.data.EntityModelData;
 
@@ -42,7 +42,7 @@ public class Mle1934Model extends GeoModel<Mle1934Entity> {
 
     @Override
     public void setCustomAnimations(Mle1934Entity animatable, long instanceId, AnimationState<Mle1934Entity> animationState) {
-        CoreGeoBone barrel = getAnimationProcessor().getBone("barrel");
+        GeoBone barrel = getAnimationProcessor().getBone("barrel");
         EntityModelData entityData = animationState.getData(DataTickets.ENTITY_MODEL_DATA);
         barrel.setRotX((entityData.headPitch()) * Mth.DEG_TO_RAD);
     }

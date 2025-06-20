@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class MinigunItemModel extends CustomGunModel<MinigunItem> {
 
@@ -49,10 +49,10 @@ public class MinigunItemModel extends CustomGunModel<MinigunItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("barrel");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone gun = getAnimationProcessor().getBone("barrel");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
 
         double fpz = ClientEventHandler.firePosZ * 13 * times;
         double fp = ClientEventHandler.firePos;
@@ -64,7 +64,7 @@ public class MinigunItemModel extends CustomGunModel<MinigunItem> {
         float heat = (float) data.heat.get();
 
         for (int i = 1; i <= 6; i++) {
-            CoreGeoBone bone = getAnimationProcessor().getBone("barrel" + i + "_illuminated");
+            GeoBone bone = getAnimationProcessor().getBone("barrel" + i + "_illuminated");
             bone.setScaleZ(heat / 2);
         }
 
@@ -82,7 +82,7 @@ public class MinigunItemModel extends CustomGunModel<MinigunItem> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
         ClientEventHandler.handleReloadShake(Mth.RAD_TO_DEG * camera.getRotX(), Mth.RAD_TO_DEG * camera.getRotY(), Mth.RAD_TO_DEG * camera.getRotZ());
     }
 }

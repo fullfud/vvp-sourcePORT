@@ -6,16 +6,14 @@ import com.atsuishio.superbwarfare.init.ModDamageTypes;
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.registries.ForgeRegistries;
 import org.jetbrains.annotations.NotNull;
-
-import java.util.Objects;
 
 public class VehicleData {
 
@@ -80,9 +78,9 @@ public class VehicleData {
             useTag = true;
         }
 
-        var location = Objects.requireNonNull(ResourceLocation.tryParse(material));
+        var location = ResourceLocation.parse(material);
         if (!useTag) {
-            return stack.getItem() == ForgeRegistries.ITEMS.getValue(location);
+            return stack.getItem() == BuiltInRegistries.ITEM.get(location);
         } else {
             return stack.is(ItemTags.create(location));
         }

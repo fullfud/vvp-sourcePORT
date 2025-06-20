@@ -8,24 +8,31 @@ import com.atsuishio.superbwarfare.entity.vehicle.base.ArmedVehicleEntity;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.DeltaTracker;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.client.renderer.RenderType;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
-public class StaminaOverlay implements IGuiOverlay {
+public class StaminaOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_stamina";
+    public static final ResourceLocation ID = Mod.loc("stamina");
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        Player player = gui.getMinecraft().player;
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        Player player = Minecraft.getInstance().player;
+        var w = guiGraphics.guiWidth();
+        var h = guiGraphics.guiHeight();
 
         if (player != null && ClickHandler.isEditing)
             return;
@@ -47,8 +54,8 @@ public class StaminaOverlay implements IGuiOverlay {
             RenderSystem.setShaderColor(1, 1, 1, (float) Mth.clamp(ClientEventHandler.switchTime, 0, 1));
         }
 
-        RenderHelper.fill(guiGraphics, RenderType.guiOverlay(), (float) screenWidth / 2 - 90, screenHeight - 23, (float) screenWidth / 2 + 90, screenHeight - 24, -90, -16777216);
-        RenderHelper.fill(guiGraphics, RenderType.guiOverlay(), (float) screenWidth / 2 - 90, (float) (screenHeight - 23), (float) (screenWidth / 2 + 90 - 1.8 * ClientEventHandler.stamina), screenHeight - 24, -90, -1);
+        RenderHelper.fill(guiGraphics, RenderType.guiOverlay(), (float) w / 2 - 90, h - 23, (float) w / 2 + 90, h - 24, -90, -16777216);
+        RenderHelper.fill(guiGraphics, RenderType.guiOverlay(), (float) w / 2 - 90, (float) (h - 23), (float) (w / 2 + 90 - 1.8 * ClientEventHandler.stamina), h - 24, -90, -1);
 
         RenderSystem.setShaderColor(1, 1, 1, 1);
 

@@ -18,8 +18,10 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.math.Axis;
 import net.minecraft.client.Camera;
 import net.minecraft.client.CameraType;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
@@ -27,10 +29,9 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import org.jetbrains.annotations.NotNull;
 import org.joml.Math;
 
 import java.util.List;
@@ -40,8 +41,10 @@ import static com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity.HEAT
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.zoomVehicle;
 
 @OnlyIn(Dist.CLIENT)
-public class AircraftOverlay implements IGuiOverlay {
-    public static final String ID = Mod.MODID + "_aircraft_hud";
+public class AircraftOverlay implements LayeredDraw.Layer {
+
+    public static final ResourceLocation ID = Mod.loc("aircraft_hud");
+
     private static float lerpVy = 1;
     private static float lerpLock = 1;
     private static float lerpG = 1;
@@ -55,13 +58,15 @@ public class AircraftOverlay implements IGuiOverlay {
     private static final ResourceLocation IND_4 = Mod.loc("textures/screens/aircraft/locking_ind4.png");
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        Minecraft mc = gui.getMinecraft();
+    public void render(GuiGraphics guiGraphics, @NotNull DeltaTracker deltaTracker) {
+        Minecraft mc = Minecraft.getInstance();
         Player player = mc.player;
         Camera camera = mc.gameRenderer.getMainCamera();
         Vec3 cameraPos = camera.getPosition();
         PoseStack poseStack = guiGraphics.pose();
         Vec3 lookVec = new Vec3(camera.getLookVector());
+
+        var partialTick = deltaTracker.getGameTimeDeltaPartialTick(true);
 
         if (player == null) return;
 
@@ -281,17 +286,17 @@ public class AircraftOverlay implements IGuiOverlay {
                         float y = (float) point.y;
 
                         if (lockOn) {
-                            RenderHelper.blit(poseStack, FRAME_LOCK, x - 12, y - 12, 0, 0, 24, 24, 24, 24, 1f);
+                            RenderHelper.preciseBlit(guiGraphics, FRAME_LOCK, x - 12, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
                         } else if (nearest) {
-                            lerpLock = Mth.lerp(partialTick, lerpLock,  2 * a10Entity.lockTime);
+                            lerpLock = Mth.lerp(partialTick, lerpLock, 2 * a10Entity.lockTime);
                             float lockTime = Mth.clamp(20 - lerpLock, 0, 20);
-                            RenderHelper.blit(poseStack, IND_1, x - 12, y - 12 - lockTime, 0, 0, 24, 24, 24, 24, 1f);
-                            RenderHelper.blit(poseStack, IND_2, x - 12, y - 12 + lockTime, 0, 0, 24, 24, 24, 24, 1f);
-                            RenderHelper.blit(poseStack, IND_3, x - 12 - lockTime, y - 12, 0, 0, 24, 24, 24, 24, 1f);
-                            RenderHelper.blit(poseStack, IND_4, x - 12 + lockTime, y - 12, 0, 0, 24, 24, 24, 24, 1f);
-                            RenderHelper.blit(poseStack, FRAME_TARGET, x - 12, y - 12, 0, 0, 24, 24, 24, 24, 1f);
+                            RenderHelper.preciseBlit(guiGraphics, IND_1, x - 12, y - 12 - lockTime, 24, 24, 0, 0, 24, 24, 24, 24);
+                            RenderHelper.preciseBlit(guiGraphics, IND_2, x - 12, y - 12 + lockTime, 24, 24, 0, 0, 24, 24, 24, 24);
+                            RenderHelper.preciseBlit(guiGraphics, IND_3, x - 12 - lockTime, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
+                            RenderHelper.preciseBlit(guiGraphics, IND_4, x - 12 + lockTime, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
+                            RenderHelper.preciseBlit(guiGraphics, FRAME_TARGET, x - 12, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
                         } else {
-                            RenderHelper.blit(poseStack, FRAME, x - 12, y - 12, 0, 0, 24, 24, 24, 24, 1f);
+                            RenderHelper.preciseBlit(guiGraphics, FRAME, x - 12, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
                         }
                         poseStack.popPose();
                     }

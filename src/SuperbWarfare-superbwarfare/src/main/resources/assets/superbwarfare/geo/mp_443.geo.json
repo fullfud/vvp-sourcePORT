@@ -32,7 +32,11 @@
 				{
 					"name": "gun",
 					"parent": "0",
-					"pivot": [0, 1, 4]
+					"pivot": [
+						0,
+						1,
+						4
+					]
 				},
 				{
 					"name": "huatao",

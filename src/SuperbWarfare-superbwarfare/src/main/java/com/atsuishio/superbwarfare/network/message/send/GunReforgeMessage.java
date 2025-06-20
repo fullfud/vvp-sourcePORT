@@ -1,44 +1,39 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.ReforgingTableMenu;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record GunReforgeMessage(int msgType) implements CustomPacketPayload {
+    public static final Type<GunReforgeMessage> TYPE = new Type<>(Mod.loc("gun_reforge"));
 
-public class GunReforgeMessage {
+    public static final StreamCodec<ByteBuf, GunReforgeMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            GunReforgeMessage::msgType,
+            GunReforgeMessage::new
+    );
 
-    public int type;
+    public static void handler(GunReforgeMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
 
-    public GunReforgeMessage(int type) {
-        this.type = type;
-    }
-
-    public static void encode(GunReforgeMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-    }
-
-    public static GunReforgeMessage decode(FriendlyByteBuf buffer) {
-        return new GunReforgeMessage(buffer.readInt());
-    }
-
-    public static void handler(GunReforgeMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
+        AbstractContainerMenu abstractcontainermenu = player.containerMenu;
+        if (abstractcontainermenu instanceof ReforgingTableMenu menu) {
+            if (!menu.stillValid(player)) {
                 return;
             }
+            menu.generateResult();
+        }
+    }
 
-            AbstractContainerMenu abstractcontainermenu = player.containerMenu;
-            if (abstractcontainermenu instanceof ReforgingTableMenu menu) {
-                if (!menu.stillValid(player)) {
-                    return;
-                }
-                menu.generateResult();
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

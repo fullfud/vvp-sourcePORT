@@ -3,6 +3,7 @@ package com.atsuishio.superbwarfare.item;
 import com.atsuishio.superbwarfare.config.server.MiscConfig;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModTags;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
 import net.minecraft.server.level.ServerPlayer;
@@ -11,6 +12,7 @@ import net.minecraft.sounds.SoundSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResultHolder;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
@@ -20,24 +22,26 @@ import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.item.UseAnim;
 import net.minecraft.world.level.Level;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
 public class ArmorPlate extends Item {
     public ArmorPlate() {
-        super(new Item.Properties());
+        super(new Properties());
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, @NotNull List<Component> pTooltipComponents, @NotNull TooltipFlag pIsAdvanced) {
-        if (pStack.getOrCreateTag().getBoolean("Infinite")) {
-            pTooltipComponents.add(Component.translatable("des.superbwarfare.armor_plate.infinite").withStyle(ChatFormatting.GRAY));
+    @ParametersAreNonnullByDefault
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        if (NBTTool.getTag(stack).getBoolean("Infinite")) {
+            tooltipComponents.add(Component.translatable("des.superbwarfare.armor_plate.infinite").withStyle(ChatFormatting.GRAY));
         }
     }
 
     @Override
-    public @NotNull InteractionResultHolder<ItemStack> use(@NotNull Level worldIn, Player playerIn, @NotNull InteractionHand handIn) {
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResultHolder<ItemStack> use(Level worldIn, Player playerIn, InteractionHand handIn) {
         ItemStack stack = playerIn.getItemInHand(handIn);
         ItemStack armor = playerIn.getItemBySlot(EquipmentSlot.CHEST);
 
@@ -50,7 +54,7 @@ public class ArmorPlate extends Item {
             armorLevel = MiscConfig.HEAVY_MILITARY_ARMOR_LEVEL.get();
         }
 
-        if (armor.getOrCreateTag().getDouble("ArmorPlate") < armorLevel * MiscConfig.ARMOR_PONT_PER_LEVEL.get()) {
+        if (NBTTool.getTag(armor).getDouble("ArmorPlate") < armorLevel * MiscConfig.ARMOR_PONT_PER_LEVEL.get()) {
             playerIn.startUsingItem(handIn);
         }
 
@@ -63,7 +67,8 @@ public class ArmorPlate extends Item {
     }
 
     @Override
-    public @NotNull ItemStack finishUsingItem(@NotNull ItemStack pStack, Level pLevel, @NotNull LivingEntity pLivingEntity) {
+    @ParametersAreNonnullByDefault
+    public @NotNull ItemStack finishUsingItem(ItemStack pStack, Level pLevel, LivingEntity pLivingEntity) {
         if (!pLevel.isClientSide) {
             ItemStack armor = pLivingEntity.getItemBySlot(EquipmentSlot.CHEST);
 
@@ -74,13 +79,15 @@ public class ArmorPlate extends Item {
                 armorLevel = MiscConfig.HEAVY_MILITARY_ARMOR_LEVEL.get();
             }
 
-            armor.getOrCreateTag().putDouble("ArmorPlate", Mth.clamp(armor.getOrCreateTag().getDouble("ArmorPlate") + MiscConfig.ARMOR_PONT_PER_LEVEL.get(), 0, armorLevel * MiscConfig.ARMOR_PONT_PER_LEVEL.get()));
+            var tag = NBTTool.getTag(armor);
+            tag.putDouble("ArmorPlate", Mth.clamp(tag.getDouble("ArmorPlate") + MiscConfig.ARMOR_PONT_PER_LEVEL.get(), 0, armorLevel * MiscConfig.ARMOR_PONT_PER_LEVEL.get()));
+            NBTTool.saveTag(armor, tag);
 
             if (pLivingEntity instanceof ServerPlayer serverPlayer) {
-                serverPlayer.level().playSound(null, serverPlayer.getOnPos(), SoundEvents.ARMOR_EQUIP_IRON, SoundSource.PLAYERS, 0.5f, 1);
+                serverPlayer.level().playSound((Entity) null, serverPlayer.getOnPos(), SoundEvents.ARMOR_EQUIP_IRON.value(), SoundSource.PLAYERS, 0.5f, 1);
             }
 
-            if (pLivingEntity instanceof Player player && !player.isCreative() && !pStack.getOrCreateTag().getBoolean("Infinite")) {
+            if (pLivingEntity instanceof Player player && !player.isCreative() && !NBTTool.getTag(pStack).getBoolean("Infinite")) {
                 pStack.shrink(1);
             }
         }
@@ -89,13 +96,16 @@ public class ArmorPlate extends Item {
     }
 
     @Override
-    public int getUseDuration(@NotNull ItemStack stack) {
+    @ParametersAreNonnullByDefault
+    public int getUseDuration(ItemStack stack, LivingEntity entity) {
         return 20;
     }
 
     public static ItemStack getInfiniteInstance() {
         ItemStack stack = new ItemStack(ModItems.ARMOR_PLATE.get());
-        stack.getOrCreateTag().putBoolean("Infinite", true);
+        final var tag = NBTTool.getTag(stack);
+        tag.putBoolean("Infinite", true);
+        NBTTool.saveTag(stack, tag);
         return stack;
     }
 }

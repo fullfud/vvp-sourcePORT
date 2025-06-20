@@ -5,8 +5,7 @@ import com.atsuishio.superbwarfare.perk.Perk;
 import com.atsuishio.superbwarfare.tools.FormatTool;
 import net.minecraft.ChatFormatting;
 import net.minecraft.network.chat.Component;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.capabilities.Capabilities;
 
 public class ClientSentinelImageTooltip extends ClientEnergyImageTooltip {
 
@@ -16,17 +15,17 @@ public class ClientSentinelImageTooltip extends ClientEnergyImageTooltip {
 
     @Override
     protected Component getDamageComponent() {
-        int energy = stack.getCapability(ForgeCapabilities.ENERGY).map(IEnergyStorage::getEnergyStored).orElse(0);
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
 
-        if (energy > 0) {
-            double damage = getGunData().damage();
+        if (cap != null && cap.getEnergyStored() > 0) {
+            double damage = data.damage();
             double extraDamage = -1;
             for (var type : Perk.Type.values()) {
-                var instance = getGunData().perk.getInstance(type);
+                var instance = data.perk.getInstance(type);
                 if (instance != null) {
-                    damage = instance.perk().getDisplayDamage(damage, getGunData(), instance);
-                    if (instance.perk().getExtraDisplayDamage(damage, getGunData(), instance) >= 0) {
-                        extraDamage = instance.perk().getExtraDisplayDamage(damage, getGunData(), instance);
+                    damage = instance.perk().getDisplayDamage(damage, data, instance);
+                    if (instance.perk().getExtraDisplayDamage(damage, data, instance) >= 0) {
+                        extraDamage = instance.perk().getExtraDisplayDamage(damage, data, instance);
                     }
                 }
             }

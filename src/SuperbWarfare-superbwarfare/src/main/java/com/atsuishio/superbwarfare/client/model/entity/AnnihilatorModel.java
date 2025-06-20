@@ -6,8 +6,8 @@ import com.atsuishio.superbwarfare.entity.vehicle.AnnihilatorEntity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Player;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 import static com.atsuishio.superbwarfare.entity.vehicle.AnnihilatorEntity.*;
@@ -43,25 +43,25 @@ public class AnnihilatorModel extends GeoModel<AnnihilatorEntity> {
 
     @Override
     public void setCustomAnimations(AnnihilatorEntity animatable, long instanceId, AnimationState<AnnihilatorEntity> animationState) {
-        CoreGeoBone laserLeft = getAnimationProcessor().getBone("laser1");
-        CoreGeoBone laserMiddle = getAnimationProcessor().getBone("laser2");
-        CoreGeoBone laserRight = getAnimationProcessor().getBone("laser3");
+        GeoBone laserLeft = getAnimationProcessor().getBone("laser1");
+        GeoBone laserMiddle = getAnimationProcessor().getBone("laser2");
+        GeoBone laserRight = getAnimationProcessor().getBone("laser3");
 
         laserLeft.setScaleZ(animatable.getEntityData().get(LASER_LEFT_LENGTH) + 0.5f);
         laserMiddle.setScaleZ(animatable.getEntityData().get(LASER_MIDDLE_LENGTH) + 0.5f);
         laserRight.setScaleZ(animatable.getEntityData().get(LASER_RIGHT_LENGTH) + 0.5f);
 
-        CoreGeoBone ledGreen = getAnimationProcessor().getBone("ledgreen");
-        CoreGeoBone ledGreen2 = getAnimationProcessor().getBone("ledgreen2");
-        CoreGeoBone ledGreen3 = getAnimationProcessor().getBone("ledgreen3");
-        CoreGeoBone ledGreen4 = getAnimationProcessor().getBone("ledgreen4");
-        CoreGeoBone ledGreen5 = getAnimationProcessor().getBone("ledgreen5");
+        GeoBone ledGreen = getAnimationProcessor().getBone("ledgreen");
+        GeoBone ledGreen2 = getAnimationProcessor().getBone("ledgreen2");
+        GeoBone ledGreen3 = getAnimationProcessor().getBone("ledgreen3");
+        GeoBone ledGreen4 = getAnimationProcessor().getBone("ledgreen4");
+        GeoBone ledGreen5 = getAnimationProcessor().getBone("ledgreen5");
 
-        CoreGeoBone ledRed = getAnimationProcessor().getBone("ledred");
-        CoreGeoBone ledRed2 = getAnimationProcessor().getBone("ledred2");
-        CoreGeoBone ledRed3 = getAnimationProcessor().getBone("ledred3");
-        CoreGeoBone ledRed4 = getAnimationProcessor().getBone("ledred4");
-        CoreGeoBone ledRed5 = getAnimationProcessor().getBone("ledred5");
+        GeoBone ledRed = getAnimationProcessor().getBone("ledred");
+        GeoBone ledRed2 = getAnimationProcessor().getBone("ledred2");
+        GeoBone ledRed3 = getAnimationProcessor().getBone("ledred3");
+        GeoBone ledRed4 = getAnimationProcessor().getBone("ledred4");
+        GeoBone ledRed5 = getAnimationProcessor().getBone("ledred5");
 
         float coolDown = animatable.getEntityData().get(COOL_DOWN);
         boolean cantShoot = animatable.getEnergy() < VehicleConfig.ANNIHILATOR_SHOOT_COST.get();

@@ -11,6 +11,7 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.Projectile;
+import net.neoforged.neoforge.event.EventHooks;
 
 public class Firefly extends Perk {
 
@@ -37,7 +38,7 @@ public class Firefly extends Perk {
                 2 + instance.level() * 0.5f, CustomExplosion.BlockInteraction.KEEP, false)
                 .setFireTime(3 + instance.level() / 3);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(target.level(), explosion);
+        EventHooks.onExplosionStart(target.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnSmallExplosionParticles(target.level(), target.position());
     }

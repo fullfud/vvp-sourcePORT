@@ -1,66 +1,80 @@
 package com.atsuishio.superbwarfare.item.common.ammo;
 
-import com.atsuishio.superbwarfare.advancement.CriteriaRegister;
+import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.renderer.item.RocketItemRenderer;
 import com.atsuishio.superbwarfare.entity.projectile.RpgRocketEntity;
+import com.atsuishio.superbwarfare.init.ModCriteriaTriggers;
 import com.atsuishio.superbwarfare.init.ModEntities;
+import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
-import com.atsuishio.superbwarfare.item.DispenserLaunchable;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
-import com.google.common.collect.HashMultimap;
-import com.google.common.collect.Multimap;
+import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.core.BlockSource;
+import net.minecraft.core.Direction;
 import net.minecraft.core.Position;
-import net.minecraft.core.dispenser.AbstractProjectileDispenseBehavior;
+import net.minecraft.core.dispenser.BlockSource;
+import net.minecraft.core.dispenser.ProjectileDispenseBehavior;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundSource;
-import net.minecraft.world.entity.EquipmentSlot;
+import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.EquipmentSlotGroup;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.ai.attributes.Attribute;
 import net.minecraft.world.entity.ai.attributes.AttributeModifier;
 import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.ProjectileItem;
+import net.minecraft.world.item.component.ItemAttributeModifiers;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.extensions.common.IClientItemExtensions;
+import net.neoforged.neoforge.client.extensions.common.RegisterClientExtensionsEvent;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoItem;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.ParametersAreNonnullByDefault;
-import java.util.function.Consumer;
+import java.util.ArrayList;
+import java.util.List;
 
-public class Rocket extends Item implements GeoItem, DispenserLaunchable {
-
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.MOD)
+public class Rocket extends Item implements GeoItem, ProjectileItem {
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public static ItemDisplayContext transformType;
 
     public Rocket() {
-        super(new Item.Properties().stacksTo(16));
+        super(new Properties().stacksTo(16));
     }
 
-    @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
+    @SubscribeEvent
+    private static void registerGunExtensions(RegisterClientExtensionsEvent event) {
+        event.registerItem(new IClientItemExtensions() {
             private final BlockEntityWithoutLevelRenderer renderer = new RocketItemRenderer();
 
             @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
+            public @NotNull BlockEntityWithoutLevelRenderer getCustomRenderer() {
                 return renderer;
             }
-        });
+
+            @Override
+            @ParametersAreNonnullByDefault
+            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
+                return PoseTool.pose(entityLiving, hand, stack);
+            }
+        }, ModItems.ROCKET.get());
     }
 
     public void getTransformType(ItemDisplayContext type) {
         transformType = type;
     }
+
 
     @Override
     public void registerControllers(AnimatableManager.ControllerRegistrar data) {
@@ -72,14 +86,23 @@ public class Rocket extends Item implements GeoItem, DispenserLaunchable {
     }
 
     @Override
-    public Multimap<Attribute, AttributeModifier> getAttributeModifiers(EquipmentSlot slot, ItemStack stack) {
-        Multimap<Attribute, AttributeModifier> map = super.getAttributeModifiers(slot, stack);
-        if (slot == EquipmentSlot.MAINHAND) {
-            map = HashMultimap.create(map);
-            map.put(Attributes.ATTACK_DAMAGE, new AttributeModifier(BASE_ATTACK_DAMAGE_UUID, "Item modifier", 6d, AttributeModifier.Operation.ADDITION));
-            map.put(Attributes.ATTACK_SPEED, new AttributeModifier(BASE_ATTACK_SPEED_UUID, "Item modifier", -2.4, AttributeModifier.Operation.ADDITION));
-        }
-        return map;
+    public @NotNull ItemAttributeModifiers getDefaultAttributeModifiers(@NotNull ItemStack stack) {
+        var list = new ArrayList<>(super.getDefaultAttributeModifiers(stack).modifiers());
+
+        list.addAll(List.of(
+                new ItemAttributeModifiers.Entry(
+                        Attributes.ATTACK_DAMAGE,
+                        new AttributeModifier(BASE_ATTACK_DAMAGE_ID, 6, AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND
+                ),
+                new ItemAttributeModifiers.Entry(
+                        Attributes.ATTACK_SPEED,
+                        new AttributeModifier(BASE_ATTACK_SPEED_ID, -2.4, AttributeModifier.Operation.ADD_VALUE),
+                        EquipmentSlotGroup.MAINHAND
+                )
+        ));
+
+        return new ItemAttributeModifiers(list, true);
     }
 
     @Override
@@ -94,7 +117,7 @@ public class Rocket extends Item implements GeoItem, DispenserLaunchable {
             }
 
             if (source instanceof ServerPlayer player) {
-                CriteriaRegister.RPG_MELEE_EXPLOSION.trigger(player);
+                ModCriteriaTriggers.RPG_MELEE_EXPLOSION.get().trigger(player);
                 if (!player.isCreative()) {
                     stack.shrink(1);
                 }
@@ -106,25 +129,25 @@ public class Rocket extends Item implements GeoItem, DispenserLaunchable {
         return super.hurtEnemy(stack, entity, source);
     }
 
+    public static class RocketDispenseBehavior extends ProjectileDispenseBehavior {
+        public RocketDispenseBehavior() {
+            super(ModItems.ROCKET.get());
+        }
+
+        @Override
+        protected void playSound(BlockSource blockSource) {
+            blockSource.level().playSound(null, blockSource.pos(), ModSounds.RPG_FIRE_3P.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
+        }
+    }
+
     @Override
-    public AbstractProjectileDispenseBehavior getLaunchBehavior() {
-        return new AbstractProjectileDispenseBehavior() {
+    @ParametersAreNonnullByDefault
+    public @NotNull Projectile asProjectile(Level level, Position pos, ItemStack stack, Direction direction) {
+        return new RpgRocketEntity(ModEntities.RPG_ROCKET.get(), pos.x(), pos.y(), pos.z(), level);
+    }
 
-            @Override
-            protected float getPower() {
-                return 1.5F;
-            }
-
-            @Override
-            @ParametersAreNonnullByDefault
-            protected @NotNull Projectile getProjectile(Level pLevel, Position pPosition, ItemStack pStack) {
-                return new RpgRocketEntity(ModEntities.RPG_ROCKET.get(), pPosition.x(), pPosition.y(), pPosition.z(), pLevel);
-            }
-
-            @Override
-            protected void playSound(BlockSource pSource) {
-                pSource.getLevel().playSound(null, pSource.getPos(), ModSounds.RPG_FIRE_3P.get(), SoundSource.BLOCKS, 1.0F, 1.0F);
-            }
-        };
+    @Override
+    public @NotNull DispenseConfig createDispenseConfig() {
+        return DispenseConfig.builder().power(1.5F).build();
     }
 }

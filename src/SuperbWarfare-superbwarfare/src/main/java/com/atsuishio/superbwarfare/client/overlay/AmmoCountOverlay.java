@@ -1,7 +1,9 @@
 package com.atsuishio.superbwarfare.client.overlay;
 
 import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ArmedVehicleEntity;
+import com.atsuishio.superbwarfare.init.ModAttachments;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.item.common.ammo.AmmoSupplierItem;
 import com.atsuishio.superbwarfare.tools.Ammo;
@@ -9,21 +11,24 @@ import com.atsuishio.superbwarfare.tools.animation.AnimationCurves;
 import com.atsuishio.superbwarfare.tools.animation.AnimationTimer;
 import com.atsuishio.superbwarfare.tools.animation.ValueAnimator;
 import com.mojang.blaze3d.systems.RenderSystem;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.network.chat.Component;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.FastColor;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+
+import javax.annotation.ParametersAreNonnullByDefault;
 
 @OnlyIn(Dist.CLIENT)
-public class AmmoCountOverlay implements IGuiOverlay {
+public class AmmoCountOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_ammo_count";
+    public static final ResourceLocation ID = Mod.loc("ammo_count");
 
     private static final AnimationTimer ammoInfoTimer = new AnimationTimer(500, 2000)
             .forwardAnimation(AnimationCurves.EASE_OUT_EXPO)
@@ -43,9 +48,10 @@ public class AmmoCountOverlay implements IGuiOverlay {
      * 在手持弹药或弹药盒时，渲染玩家弹药总量信息
      */
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
         boolean startRenderingAmmoInfo = false;
-        Player player = gui.getMinecraft().player;
+        Player player = Minecraft.getInstance().player;
         if (player == null || player.isSpectator()) return;
 
         boolean isAmmoBox = false;
@@ -75,16 +81,20 @@ public class AmmoCountOverlay implements IGuiOverlay {
         var poseStack = guiGraphics.pose();
         poseStack.pushPose();
 
-        var ammoX = ammoInfoTimer.lerp(screenWidth + 120, (float) screenWidth / 2 + 40, currentTime);
+        int w = guiGraphics.guiWidth();
+        int h = guiGraphics.guiHeight();
+
+        var ammoX = ammoInfoTimer.lerp(w + 120, (float) w / 2 + 40, currentTime);
         final int fontHeight = 15;
-        var yOffset = (-screenHeight - Ammo.values().length * fontHeight) / 2f;
+        var yOffset = (-h - Ammo.values().length * fontHeight) / 2f;
 
         // 渲染总弹药数量
+        var cap = player.getData(ModAttachments.PLAYER_VARIABLE);
         var font = Minecraft.getInstance().font;
 
         for (var type : Ammo.values()) {
             var index = type.ordinal();
-            var ammoCount = type.get(player);
+            var ammoCount = type.get(cap);
             var animator = ammoCountAnimators[index];
 
             var boxAnimator = ammoBoxAnimators[index];
@@ -92,7 +102,9 @@ public class AmmoCountOverlay implements IGuiOverlay {
             boolean boxAmmoSelected = false;
 
             if (isAmmoBox) {
-                var ammoBoxType = stack.getOrCreateTag().getString("Type");
+                var data = stack.get(ModDataComponents.AMMO_BOX_INFO);
+                var ammoBoxType = data == null ? "All" : data.type();
+
                 boxAmmoCount = type.get(stack);
                 if (ammoBoxType.equals("All") || ammoBoxType.equals(type.serializationName)) {
                     boxAnimator.forward(currentTime);
@@ -138,7 +150,7 @@ public class AmmoCountOverlay implements IGuiOverlay {
                     font,
                     ammoCountStr,
                     ammoX + (30 - font.width(ammoCountStr)),
-                    screenHeight + yOffset,
+                    h + yOffset,
                     fontColor,
                     true
             );
@@ -148,14 +160,14 @@ public class AmmoCountOverlay implements IGuiOverlay {
                     font,
                     Component.translatable(type.translationKey).getString(),
                     ammoX + 35,
-                    screenHeight + yOffset,
+                    h + yOffset,
                     fontColor,
                     true
             );
 
             // 弹药盒信息渲染
             RenderSystem.setShaderColor(1, 1, 1, ammoBoxTimer.lerp(0, 1, currentTime));
-            var ammoBoxX = ammoBoxTimer.lerp(-30, (float) screenWidth / 2, currentTime);
+            var ammoBoxX = ammoBoxTimer.lerp(-30, (float) w / 2, currentTime);
 
             int ammoBoxAdd = Integer.compare(boxAmmoCount, boxAnimator.oldValue());
             boxAnimator.compareAndUpdate(boxAmmoCount, () -> boxAnimator.beginForward(currentTime));
@@ -179,7 +191,7 @@ public class AmmoCountOverlay implements IGuiOverlay {
                             Math.round(boxAnimator.lerp(boxAnimator.oldValue(), boxAmmoCount, currentTime))
                     ),
                     ammoBoxX - 70,
-                    screenHeight + yOffset,
+                    h + yOffset,
                     boxFontColor,
                     true
             );

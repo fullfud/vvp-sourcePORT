@@ -1,46 +1,46 @@
 package com.atsuishio.superbwarfare.config.server;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ExplosionConfig {
 
-    public static ForgeConfigSpec.IntValue EXPLOSION_PENETRATION_RATIO;
-    public static ForgeConfigSpec.BooleanValue EXPLOSION_DESTROY;
+    public static ModConfigSpec.IntValue EXPLOSION_PENETRATION_RATIO;
+    public static ModConfigSpec.BooleanValue EXPLOSION_DESTROY;
 
-    public static ForgeConfigSpec.IntValue RGO_GRENADE_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue RGO_GRENADE_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue RGO_GRENADE_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue RGO_GRENADE_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue M67_GRENADE_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue M67_GRENADE_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue M67_GRENADE_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue M67_GRENADE_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue MORTAR_SHELL_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue MORTAR_SHELL_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue MORTAR_SHELL_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue MORTAR_SHELL_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE;
-    public static ForgeConfigSpec.IntValue DRONE_KAMIKAZE_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue DRONE_KAMIKAZE_EXPLOSION_RADIUS;
-    public static ForgeConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE_C4;
-    public static ForgeConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE_RPG;
+    public static ModConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE;
+    public static ModConfigSpec.IntValue DRONE_KAMIKAZE_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue DRONE_KAMIKAZE_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE_C4;
+    public static ModConfigSpec.IntValue DRONE_KAMIKAZE_HIT_DAMAGE_RPG;
 
-    public static ForgeConfigSpec.IntValue C4_EXPLOSION_COUNTDOWN;
-    public static ForgeConfigSpec.IntValue C4_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue C4_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue C4_EXPLOSION_COUNTDOWN;
+    public static ModConfigSpec.IntValue C4_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue C4_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue RPG_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue RPG_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue RPG_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue RPG_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue WIRE_GUIDE_MISSILE_DAMAGE;
-    public static ForgeConfigSpec.IntValue WIRE_GUIDE_MISSILE_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.IntValue WIRE_GUIDE_MISSILE_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue WIRE_GUIDE_MISSILE_DAMAGE;
+    public static ModConfigSpec.IntValue WIRE_GUIDE_MISSILE_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.IntValue WIRE_GUIDE_MISSILE_EXPLOSION_RADIUS;
+    
+    public static ModConfigSpec.IntValue AGM_65_DAMAGE;
+    public static ModConfigSpec.IntValue AGM_65_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.DoubleValue AGM_65_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue AGM_65_DAMAGE;
-    public static ForgeConfigSpec.IntValue AGM_65_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.DoubleValue AGM_65_EXPLOSION_RADIUS;
+    public static ModConfigSpec.IntValue MK_82_EXPLOSION_DAMAGE;
+    public static ModConfigSpec.DoubleValue MK_82_EXPLOSION_RADIUS;
 
-    public static ForgeConfigSpec.IntValue MK_82_EXPLOSION_DAMAGE;
-    public static ForgeConfigSpec.DoubleValue MK_82_EXPLOSION_RADIUS;
-
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("explosion");
 
         builder.comment("The percentage of explosion damage you take behind cover");

@@ -15,12 +15,11 @@ public enum VehicleHealthProvider implements IEntityComponentProvider {
     private static final ResourceLocation ID = Mod.loc("vehicle_health");
 
     public void appendTooltip(ITooltip tooltip, EntityAccessor accessor, IPluginConfig config) {
-        // 对EntityHealthProvider的拙劣模仿罢了
+        // 对EntityHealthAndArmorProvider的拙劣模仿罢了
 
         var vehicle = (VehicleEntity) accessor.getEntity();
         float health = vehicle.getHealth();
         float maxHealth = vehicle.getMaxHealth();
-//        tooltip.add(new HealthElement(maxHealth, health));
         tooltip.add(new WrenchHealthElement(maxHealth, health));
     }
 

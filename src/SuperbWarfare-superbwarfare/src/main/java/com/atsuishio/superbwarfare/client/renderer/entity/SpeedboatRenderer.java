@@ -38,12 +38,11 @@ public class SpeedboatRenderer extends GeoEntityRenderer<SpeedboatEntity> {
     }
 
     @Override
-    public void preRender(PoseStack poseStack, SpeedboatEntity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green,
-                          float blue, float alpha) {
+    public void preRender(PoseStack poseStack, SpeedboatEntity entity, BakedGeoModel model, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         float scale = 1f;
         this.scaleHeight = scale;
         this.scaleWidth = scale;
-        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.preRender(poseStack, entity, model, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     @Override
@@ -54,17 +53,19 @@ public class SpeedboatRenderer extends GeoEntityRenderer<SpeedboatEntity> {
         poseStack.rotateAround(Axis.XP.rotationDegrees(Mth.lerp(partialTicks, entityIn.xRotO, entityIn.getXRot())), (float) root.x, (float) root.y, (float) root.z);
         poseStack.rotateAround(Axis.ZP.rotationDegrees(Mth.lerp(partialTicks, entityIn.prevRoll, entityIn.getRoll())), (float) root.x, (float) root.y, (float) root.z);
         super.render(entityIn, entityYaw, partialTicks, poseStack, bufferIn, packedLightIn);
+
         poseStack.pushPose();
         poseStack.scale(2.4f, 0.4f, 4.05f);
         poseStack.translate(0, 1.5, -0.22);
         Entity entity = new WaterMaskEntity(ModEntities.WATER_MASK.get(), entityIn.level());
         entityRenderDispatcher.render(entity, 0, 0, 0, entityYaw, partialTicks, poseStack, bufferIn, packedLightIn);
         poseStack.popPose();
+
         poseStack.popPose();
     }
 
     @Override
-    public void renderRecursively(PoseStack poseStack, SpeedboatEntity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, float red, float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack poseStack, SpeedboatEntity animatable, GeoBone bone, RenderType renderType, MultiBufferSource bufferSource, VertexConsumer buffer, boolean isReRender, float partialTick, int packedLight, int packedOverlay, int color) {
         String name = bone.getName();
         if (name.equals("root")) {
             float a = animatable.getEntityData().get(YAW);
@@ -79,7 +80,7 @@ public class SpeedboatRenderer extends GeoEntityRenderer<SpeedboatEntity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -109,7 +110,7 @@ public class SpeedboatRenderer extends GeoEntityRenderer<SpeedboatEntity> {
                 r2 = a / 90f;
             } else {
                 if (a < 0) {
-                    r2 = - (180f + a) / 90f;
+                    r2 = -(180f + a) / 90f;
                 } else {
                     r2 = (180f - a) / 90f;
                 }
@@ -124,7 +125,7 @@ public class SpeedboatRenderer extends GeoEntityRenderer<SpeedboatEntity> {
         if (name.equals("flare")) {
             bone.setRotZ((float) (0.5 * (Math.random() - 0.5)));
         }
-        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, red, green, blue, alpha);
+        super.renderRecursively(poseStack, animatable, bone, renderType, bufferSource, buffer, isReRender, partialTick, packedLight, packedOverlay, color);
     }
 
     @Override

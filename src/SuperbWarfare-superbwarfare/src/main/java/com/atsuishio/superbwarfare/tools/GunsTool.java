@@ -8,19 +8,19 @@ import com.google.gson.Gson;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.server.packs.resources.ResourceManager;
-import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.event.OnDatapackSyncEvent;
-import net.minecraftforge.event.entity.player.PlayerEvent;
-import net.minecraftforge.event.server.ServerStartedEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.event.OnDatapackSyncEvent;
+import net.neoforged.neoforge.event.entity.player.PlayerEvent;
+import net.neoforged.neoforge.event.server.ServerStartedEvent;
+import net.neoforged.neoforge.network.PacketDistributor;
 
 import javax.annotation.Nullable;
 import java.io.InputStreamReader;
 import java.util.HashMap;
 import java.util.UUID;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(modid = Mod.MODID)
+@EventBusSubscriber(modid = Mod.MODID)
 public class GunsTool {
 
     public static HashMap<String, DefaultGunData> gunsData = new HashMap<>();
@@ -68,7 +68,7 @@ public class GunsTool {
                 return;
             }
 
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), GunsDataMessage.create());
+            PacketDistributor.sendToPlayer(player, GunsDataMessage.create());
         }
     }
 
@@ -79,25 +79,23 @@ public class GunsTool {
 
     @SubscribeEvent
     public static void onDataPackSync(OnDatapackSyncEvent event) {
-        var players = event.getPlayerList();
-        var server = players.getServer();
+        var server = event.getPlayerList().getServer();
         initJsonData(server.getResourceManager());
 
         var message = GunsDataMessage.create();
-        for (var player : players.getPlayers()) {
+        for (var player : event.getRelevantPlayers().toList()) {
             if (server.isSingleplayerOwner(player.getGameProfile())) {
                 continue;
             }
 
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), message);
+            PacketDistributor.sendToPlayer(player, message);
         }
     }
 
-    public static void setGunIntTag(ItemStack stack, String name, int num) {
-        CompoundTag tag = stack.getOrCreateTag();
+    public static void setGunIntTag(final CompoundTag tag, String name, int num) {
         var data = tag.getCompound("GunData");
         data.putInt(name, num);
-        stack.addTagElement("GunData", data);
+        tag.put("GunData", data);
     }
 
     public static int getGunIntTag(final CompoundTag tag, String name) {
@@ -110,20 +108,19 @@ public class GunsTool {
         return data.getInt(name);
     }
 
-    public static double getGunDoubleTag(ItemStack stack, String name) {
-        return getGunDoubleTag(stack, name, 0);
+    public static double getGunDoubleTag(final CompoundTag tag, String name) {
+        return getGunDoubleTag(tag, name, 0);
     }
 
-    public static double getGunDoubleTag(ItemStack stack, String name, double defaultValue) {
-        var data = stack.getOrCreateTag().getCompound("GunData");
+    public static double getGunDoubleTag(final CompoundTag tag, String name, double defaultValue) {
+        var data = tag.getCompound("GunData");
         if (!data.contains(name)) return defaultValue;
         return data.getDouble(name);
     }
 
     @Nullable
-    public static UUID getGunUUID(ItemStack stack) {
-        CompoundTag tag = stack.getTag();
-        if (tag == null || !tag.contains("GunData")) return null;
+    public static UUID getGunUUID(final CompoundTag tag) {
+        if (!tag.contains("GunData")) return null;
 
         CompoundTag data = tag.getCompound("GunData");
         if (!data.hasUUID("UUID")) return null;

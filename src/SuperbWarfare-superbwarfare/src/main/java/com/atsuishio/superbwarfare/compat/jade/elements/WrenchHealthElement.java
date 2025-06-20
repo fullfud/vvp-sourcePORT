@@ -6,12 +6,9 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
-import net.minecraft.util.Mth;
 import net.minecraft.world.phys.Vec2;
-import snownee.jade.api.Identifiers;
 import snownee.jade.api.theme.IThemeHelper;
 import snownee.jade.api.ui.Element;
-import snownee.jade.impl.config.PluginConfig;
 import snownee.jade.overlay.DisplayHelper;
 import snownee.jade.overlay.OverlayRenderer;
 
@@ -21,11 +18,6 @@ public class WrenchHealthElement extends Element {
     private final String text;
 
     public WrenchHealthElement(float maxHealth, float health) {
-        if (!PluginConfig.INSTANCE.get(Identifiers.MC_ENTITY_HEALTH_SHOW_FRACTIONS)) {
-            maxHealth = (float) Mth.ceil(maxHealth);
-            health = (float) Mth.ceil(health);
-        }
-
         this.text = String.format("  %s/%s", DisplayHelper.dfCommas.format(health), DisplayHelper.dfCommas.format(maxHealth));
     }
 

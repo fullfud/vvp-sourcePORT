@@ -7,13 +7,14 @@ import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.data.gun.value.AttachmentType;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.item.gun.rifle.M4Item;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -59,18 +60,18 @@ public class M4ItemModel extends CustomGunModel<M4Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone scope = getAnimationProcessor().getBone("Scope1");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
-        CoreGeoBone scope3 = getAnimationProcessor().getBone("Scope3");
-        CoreGeoBone lh = getAnimationProcessor().getBone("Lefthand");
-        CoreGeoBone sight1fold = getAnimationProcessor().getBone("sight1fold");
-        CoreGeoBone sight2fold = getAnimationProcessor().getBone("sight2fold");
-        CoreGeoBone button = getAnimationProcessor().getBone("button");
-        CoreGeoBone button6 = getAnimationProcessor().getBone("button6");
-        CoreGeoBone button7 = getAnimationProcessor().getBone("button7");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone scope = getAnimationProcessor().getBone("Scope1");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone scope3 = getAnimationProcessor().getBone("Scope3");
+        GeoBone lh = getAnimationProcessor().getBone("Lefthand");
+        GeoBone sight1fold = getAnimationProcessor().getBone("sight1fold");
+        GeoBone sight2fold = getAnimationProcessor().getBone("sight2fold");
+        GeoBone button = getAnimationProcessor().getBone("button");
+        GeoBone button6 = getAnimationProcessor().getBone("button6");
+        GeoBone button7 = getAnimationProcessor().getBone("button7");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -81,9 +82,9 @@ public class M4ItemModel extends CustomGunModel<M4Item> {
 
         int type = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
 
-        posYAlt = Mth.lerp(times, posYAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? -0.6875f : 0.5625f);
-        scaleZAlt = Mth.lerp(times, scaleZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 0.4f : 0.88f);
-        posZAlt = Mth.lerp(times, posZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 5.5f : 7.6f);
+        posYAlt = Mth.lerp(times, posYAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? -0.6875f : 0.5625f);
+        scaleZAlt = Mth.lerp(times, scaleZAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? 0.4f : 0.88f);
+        posZAlt = Mth.lerp(times, posZAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? 5.5f : 7.6f);
         rotXSight = Mth.lerp(1.5f * times, rotXSight, type == 0 ? 0 : 90);
 
         float posY = switch (type) {
@@ -127,7 +128,7 @@ public class M4ItemModel extends CustomGunModel<M4Item> {
         if (type == 3 && zt > 0.5) {
             lh.setPosY((float) (-zt * 4));
         }
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -159,23 +160,23 @@ public class M4ItemModel extends CustomGunModel<M4Item> {
 
         CrossHairOverlay.gunRot = shen.getRotZ();
 
-        CoreGeoBone flare = getAnimationProcessor().getBone("flare");
+        GeoBone flare = getAnimationProcessor().getBone("flare");
         int BarrelType = GunData.from(stack).attachment.get(AttachmentType.BARREL);
 
         if (BarrelType == 1) {
             flare.setPosZ(-2);
         }
 
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
         rotXBipod = Mth.lerp(1.5f * times, rotXBipod, isProne(player) ? -90 : 0);
         l.setRotX(rotXBipod * Mth.DEG_TO_RAD);
         r.setRotX(rotXBipod * Mth.DEG_TO_RAD);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.985 * zt);
         float numP = (float) (1 - 0.92 * zt);

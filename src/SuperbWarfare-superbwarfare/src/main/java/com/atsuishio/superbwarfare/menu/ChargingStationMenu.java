@@ -12,8 +12,8 @@ import net.minecraft.world.inventory.Slot;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.crafting.RecipeType;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.ForgeHooks;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
+import net.neoforged.neoforge.capabilities.Capabilities;
+import org.jetbrains.annotations.NotNull;
 
 public class ChargingStationMenu extends EnergyMenu {
 
@@ -39,6 +39,7 @@ public class ChargingStationMenu extends EnergyMenu {
 
         this.addSlot(new Slot(container, 0, 44, 54));
         this.addSlot(new ChargingSlot(container, 1, 116, 54));
+        this.addDataSlots(containerData);
 
         for (int i = 0; i < 3; ++i) {
             for (int j = 0; j < 9; ++j) {
@@ -52,7 +53,7 @@ public class ChargingStationMenu extends EnergyMenu {
     }
 
     @Override
-    public ItemStack quickMoveStack(Player pPlayer, int pIndex) {
+    public @NotNull ItemStack quickMoveStack(@NotNull Player pPlayer, int pIndex) {
         ItemStack itemstack = ItemStack.EMPTY;
         Slot slot = this.slots.get(pIndex);
         if (slot.hasItem()) {
@@ -63,11 +64,12 @@ public class ChargingStationMenu extends EnergyMenu {
                     return ItemStack.EMPTY;
                 }
             } else if (pIndex != 0) {
-                if (itemstack1.getCapability(ForgeCapabilities.ENERGY).isPresent()) {
+                var itemCapability = itemstack1.getCapability(Capabilities.EnergyStorage.ITEM);
+                if (itemCapability != null) {
                     if (!this.moveItemStackTo(itemstack1, 1, 2, true)) {
                         return ItemStack.EMPTY;
                     }
-                } else if (ForgeHooks.getBurnTime(itemstack1, RecipeType.SMELTING) > 0 || itemstack1.getFoodProperties(null) != null) {
+                } else if (itemstack1.getBurnTime(RecipeType.SMELTING) > 0 || itemstack1.getFoodProperties(null) != null) {
                     if (!this.moveItemStackTo(itemstack1, 0, 1, false)) {
                         return ItemStack.EMPTY;
                     }
@@ -99,7 +101,7 @@ public class ChargingStationMenu extends EnergyMenu {
     }
 
     @Override
-    public boolean stillValid(Player pPlayer) {
+    public boolean stillValid(@NotNull Player pPlayer) {
         return this.container.stillValid(pPlayer);
     }
 
@@ -130,7 +132,7 @@ public class ChargingStationMenu extends EnergyMenu {
         }
 
         @Override
-        public boolean mayPlace(ItemStack pStack) {
+        public boolean mayPlace(@NotNull ItemStack pStack) {
             return super.mayPlace(pStack);
         }
     }

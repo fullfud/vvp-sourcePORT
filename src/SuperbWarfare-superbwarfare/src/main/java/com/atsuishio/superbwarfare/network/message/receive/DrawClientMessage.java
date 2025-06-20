@@ -1,32 +1,28 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record DrawClientMessage(boolean draw) implements CustomPacketPayload {
+    public static final Type<DrawClientMessage> TYPE = new Type<>(Mod.loc("draw_client"));
 
-public class DrawClientMessage {
+    public static final StreamCodec<ByteBuf, DrawClientMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            DrawClientMessage::draw,
+            DrawClientMessage::new
+    );
 
-    public boolean draw;
-
-    public DrawClientMessage(boolean draw) {
-        this.draw = draw;
+    public static void handler() {
+        ClientEventHandler.handleDrawMessage();
     }
 
-    public static void encode(DrawClientMessage message, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(message.draw);
-    }
-
-    public static DrawClientMessage decode(FriendlyByteBuf buffer) {
-        return new DrawClientMessage(buffer.readBoolean());
-    }
-
-    public static void handle(Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientEventHandler.handleDrawMessage(context)));
-        context.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

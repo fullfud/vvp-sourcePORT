@@ -17,7 +17,7 @@ public class MouseMovementHandler {
     public static Vec2 vel = null;
     private static MouseHandler mouseHandler = null;
     private static boolean mouseLockActive = false;
-    private static Vector3f savedRot = new Vector3f();
+    private static final Vector3f savedRot = new Vector3f();
 
     public static Vec2 getMousePos() {
         if (mouseHandler.isMouseGrabbed()) {

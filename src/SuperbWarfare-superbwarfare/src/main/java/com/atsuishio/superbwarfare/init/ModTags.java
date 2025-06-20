@@ -6,9 +6,11 @@ import net.minecraft.tags.BlockTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.tags.TagKey;
 import net.minecraft.world.damagesource.DamageType;
+import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.block.Block;
 
+@SuppressWarnings("unused")
 public class ModTags {
 
     public static class Items {
@@ -63,14 +65,13 @@ public class ModTags {
         }
     }
 
-
     public static class EntityTypes {
         public static final TagKey<EntityType<?>> AERIAL_BOMB = tag("aerial_bomb");
         public static final TagKey<EntityType<?>> DESTROYABLE_PROJECTILE = tag("destroyable_projectile");
+        public static final TagKey<EntityType<?>> DECOY = tag("decoy");
 
         private static TagKey<EntityType<?>> tag(String name) {
             return TagKey.create(Registries.ENTITY_TYPE, Mod.loc(name));
         }
-
     }
 }

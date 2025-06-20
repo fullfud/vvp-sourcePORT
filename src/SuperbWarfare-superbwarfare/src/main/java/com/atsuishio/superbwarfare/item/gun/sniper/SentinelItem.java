@@ -1,84 +1,52 @@
 package com.atsuishio.superbwarfare.item.gun.sniper;
 
 import com.atsuishio.superbwarfare.Mod;
-import com.atsuishio.superbwarfare.capability.energy.ItemEnergyProvider;
-import com.atsuishio.superbwarfare.client.PoseTool;
 import com.atsuishio.superbwarfare.client.renderer.gun.SentinelItemRenderer;
 import com.atsuishio.superbwarfare.client.tooltip.component.SentinelImageComponent;
 import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.item.EnergyStorageItem;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
-import com.atsuishio.superbwarfare.tools.RarityTool;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.HumanoidModel;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.client.renderer.BlockEntityWithoutLevelRenderer;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.sounds.SoundEvent;
-import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.Entity;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.inventory.tooltip.TooltipComponent;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Rarity;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.client.extensions.common.IClientItemExtensions;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.constant.DataTickets;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.renderer.GeoItemRenderer;
 
 import java.util.Optional;
 import java.util.Set;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.function.Consumer;
 import java.util.function.Supplier;
 
-public class SentinelItem extends GunItem {
-
-    private final Supplier<Integer> energyCapacity;
+public class SentinelItem extends GunItem implements EnergyStorageItem {
 
     public SentinelItem() {
-        super(new Item.Properties().stacksTo(1).rarity(RarityTool.LEGENDARY));
-
-        this.energyCapacity = () -> 24000;
+        super(new Item.Properties().stacksTo(1).rarity(Rarity.EPIC));
     }
 
     @Override
-    public boolean isBarVisible(ItemStack pStack) {
-        if (!pStack.getCapability(ForgeCapabilities.ENERGY).isPresent()) {
-            return false;
-        }
-
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
-        return energy.get() != 0;
+    public boolean isBarVisible(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        return cap != null && cap.getEnergyStored() > 0;
     }
 
     @Override
-    public int getBarWidth(ItemStack pStack) {
-        AtomicInteger energy = new AtomicInteger(0);
-        pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> energy.set(e.getEnergyStored())
-        );
+    public int getBarWidth(@NotNull ItemStack stack) {
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
 
-        return Math.round((float) energy.get() * 13.0F / 24000F);
-    }
-
-    @Override
-    public ICapabilityProvider initCapabilities(ItemStack stack, CompoundTag tag) {
-        return new ItemEnergyProvider(stack, energyCapacity.get());
+        return Math.round((float) (cap != null ? cap.getEnergyStored() : 0) * 13.0F / 24000F);
     }
 
     @Override
@@ -87,24 +55,8 @@ public class SentinelItem extends GunItem {
     }
 
     @Override
-    public void initializeClient(@NotNull Consumer<IClientItemExtensions> consumer) {
-        super.initializeClient(consumer);
-        consumer.accept(new IClientItemExtensions() {
-            private BlockEntityWithoutLevelRenderer renderer;
-
-            @Override
-            public BlockEntityWithoutLevelRenderer getCustomRenderer() {
-                if (renderer == null) {
-                    renderer = new SentinelItemRenderer();
-                }
-                return renderer;
-            }
-
-            @Override
-            public HumanoidModel.ArmPose getArmPose(LivingEntity entityLiving, InteractionHand hand, ItemStack stack) {
-                return PoseTool.pose(entityLiving, hand, stack);
-            }
-        });
+    public Supplier<GeoItemRenderer<? extends Item>> getRenderer() {
+        return SentinelItemRenderer::new;
     }
 
     private PlayState fireAnimPredicate(AnimationState<SentinelItem> event) {
@@ -115,19 +67,20 @@ public class SentinelItem extends GunItem {
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.sentinel.idle"));
 
-        if (GunData.from(stack).bolt.actionTimer.get() > 0) {
+        var data = GunData.from(stack);
+        if (data.bolt.actionTimer.get() > 0) {
             return event.setAndContinue(RawAnimation.begin().thenPlay("animation.sentinel.shift"));
         }
 
-        if (GunData.from(stack).reload.empty()) {
+        if (data.reload.empty()) {
             return event.setAndContinue(RawAnimation.begin().thenPlay("animation.sentinel.reload_empty"));
         }
 
-        if (GunData.from(stack).reload.normal()) {
+        if (data.reload.normal()) {
             return event.setAndContinue(RawAnimation.begin().thenPlay("animation.sentinel.reload_normal"));
         }
 
-        if (GunData.from(stack).charging()) {
+        if (data.charging()) {
             return event.setAndContinue(RawAnimation.begin().thenPlay("animation.sentinel.charge"));
         }
 
@@ -142,11 +95,14 @@ public class SentinelItem extends GunItem {
         if (event.getData(DataTickets.ITEM_RENDER_PERSPECTIVE) != ItemDisplayContext.FIRST_PERSON_RIGHT_HAND)
             return event.setAndContinue(RawAnimation.begin().thenLoop("animation.sentinel.idle"));
 
+        var data = GunData.from(stack);
         if (player.isSprinting() && player.onGround()
                 && ClientEventHandler.cantSprint == 0
-                && !(GunData.from(stack).reload.normal() || GunData.from(stack).reload.empty())
-                && !GunData.from(stack).charging() && ClientEventHandler.drawTime < 0.01) {
-            if (ClientEventHandler.tacticalSprint && GunData.from(stack).bolt.actionTimer.get() == 0) {
+                && !data.reloading()
+                && !data.charging()
+                && ClientEventHandler.drawTime < 0.01
+        ) {
+            if (ClientEventHandler.tacticalSprint && data.bolt.actionTimer.get() == 0) {
                 return event.setAndContinue(RawAnimation.begin().thenLoop("animation.sentinel.run_fast"));
             } else {
                 return event.setAndContinue(RawAnimation.begin().thenLoop("animation.sentinel.run"));
@@ -167,23 +123,20 @@ public class SentinelItem extends GunItem {
     @Override
     public double getCustomDamage(ItemStack stack) {
         var data = GunData.from(stack);
-        return stack.getCapability(ForgeCapabilities.ENERGY)
-                .map(cap -> cap.getEnergyStored() > 0 ? 0.2857142857142857 * data.rawDamage() : 0)
-                .orElse(0D);
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap != null && cap.getEnergyStored() > 0) {
+            return 0.2857142857142857 * data.rawDamage();
+        }
+        return 0;
     }
 
     @Override
-    public void inventoryTick(ItemStack stack, Level level, Entity entity, int slot, boolean selected) {
+    public void inventoryTick(@NotNull ItemStack stack, @NotNull Level level, @NotNull Entity entity, int slot, boolean selected) {
         super.inventoryTick(stack, level, entity, slot, selected);
-
-        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                energy -> {
-                    int energyStored = energy.getEnergyStored();
-                    if (energyStored > 0) {
-                        energy.extractEnergy(1, false);
-                    }
-                }
-        );
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap != null && cap.getEnergyStored() > 0) {
+            cap.extractEnergy(1, false);
+        }
     }
 
     @Override
@@ -224,14 +177,18 @@ public class SentinelItem extends GunItem {
     @Override
     public void afterShoot(GunData data, Player player) {
         super.afterShoot(data, player);
-        data.stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(cap -> cap.extractEnergy(3000, false));
+
+        var cap = data.stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap != null) {
+            cap.extractEnergy(3000, false);
+        }
     }
 
     @Override
     public void playFireSounds(GunData data, Player player, boolean zoom) {
-        var cap = data.stack.getCapability(ForgeCapabilities.ENERGY);
+        var cap = data.stack.getCapability(Capabilities.EnergyStorage.ITEM);
 
-        if (cap.map(c -> c.getEnergyStored() > 0).orElse(false)) {
+        if (cap != null && cap.getEnergyStored() > 0) {
             float soundRadius = (float) data.soundRadius();
 
             player.playSound(ModSounds.SENTINEL_CHARGE_FAR.get(), soundRadius * 0.7f, 1f);
@@ -240,5 +197,10 @@ public class SentinelItem extends GunItem {
         } else {
             super.playFireSounds(data, player, zoom);
         }
+    }
+
+    @Override
+    public int getMaxEnergy() {
+        return 24000;
     }
 }

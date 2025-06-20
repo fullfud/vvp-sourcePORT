@@ -1,13 +1,12 @@
 package com.atsuishio.superbwarfare.item;
 
-import com.atsuishio.superbwarfare.capability.energy.ItemEnergyProvider;
 import com.atsuishio.superbwarfare.client.tooltip.component.CellImageComponent;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModMobEffects;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.tiers.ModItemTier;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.ChatFormatting;
-import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.chat.Component;
 import net.minecraft.sounds.SoundSource;
 import net.minecraft.world.InteractionHand;
@@ -20,87 +19,94 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.item.TooltipFlag;
 import net.minecraft.world.level.Level;
-import net.minecraftforge.common.capabilities.ForgeCapabilities;
-import net.minecraftforge.common.capabilities.ICapabilityProvider;
-import net.minecraftforge.energy.IEnergyStorage;
+import net.neoforged.neoforge.capabilities.Capabilities;
 import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 import java.util.Optional;
-import java.util.function.Supplier;
 
-public class ElectricBaton extends SwordItem {
+public class ElectricBaton extends SwordItem implements EnergyStorageItem {
 
     public static final int MAX_ENERGY = 30000;
     public static final int ENERGY_COST = 2000;
     public static final String TAG_OPEN = "Open";
-    private final Supplier<Integer> energyCapacity;
 
     public ElectricBaton() {
-        super(ModItemTier.STEEL, 2, -2.5f, new Properties().durability(1114));
-        this.energyCapacity = () -> MAX_ENERGY;
+        super(ModItemTier.STEEL, new Properties()
+                .durability(1114)
+                .attributes(SwordItem.createAttributes(ModItemTier.STEEL, 2, -2.5f))
+        );
     }
 
     @Override
-    public void appendHoverText(ItemStack pStack, @Nullable Level pLevel, List<Component> pTooltipComponents, TooltipFlag pIsAdvanced) {
-        pTooltipComponents.add(Component.translatable("des.superbwarfare.electric_baton").withStyle(ChatFormatting.AQUA));
-        if (pStack.getTag() != null && pStack.getTag().getBoolean(TAG_OPEN)) {
-            pTooltipComponents.add(Component.translatable("des.superbwarfare.electric_baton.open").withStyle(ChatFormatting.GRAY));
+    @ParametersAreNonnullByDefault
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("des.superbwarfare.electric_baton").withStyle(ChatFormatting.AQUA));
+
+        if (NBTTool.getTag(stack).getBoolean(TAG_OPEN)) {
+            tooltipComponents.add(Component.translatable("des.superbwarfare.electric_baton.open").withStyle(ChatFormatting.GRAY));
         }
     }
 
     @Override
-    public ICapabilityProvider initCapabilities(ItemStack stack, CompoundTag tag) {
-        return new ItemEnergyProvider(stack, energyCapacity.get());
+    public int getMaxEnergy() {
+        return MAX_ENERGY;
     }
 
     @Override
-    public InteractionResultHolder<ItemStack> use(Level pLevel, Player pPlayer, InteractionHand pUsedHand) {
-        ItemStack stack = pPlayer.getItemInHand(pUsedHand);
-        if (pPlayer.isShiftKeyDown()) {
-            stack.getOrCreateTag().putBoolean(TAG_OPEN, !stack.getOrCreateTag().getBoolean(TAG_OPEN));
-            pPlayer.displayClientMessage(Component.translatable("des.superbwarfare.electric_baton." + (stack.getOrCreateTag().getBoolean(TAG_OPEN) ? "open" : "close")), true);
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResultHolder<ItemStack> use(Level level, Player player, InteractionHand usedHand) {
+        ItemStack stack = player.getItemInHand(usedHand);
+
+        if (player.isShiftKeyDown()) {
+            var tag = NBTTool.getTag(stack);
+            tag.putBoolean(TAG_OPEN, !tag.getBoolean(TAG_OPEN));
+            NBTTool.saveTag(stack, tag);
+
+            player.displayClientMessage(Component.translatable("des.superbwarfare.electric_baton." + (tag.getBoolean(TAG_OPEN) ? "open" : "close")), true);
         }
         return InteractionResultHolder.fail(stack);
     }
 
     @Override
-    public boolean isBarVisible(ItemStack pStack) {
-        return pStack.getOrCreateTag().getBoolean(TAG_OPEN) || super.isBarVisible(pStack);
+    public boolean isBarVisible(@NotNull ItemStack stack) {
+        return NBTTool.getTag(stack).getBoolean(TAG_OPEN) || super.isBarVisible(stack);
     }
 
     @Override
-    public int getBarWidth(ItemStack pStack) {
-        if (pStack.getOrCreateTag().getBoolean(TAG_OPEN)) {
-            var energy = pStack.getCapability(ForgeCapabilities.ENERGY)
-                    .map(IEnergyStorage::getEnergyStored)
-                    .orElse(0);
+    public int getBarWidth(@NotNull ItemStack stack) {
+        if (NBTTool.getTag(stack).getBoolean(TAG_OPEN)) {
+            var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+            if (cap == null) return 0;
 
-            return Math.round((float) energy * 13.0F / MAX_ENERGY);
+            return Math.round((float) cap.getEnergyStored() * 13F / MAX_ENERGY);
         } else {
-            return super.getBarWidth(pStack);
+            return super.getBarWidth(stack);
         }
     }
 
     @Override
-    public int getBarColor(@NotNull ItemStack pStack) {
-        return pStack.getOrCreateTag().getBoolean(TAG_OPEN) ? 0xFFFF00 : super.getBarColor(pStack);
+    public int getBarColor(@NotNull ItemStack stack) {
+        return NBTTool.getTag(stack).getBoolean(TAG_OPEN) ? 0xFFFF00 : super.getBarColor(stack);
     }
 
     @Override
-    public boolean hurtEnemy(ItemStack pStack, LivingEntity pTarget, LivingEntity pAttacker) {
-        pAttacker.level().playSound(null, pTarget.getOnPos(), ModSounds.MELEE_HIT.get(), SoundSource.PLAYERS, 1, (float) ((2 * org.joml.Math.random() - 1) * 0.1f + 1.0f));
-        if (pStack.getOrCreateTag().getBoolean(TAG_OPEN)) {
-            var energy = pStack.getCapability(ForgeCapabilities.ENERGY).map(IEnergyStorage::getEnergyStored).orElse(0);
-            if (energy >= ENERGY_COST) {
-                pStack.getCapability(ForgeCapabilities.ENERGY).ifPresent(e -> e.extractEnergy(ENERGY_COST, false));
-                if (!pTarget.level().isClientSide) {
-                    pTarget.addEffect(new MobEffectInstance(ModMobEffects.SHOCK.get(), 30, 2), pAttacker);
+    @ParametersAreNonnullByDefault
+    public boolean hurtEnemy(ItemStack stack, LivingEntity target, LivingEntity attacker) {
+        attacker.level().playSound(null, target.getOnPos(), ModSounds.MELEE_HIT.get(), SoundSource.PLAYERS, 1, (float) ((2 * org.joml.Math.random() - 1) * 0.1f + 1));
+
+        if (NBTTool.getTag(stack).getBoolean(TAG_OPEN)) {
+            var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+            if (cap != null && cap.getEnergyStored() >= ENERGY_COST) {
+                cap.extractEnergy(ENERGY_COST, false);
+
+                if (!target.level().isClientSide) {
+                    target.addEffect(new MobEffectInstance(ModMobEffects.SHOCK, 30, 2), attacker);
                 }
             }
         }
-        return super.hurtEnemy(pStack, pTarget, pAttacker);
+        return super.hurtEnemy(stack, target, attacker);
     }
 
     @Override
@@ -110,10 +116,16 @@ public class ElectricBaton extends SwordItem {
 
     public static ItemStack makeFullEnergyStack() {
         ItemStack stack = new ItemStack(ModItems.ELECTRIC_BATON.get());
-        stack.getCapability(ForgeCapabilities.ENERGY).ifPresent(
-                e -> e.receiveEnergy(MAX_ENERGY, false)
-        );
-        stack.getOrCreateTag().putBoolean(TAG_OPEN, true);
+
+        var cap = stack.getCapability(Capabilities.EnergyStorage.ITEM);
+        if (cap != null) {
+            cap.receiveEnergy(MAX_ENERGY, false);
+        }
+
+        var tag = NBTTool.getTag(stack);
+        tag.putBoolean(TAG_OPEN, true);
+        NBTTool.saveTag(stack, tag);
+
         return stack;
     }
 }

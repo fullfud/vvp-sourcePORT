@@ -203,9 +203,13 @@
 					"pivot": [0, 0, -2.91406]
 				},
 				{
-					"name": "cross",
+                  "name": "cross",
 					"parent": "qian",
-					"pivot": [0, 4.11407, -145]
+                  "pivot": [
+                    0,
+                    4.11407,
+                    -145
+                  ]
 				},
 				{
 					"name": "Scope1",

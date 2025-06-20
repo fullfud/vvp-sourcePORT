@@ -1,43 +1,40 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.item.gun.GunItem;
-import net.minecraft.network.FriendlyByteBuf;
+import com.atsuishio.superbwarfare.data.gun.GunData;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record SwitchScopeMessage(double scroll) implements CustomPacketPayload {
+    public static final Type<SwitchScopeMessage> TYPE = new Type<>(Mod.loc("switch_scope"));
 
-public class SwitchScopeMessage {
+    public static final StreamCodec<ByteBuf, SwitchScopeMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.DOUBLE,
+            SwitchScopeMessage::scroll,
+            SwitchScopeMessage::new
+    );
 
-    private final double scroll;
+    public static void handler(SwitchScopeMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
 
-    public SwitchScopeMessage(double scroll) {
-        this.scroll = scroll;
+        ItemStack stack = player.getMainHandItem();
+        if (!(stack.getItem() instanceof GunItem)) return;
+
+        var data = GunData.from(stack);
+        final var tag = data.tag();
+        tag.putBoolean("ScopeAlt", !tag.getBoolean("ScopeAlt"));
+        data.save();
     }
 
-    public static void encode(SwitchScopeMessage message, FriendlyByteBuf byteBuf) {
-        byteBuf.writeDouble(message.scroll);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
-
-    public static SwitchScopeMessage decode(FriendlyByteBuf byteBuf) {
-        return new SwitchScopeMessage(byteBuf.readDouble());
-    }
-
-    public static void handler(SwitchScopeMessage message, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> {
-            ServerPlayer player = context.get().getSender();
-            if (player == null) {
-                return;
-            }
-
-            ItemStack stack = player.getMainHandItem();
-            if (!(stack.getItem() instanceof GunItem)) return;
-
-            var tag = stack.getOrCreateTag();
-            tag.putBoolean("ScopeAlt", !tag.getBoolean("ScopeAlt"));
-        });
-        context.get().setPacketHandled(true);
-    }
-
 }

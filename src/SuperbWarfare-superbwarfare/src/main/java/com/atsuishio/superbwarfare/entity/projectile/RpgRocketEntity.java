@@ -13,8 +13,6 @@ import com.atsuishio.superbwarfare.tools.ProjectileTool;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -27,21 +25,15 @@ import net.minecraft.world.entity.projectile.ThrowableItemProjectile;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.minecraft.world.phys.Vec3;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
@@ -54,34 +46,24 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
     private float explosionDamage = 200f;
     private float explosionRadius = 10;
 
+
     public RpgRocketEntity(EntityType<? extends RpgRocketEntity> type, Level world) {
         super(type, world);
         this.noCulling = true;
+        this.durability = 20;
     }
 
     public RpgRocketEntity(EntityType<? extends ThrowableItemProjectile> pEntityType, double pX, double pY, double pZ, Level pLevel) {
         super(pEntityType, pX, pY, pZ, pLevel);
         this.noCulling = true;
+        this.durability = 20;
     }
 
     public RpgRocketEntity(LivingEntity entity, Level level) {
         super(ModEntities.RPG_ROCKET.get(), entity, level);
+        this.durability = 2;
     }
 
-    public RpgRocketEntity(LivingEntity entity, Level level, float damage) {
-        this(entity, level);
-        this.damage = damage;
-    }
-
-    public RpgRocketEntity(LivingEntity entity, Level level, float damage, float explosionDamage, float explosionRadius) {
-        this(entity, level, damage);
-        this.explosionDamage = explosionDamage;
-        this.explosionRadius = explosionRadius;
-    }
-
-    public RpgRocketEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.RPG_ROCKET.get(), level);
-    }
 
     @Override
     public void setDamage(float damage) {
@@ -98,12 +80,13 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
         this.explosionDamage = explosionDamage;
     }
 
+
     public void setMonsterMultiplier(float monsterMultiplier) {
         this.monsterMultiplier = monsterMultiplier;
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag pCompound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
         pCompound.putFloat("Damage", this.damage);
         pCompound.putFloat("ExplosionDamage", this.explosionDamage);
@@ -111,7 +94,7 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag pCompound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.readAdditionalSaveData(pCompound);
         if (pCompound.contains("Damage")) {
             this.damage = pCompound.getFloat("Damage");
@@ -125,11 +108,6 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
     }
 
     @Override
-    public @NotNull Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
     protected @NotNull Item getDefaultItem() {
         return ModItems.ROCKET.get();
     }
@@ -140,80 +118,75 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
     }
 
     @Override
-    protected void onHitEntity(EntityHitResult result) {
-        float damageMultiplier = 1 + this.monsterMultiplier;
-        Entity entity = result.getEntity();
-        if (entity == this.getOwner() || entity == this.getVehicle()) return;
-        if (this.getOwner() instanceof LivingEntity living) {
-            if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
-                living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
-
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+    public void onHitBlock(@NotNull BlockHitResult blockHitResult) {
+        if (this.level() instanceof ServerLevel) {
+            BlockPos resultPos = blockHitResult.getBlockPos();
+            float hardness = this.level().getBlockState(resultPos).getBlock().defaultDestroyTime();
+            if (hardness != -1) {
+                if (ExplosionConfig.EXPLOSION_DESTROY.get()) {
+                    if (firstHit) {
+                        causeExplode(blockHitResult.getLocation());
+                        firstHit = false;
+                        Mod.queueServerWork(3, this::discard);
+                    }
+                    this.level().destroyBlock(resultPos, true);
+                }
+            }
+            if (!ExplosionConfig.EXPLOSION_DESTROY.get()) {
+                causeExplode(blockHitResult.getLocation());
+                this.discard();
             }
         }
-
-        if (entity instanceof Monster monster) {
-            monster.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), 1.2f * this.damage * damageMultiplier);
-        } else {
-            entity.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), this.damage);
-        }
-
-        if (entity instanceof LivingEntity) {
-            entity.invulnerableTime = 0;
-        }
-
-        if (this.tickCount > 1) {
-            if (this.level() instanceof ServerLevel) {
-                ProjectileTool.causeCustomExplode(this, this.explosionDamage, this.explosionRadius, this.monsterMultiplier);
-            }
-        }
-
-        this.discard();
     }
 
     @Override
-    public void onHitBlock(BlockHitResult blockHitResult) {
+    protected void onHitEntity(EntityHitResult result) {
+        float damageMultiplier = 1 + this.monsterMultiplier;
+        Entity entity = result.getEntity();
+        if (this.getOwner() != null && this.getOwner().getVehicle() != null && entity == this.getOwner().getVehicle())
+            return;
         if (this.level() instanceof ServerLevel) {
-            double x = blockHitResult.getLocation().x;
-            double y = blockHitResult.getLocation().y;
-            double z = blockHitResult.getLocation().z;
+            if (entity == this.getOwner() || (this.getOwner() != null && entity == this.getOwner().getVehicle()))
+                return;
+            if (this.getOwner() instanceof LivingEntity living) {
+                if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
+                    living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
 
-            if (ExplosionConfig.EXPLOSION_DESTROY.get()) {
-                float hardness = this.level().getBlockState(BlockPos.containing(x, y, z)).getBlock().defaultDestroyTime();
-                if (hardness <= 10 && hardness != -1) {
-                    BlockPos blockPos = BlockPos.containing(x, y, z);
-                    Block.dropResources(this.level().getBlockState(blockPos), this.level(), BlockPos.containing(x, y, z), null);
-                    this.level().destroyBlock(blockPos, true);
+                    PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
                 }
             }
 
-            if (this.tickCount > 1) {
-                for (int i = 1; i < 3; i++) {
-                    apExplode(blockHitResult, i);
-                }
-
-                if (this.level() instanceof ServerLevel) {
-                    ProjectileTool.causeCustomExplode(this, this.explosionDamage, this.explosionRadius, this.monsterMultiplier);
-                }
+            if (entity instanceof Monster monster) {
+                monster.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), 1.2f * this.damage * damageMultiplier);
+            } else {
+                entity.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), this.damage);
             }
+
+            if (entity instanceof LivingEntity) {
+                entity.invulnerableTime = 0;
+            }
+
+            causeExplode(result.getLocation());
+            this.discard();
         }
     }
 
-    private void apExplode(HitResult result, int index) {
+    private void causeExplode(Vec3 vec3) {
         CustomExplosion explosion = new CustomExplosion(this.level(), this,
                 ModDamageTypes.causeProjectileBoomDamage(this.level().registryAccess(),
                         this,
                         this.getOwner()),
                 explosionDamage,
-                result.getLocation().x + index * getDeltaMovement().normalize().x,
-                result.getLocation().y + index * getDeltaMovement().normalize().y,
-                result.getLocation().z + index * getDeltaMovement().normalize().z,
-                0.5f * explosionRadius,
+                vec3.x,
+                vec3.y,
+                vec3.z,
+                explosionRadius,
                 ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).
                 setDamageMultiplier(this.monsterMultiplier);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
+        ParticleTool.spawnHugeExplosionParticles(this.level(), vec3);
     }
 
     @Override
@@ -240,6 +213,7 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
             }
             this.discard();
         }
+        destroyBlock();
     }
 
     private PlayState movementPredicate(AnimationState<RpgRocketEntity> event) {
@@ -262,12 +236,12 @@ public class RpgRocketEntity extends FastThrowableProjectile implements GeoEntit
     }
 
     @Override
-    public SoundEvent getCloseSound() {
+    public @NotNull SoundEvent getCloseSound() {
         return ModSounds.ROCKET_ENGINE.get();
     }
 
     @Override
-    public SoundEvent getSound() {
+    public @NotNull SoundEvent getSound() {
         return ModSounds.ROCKET_FLY.get();
     }
 

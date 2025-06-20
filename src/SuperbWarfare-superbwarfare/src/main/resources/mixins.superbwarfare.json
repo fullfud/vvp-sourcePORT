@@ -1,18 +1,17 @@
 {
   "required": true,
   "package": "com.atsuishio.superbwarfare.mixins",
-  "compatibilityLevel": "JAVA_17",
+  "compatibilityLevel": "JAVA_21",
   "refmap": "mixins.superbwarfare.refmap.json",
   "mixins": [
-    "AnimationProcessorAccessor",
     "BeastMixin",
     "ClientboundSetPassengersPacketMixin",
     "EntityMixin",
-    "ExplosionMixin",
     "FishingHookMixin",
-    "GeoModelAccessor",
+    "LevelMixin",
     "LivingEntityMixin",
     "PlayerMixin",
+    "ProjectileUtilMixin",
     "VillagerMixin"
   ],
   "client": [

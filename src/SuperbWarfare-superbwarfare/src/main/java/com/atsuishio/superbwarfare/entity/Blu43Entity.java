@@ -28,13 +28,16 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.entity.EntityTypeTest;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.items.ItemHandlerHelper;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.items.ItemHandlerHelper;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
 import javax.annotation.Nullable;
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -57,10 +60,10 @@ public class Blu43Entity extends Entity implements GeoEntity, OwnableEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        this.entityData.define(OWNER_UUID, Optional.empty());
-        this.entityData.define(LAST_ATTACKER_UUID, "undefined");
-        this.entityData.define(HEALTH, 5f);
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
+        builder.define(OWNER_UUID, Optional.empty())
+                .define(LAST_ATTACKER_UUID, "undefined")
+                .define(HEALTH, 5f);
     }
 
     @Override
@@ -145,7 +148,8 @@ public class Blu43Entity extends Entity implements GeoEntity, OwnableEntity {
     }
 
     @Override
-    public InteractionResult interact(Player player, InteractionHand hand) {
+    @ParametersAreNonnullByDefault
+    public @NotNull InteractionResult interact(Player player, InteractionHand hand) {
         if (this.isOwnedBy(player) && player.isShiftKeyDown()) {
             if (!this.level().isClientSide()) {
                 this.discard();
@@ -242,7 +246,7 @@ public class Blu43Entity extends Entity implements GeoEntity, OwnableEntity {
                 ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), this, this.getOwner()), 10f,
                 this.getX(), this.getEyeY(), this.getZ(), 2f, Explosion.BlockInteraction.KEEP, false);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnSmallExplosionParticles(this.level(), this.position());
         this.discard();
@@ -263,7 +267,7 @@ public class Blu43Entity extends Entity implements GeoEntity, OwnableEntity {
     }
 
     public void shoot(double pX, double pY, double pZ, float pVelocity, float pInaccuracy) {
-        Vec3 vec3 = (new Vec3(pX, pY, pZ)).normalize().add(this.random.triangle(0.0, 0.0172275 * (double)pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double)pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double)pInaccuracy)).scale((double)pVelocity);
+        Vec3 vec3 = (new Vec3(pX, pY, pZ)).normalize().add(this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy)).scale(pVelocity);
         this.setDeltaMovement(vec3);
     }
 }

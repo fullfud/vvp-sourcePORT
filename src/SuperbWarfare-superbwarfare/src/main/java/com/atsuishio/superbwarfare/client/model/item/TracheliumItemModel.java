@@ -7,13 +7,14 @@ import com.atsuishio.superbwarfare.data.gun.GunData;
 import com.atsuishio.superbwarfare.data.gun.value.AttachmentType;
 import com.atsuishio.superbwarfare.event.ClientEventHandler;
 import com.atsuishio.superbwarfare.item.gun.handgun.Trachelium;
+import com.atsuishio.superbwarfare.tools.NBTTool;
 import net.minecraft.client.Minecraft;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 import static com.atsuishio.superbwarfare.event.ClientEventHandler.isProne;
 
@@ -59,17 +60,17 @@ public class TracheliumItemModel extends CustomGunModel<Trachelium> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone hammer = getAnimationProcessor().getBone("jichui");
-        CoreGeoBone lun = getAnimationProcessor().getBone("lun");
-        CoreGeoBone barrel1 = getAnimationProcessor().getBone("Barrel1");
-        CoreGeoBone barrel2 = getAnimationProcessor().getBone("Barrel2");
-        CoreGeoBone flare = getAnimationProcessor().getBone("flare");
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
-        CoreGeoBone scope2 = getAnimationProcessor().getBone("Scope2");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone hammer = getAnimationProcessor().getBone("jichui");
+        GeoBone lun = getAnimationProcessor().getBone("lun");
+        GeoBone barrel1 = getAnimationProcessor().getBone("Barrel1");
+        GeoBone barrel2 = getAnimationProcessor().getBone("Barrel2");
+        GeoBone flare = getAnimationProcessor().getBone("flare");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone scope2 = getAnimationProcessor().getBone("Scope2");
 
-        float times = 0.4f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.4f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -83,9 +84,9 @@ public class TracheliumItemModel extends CustomGunModel<Trachelium> {
         int scopeType = GunData.from(stack).attachment.get(AttachmentType.SCOPE);
         int gripType = GunData.from(stack).attachment.get(AttachmentType.GRIP);
 
-        posYAlt = Mth.lerp(times, posYAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? -1.98f : -0.83f);
-        scaleZAlt = Mth.lerp(times, scaleZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 0.4f : 0.8f);
-        posZAlt = Mth.lerp(times, posZAlt, stack.getOrCreateTag().getBoolean("ScopeAlt") ? 7.5f : 13.7f);
+        posYAlt = Mth.lerp(times, posYAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? -1.98f : -0.83f);
+        scaleZAlt = Mth.lerp(times, scaleZAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? 0.4f : 0.8f);
+        posZAlt = Mth.lerp(times, posZAlt, NBTTool.getTag(stack).getBoolean("ScopeAlt") ? 7.5f : 13.7f);
 
         float posY = switch (scopeType) {
             case 0, 3 -> 1.1f;
@@ -115,7 +116,7 @@ public class TracheliumItemModel extends CustomGunModel<Trachelium> {
 
         scope2.setScaleZ(1f - (0.7f * (float) zp));
 
-        CoreGeoBone shen;
+        GeoBone shen;
         if (zt < 0.5) {
             shen = getAnimationProcessor().getBone("fireRootNormal");
         } else {
@@ -149,8 +150,8 @@ public class TracheliumItemModel extends CustomGunModel<Trachelium> {
 
         hammer.setRotX(50 * Mth.DEG_TO_RAD * (float) ClientEventHandler.revolverPreTime);
         lun.setRotZ(-60 * Mth.DEG_TO_RAD * (float) ClientEventHandler.revolverWheelPreTime);
-        CoreGeoBone ammo = getAnimationProcessor().getBone("ammo");
-        CoreGeoBone ammohole = getAnimationProcessor().getBone("ammohole");
+        GeoBone ammo = getAnimationProcessor().getBone("ammo");
+        GeoBone ammohole = getAnimationProcessor().getBone("ammohole");
         ammo.setRotZ(60 * Mth.DEG_TO_RAD * (float) ClientEventHandler.revolverWheelPreTime);
         ammohole.setRotZ(-60 * Mth.DEG_TO_RAD * (float) ClientEventHandler.revolverWheelPreTime);
 
@@ -162,8 +163,8 @@ public class TracheliumItemModel extends CustomGunModel<Trachelium> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone l = getAnimationProcessor().getBone("l");
-        CoreGeoBone r = getAnimationProcessor().getBone("r");
+        GeoBone l = getAnimationProcessor().getBone("l");
+        GeoBone r = getAnimationProcessor().getBone("r");
         rotXBipod = Mth.lerp(1.5f * times, rotXBipod, isProne(player) ? -90 : 0);
         l.setRotX(rotXBipod * Mth.DEG_TO_RAD);
         r.setRotX(rotXBipod * Mth.DEG_TO_RAD);

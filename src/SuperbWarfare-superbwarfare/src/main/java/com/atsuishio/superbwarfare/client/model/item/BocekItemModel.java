@@ -9,8 +9,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class BocekItemModel extends CustomGunModel<BocekItem> {
 
@@ -48,13 +48,13 @@ public class BocekItemModel extends CustomGunModel<BocekItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
-        CoreGeoBone dRing = getAnimationProcessor().getBone("D_ring");
-        CoreGeoBone rightHand = getAnimationProcessor().getBone("safang");
-        CoreGeoBone leftHand = getAnimationProcessor().getBone("lh");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone dRing = getAnimationProcessor().getBone("D_ring");
+        GeoBone rightHand = getAnimationProcessor().getBone("safang");
+        GeoBone leftHand = getAnimationProcessor().getBone("lh");
 
-        float times = Minecraft.getInstance().getPartialTick();
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
 
         double pp = ClientEventHandler.bowPullPos;
         double pp2 = 1 - ClientEventHandler.bowPullPos;
@@ -75,11 +75,11 @@ public class BocekItemModel extends CustomGunModel<BocekItem> {
             rightHandPosZ = Mth.lerp(0.06f * times, rightHandPosZ, 0);
         }
 
-        CoreGeoBone wing0 = getAnimationProcessor().getBone("wing0");
-        CoreGeoBone wing1 = getAnimationProcessor().getBone("wing1");
-        CoreGeoBone wing2 = getAnimationProcessor().getBone("wing2");
-        CoreGeoBone wing1Root = getAnimationProcessor().getBone("wing1Root");
-        CoreGeoBone wing2Root = getAnimationProcessor().getBone("wing2Root");
+        GeoBone wing0 = getAnimationProcessor().getBone("wing0");
+        GeoBone wing1 = getAnimationProcessor().getBone("wing1");
+        GeoBone wing2 = getAnimationProcessor().getBone("wing2");
+        GeoBone wing1Root = getAnimationProcessor().getBone("wing1Root");
+        GeoBone wing2Root = getAnimationProcessor().getBone("wing2Root");
 
         float m = (float) Math.min(zp, pp);
 
@@ -89,7 +89,7 @@ public class BocekItemModel extends CustomGunModel<BocekItem> {
         wingControl(wing1Root, m);
         wingControl(wing2Root, m);
 
-        CoreGeoBone shake = getAnimationProcessor().getBone("shake");
+        GeoBone shake = getAnimationProcessor().getBone("shake");
 
         shake.setPosX((float) (shake.getPosX() * pp));
         shake.setPosY((float) (shake.getPosY() * pp));
@@ -100,13 +100,13 @@ public class BocekItemModel extends CustomGunModel<BocekItem> {
         CrossHairOverlay.gunRot = shen.getRotZ();
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
         ClientEventHandler.handleReloadShake(Mth.RAD_TO_DEG * camera.getRotX(), Mth.RAD_TO_DEG * camera.getRotY(), Mth.RAD_TO_DEG * camera.getRotZ());
     }
 
-    public static void wingControl(CoreGeoBone coreGeoBone, float m) {
-        coreGeoBone.setRotX(coreGeoBone.getRotX() * m);
-        coreGeoBone.setRotY(coreGeoBone.getRotY() * m);
-        coreGeoBone.setRotZ(coreGeoBone.getRotZ() * m);
+    public static void wingControl(GeoBone GeoBone, float m) {
+        GeoBone.setRotX(GeoBone.getRotX() * m);
+        GeoBone.setRotY(GeoBone.getRotY() * m);
+        GeoBone.setRotZ(GeoBone.getRotZ() * m);
     }
 }

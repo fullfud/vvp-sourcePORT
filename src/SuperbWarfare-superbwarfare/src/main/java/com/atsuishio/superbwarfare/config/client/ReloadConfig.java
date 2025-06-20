@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class ReloadConfig {
 
-    public static ForgeConfigSpec.BooleanValue LEFT_CLICK_RELOAD;
+    public static ModConfigSpec.BooleanValue LEFT_CLICK_RELOAD;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("reload");
 
         builder.comment("Set true if you want to reload guns when ammo is empty by clicking left button");

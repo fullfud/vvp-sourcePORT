@@ -3,8 +3,8 @@ package com.atsuishio.superbwarfare.client.model.entity;
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.projectile.SmallCannonShellEntity;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class SmallCannonShellModel extends GeoModel<SmallCannonShellEntity> {
@@ -26,7 +26,7 @@ public class SmallCannonShellModel extends GeoModel<SmallCannonShellEntity> {
 
     @Override
     public void setCustomAnimations(SmallCannonShellEntity animatable, long instanceId, AnimationState animationState) {
-        CoreGeoBone bone = getAnimationProcessor().getBone("bone");
+        GeoBone bone = getAnimationProcessor().getBone("bone");
         bone.setScaleY((float) (1 + 2 * animatable.getDeltaMovement().length()));
     }
 }

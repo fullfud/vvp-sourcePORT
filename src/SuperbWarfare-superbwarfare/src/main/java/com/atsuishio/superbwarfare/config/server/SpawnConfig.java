@@ -1,12 +1,12 @@
 package com.atsuishio.superbwarfare.config.server;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class SpawnConfig {
 
-    public static ForgeConfigSpec.BooleanValue SPAWN_SENPAI;
+    public static ModConfigSpec.BooleanValue SPAWN_SENPAI;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("spawn");
 
         builder.comment("Set true to allow Senpai to spawn naturally");

@@ -6,19 +6,14 @@ import com.atsuishio.superbwarfare.item.LungeMine;
 import com.mojang.blaze3d.vertex.PoseStack;
 import com.mojang.blaze3d.vertex.VertexConsumer;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.model.PlayerModel;
-import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
-import net.minecraft.client.renderer.entity.player.PlayerRenderer;
-import net.minecraft.client.renderer.texture.OverlayTexture;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import software.bernie.geckolib.cache.object.BakedGeoModel;
 import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.renderer.GeoItemRenderer;
-import software.bernie.geckolib.util.RenderUtils;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -34,7 +29,6 @@ public class LungeMineRenderer extends GeoItemRenderer<LungeMine> {
         return RenderType.entityTranslucent(getTextureLocation(animatable));
     }
 
-    private static final float SCALE_RECIPROCAL = 1.0f / 16.0f;
     protected boolean renderArms = false;
     protected MultiBufferSource currentBuffer;
     protected RenderType renderType;
@@ -52,19 +46,18 @@ public class LungeMineRenderer extends GeoItemRenderer<LungeMine> {
 
     @Override
     public void actuallyRender(PoseStack matrixStackIn, LungeMine animatable, BakedGeoModel model, RenderType type, MultiBufferSource renderTypeBuffer, VertexConsumer vertexBuilder, boolean isRenderer, float partialTicks, int packedLightIn,
-                               int packedOverlayIn, float red, float green, float blue, float alpha) {
+                               int packedOverlayIn, int color) {
         this.currentBuffer = renderTypeBuffer;
         this.renderType = type;
         this.animatable = animatable;
-        super.actuallyRender(matrixStackIn, animatable, model, type, renderTypeBuffer, vertexBuilder, isRenderer, partialTicks, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        super.actuallyRender(matrixStackIn, animatable, model, type, renderTypeBuffer, vertexBuilder, isRenderer, partialTicks, packedLightIn, packedOverlayIn, color);
         if (this.renderArms) {
             this.renderArms = false;
         }
     }
 
     @Override
-    public void renderRecursively(PoseStack stack, LungeMine animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, float red,
-                                  float green, float blue, float alpha) {
+    public void renderRecursively(PoseStack stack, LungeMine animatable, GeoBone bone, RenderType type, MultiBufferSource buffer, VertexConsumer bufferIn, boolean isReRender, float partialTick, int packedLightIn, int packedOverlayIn, int color) {
         Minecraft mc = Minecraft.getInstance();
         String name = bone.getName();
         boolean renderingArms = false;
@@ -75,38 +68,13 @@ public class LungeMineRenderer extends GeoItemRenderer<LungeMine> {
             bone.setHidden(this.hiddenBones.contains(name));
         }
 
-        if (this.transformType.firstPerson() && renderingArms) {
-            AbstractClientPlayer localPlayer = mc.player;
+        var player = mc.player;
+        if (player == null) return;
 
-            if (localPlayer == null) {
-                return;
-            }
-
-            PlayerRenderer playerRenderer = (PlayerRenderer) mc.getEntityRenderDispatcher().getRenderer(localPlayer);
-            PlayerModel<AbstractClientPlayer> model = playerRenderer.getModel();
-            stack.pushPose();
-            RenderUtils.translateMatrixToBone(stack, bone);
-            RenderUtils.translateToPivotPoint(stack, bone);
-            RenderUtils.rotateMatrixAroundBone(stack, bone);
-            RenderUtils.scaleMatrixForBone(stack, bone);
-            RenderUtils.translateAwayFromPivotPoint(stack, bone);
-            ResourceLocation loc = localPlayer.getSkinTextureLocation();
-            VertexConsumer armBuilder = this.currentBuffer.getBuffer(RenderType.entitySolid(loc));
-            VertexConsumer sleeveBuilder = this.currentBuffer.getBuffer(RenderType.entityTranslucent(loc));
-            if (name.equals("Lefthand")) {
-                stack.translate(-1.0f * SCALE_RECIPROCAL, 2.0f * SCALE_RECIPROCAL, 0.0f);
-                AnimationHelper.renderPartOverBone2(model.leftArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                AnimationHelper.renderPartOverBone2(model.leftSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-            } else {
-                stack.translate(SCALE_RECIPROCAL, 2.0f * SCALE_RECIPROCAL, 0.0f);
-                AnimationHelper.renderPartOverBone2(model.rightArm, bone, stack, armBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-                AnimationHelper.renderPartOverBone2(model.rightSleeve, bone, stack, sleeveBuilder, packedLightIn, OverlayTexture.NO_OVERLAY, 1);
-            }
-
-            this.currentBuffer.getBuffer(this.renderType);
-            stack.popPose();
+        if (renderingArms) {
+            AnimationHelper.renderArms(player, this.transformType, stack, name, bone, this.currentBuffer, type, packedLightIn, true);
         }
-        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, red, green, blue, alpha);
+        super.renderRecursively(stack, animatable, bone, type, buffer, bufferIn, isReRender, partialTick, packedLightIn, packedOverlayIn, color);
     }
 
     @Override

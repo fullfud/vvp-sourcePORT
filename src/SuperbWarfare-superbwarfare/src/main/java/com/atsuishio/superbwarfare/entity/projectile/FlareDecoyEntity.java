@@ -4,48 +4,36 @@ import com.atsuishio.superbwarfare.init.ModEntities;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.network.syncher.SynchedEntityData;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
-import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.MoverType;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
+import org.jetbrains.annotations.NotNull;
 
-public class FlareDecoyEntity extends Entity implements DecoyEntity {
+public class FlareDecoyEntity extends Entity {
 
     public FlareDecoyEntity(EntityType<? extends FlareDecoyEntity> type, Level world) {
         super(type, world);
     }
 
-    public FlareDecoyEntity(LivingEntity entity, Level level) {
+    public FlareDecoyEntity(Level level) {
         super(ModEntities.FLARE_DECOY.get(), level);
     }
 
-    public FlareDecoyEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.FLARE_DECOY.get(), level);
+    @Override
+    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
+    protected void addAdditionalSaveData(@NotNull CompoundTag compoundTag) {
     }
 
     @Override
-    protected void readAdditionalSaveData(CompoundTag compoundTag) {
-    }
-
-    @Override
-    protected void addAdditionalSaveData(CompoundTag compoundTag) {
-    }
-
-    @Override
-    protected void defineSynchedData() {
+    protected void defineSynchedData(SynchedEntityData.@NotNull Builder builder) {
     }
 
     @Override
@@ -65,22 +53,12 @@ public class FlareDecoyEntity extends Entity implements DecoyEntity {
     }
 
     public void decoyShoot(Entity entity, Vec3 shootVec, float pVelocity, float pInaccuracy) {
-        Vec3 vec3 = shootVec.normalize().add(this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy)).scale((double) pVelocity);
+        Vec3 vec3 = shootVec.normalize().add(this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy), this.random.triangle(0.0, 0.0172275 * (double) pInaccuracy)).scale(pVelocity);
         this.setDeltaMovement(entity.getDeltaMovement().scale(0.75).add(vec3));
         double d0 = vec3.horizontalDistance();
         this.setYRot((float) (Mth.atan2(vec3.x, vec3.z) * 57.2957763671875));
         this.setXRot((float) (Mth.atan2(vec3.y, d0) * 57.2957763671875));
         this.yRotO = this.getYRot();
         this.xRotO = this.getXRot();
-    }
-
-    @Override
-    public String getDecoyUUID() {
-        return this.getStringUUID();
-    }
-
-    @Override
-    public Vec3 getPosition() {
-        return position();
     }
 }

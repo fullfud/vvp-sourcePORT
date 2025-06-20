@@ -1,56 +1,47 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
-import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.atsuishio.superbwarfare.Mod;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.client.Minecraft;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.List;
-import java.util.function.Supplier;
 
 /**
  * Code based on @GoryMoon's Chargers
  */
-public class ContainerDataMessage {
+public record ContainerDataMessage(int containerId, List<Pair> data) implements CustomPacketPayload {
+    public static final Type<ContainerDataMessage> TYPE = new Type<>(Mod.loc("container_data"));
 
-    private final int containerId;
-    private final List<Pair> data;
+    public static final StreamCodec<ByteBuf, ContainerDataMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT, ContainerDataMessage::containerId,
+            StreamCodec.composite(
+                    ByteBufCodecs.INT, Pair::id,
+                    ByteBufCodecs.INT, Pair::data,
+                    Pair::new
+            ).apply(ByteBufCodecs.list()),
+            ContainerDataMessage::data,
+            ContainerDataMessage::new
+    );
 
-    public ContainerDataMessage(int containerId, List<Pair> data) {
-        this.containerId = containerId;
-        this.data = data;
-    }
 
-    public static ContainerDataMessage decode(FriendlyByteBuf buf) {
-        return new ContainerDataMessage(buf.readUnsignedByte(), buf.readList(byteBuf -> new Pair(byteBuf.readShort(), byteBuf.readLong())));
-    }
-
-    public static void encode(ContainerDataMessage message, FriendlyByteBuf buf) {
-        buf.writeByte(message.containerId);
-        buf.writeCollection(message.data, (byteBuf, p) -> p.write(byteBuf));
-    }
-
-    public static void handler(ContainerDataMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandler.handleContainerDataMessage(message.containerId, message.data, ctx)));
-        ctx.get().setPacketHandled(true);
-    }
-
-    public static class Pair {
-
-        public int id;
-        public long data;
-
-        public Pair(int id, long data) {
-            this.id = id;
-            this.data = data;
+    public static void handler(ContainerDataMessage message, final IPayloadContext context) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null && mc.player.containerMenu.containerId == message.containerId) {
+            message.data.forEach(p -> mc.player.containerMenu.setData(p.id, p.data));
         }
+    }
 
-        public void write(FriendlyByteBuf buf) {
-            buf.writeShort(id);
-            buf.writeLong(data);
-        }
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
+    }
+
+    public record Pair(int id, int data) {
     }
 
 }

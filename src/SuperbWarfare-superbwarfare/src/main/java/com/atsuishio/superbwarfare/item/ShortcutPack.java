@@ -6,9 +6,8 @@ import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.TooltipFlag;
-import net.minecraft.world.level.Level;
-import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
 public class ShortcutPack extends Item {
@@ -17,9 +16,10 @@ public class ShortcutPack extends Item {
     }
 
     @Override
-    public void appendHoverText(ItemStack stack, @Nullable Level level, List<Component> list, TooltipFlag flag) {
-        list.add(Component.translatable("des.superbwarfare.use_tip.shortcut_pack").withStyle(ChatFormatting.AQUA));
-        list.add(Component.translatable("des.superbwarfare.tips.shortcut_pack").withStyle(ChatFormatting.GRAY));
+    @ParametersAreNonnullByDefault
+    public void appendHoverText(ItemStack stack, TooltipContext context, List<Component> tooltipComponents, TooltipFlag tooltipFlag) {
+        tooltipComponents.add(Component.translatable("des.superbwarfare.use_tip.shortcut_pack").withStyle(ChatFormatting.AQUA));
+        tooltipComponents.add(Component.translatable("des.superbwarfare.tips.shortcut_pack").withStyle(ChatFormatting.GRAY));
     }
 
 }

@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class SecondaryCataclysmModel extends CustomGunModel<SecondaryCataclysm> {
 
@@ -47,10 +47,10 @@ public class SecondaryCataclysmModel extends CustomGunModel<SecondaryCataclysm> 
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -80,20 +80,21 @@ public class SecondaryCataclysmModel extends CustomGunModel<SecondaryCataclysm> 
 
         CrossHairOverlay.gunRot = shen.getRotZ();
 
-        CoreGeoBone bolt = getAnimationProcessor().getBone("bolt");
-        CoreGeoBone lun = getAnimationProcessor().getBone("lun");
+        GeoBone bolt = getAnimationProcessor().getBone("bolt");
+        GeoBone lun = getAnimationProcessor().getBone("lun");
         bolt.setPosZ(6f * (float) fp);
         lun.setRotZ(45f * (float) (Mth.clamp(ClientEventHandler.firePosTimer, 0, 1)) * Mth.DEG_TO_RAD);
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.12 * zt);
         float numP = (float) (1 - 0.68 * zt);
 
-        if (GunData.from(stack).reload.time() > 0) {
+        var data = GunData.from(stack);
+        if (data.reload.time() > 0) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

@@ -19,8 +19,10 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.item.ItemStack;
+import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -40,6 +42,7 @@ public class GunPerksCategory implements IRecipeCategory<ItemStack> {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void draw(ItemStack recipe, IRecipeSlotsView recipeSlotsView, GuiGraphics guiGraphics, double mouseX, double mouseY) {
         var name = recipe.getHoverName();
         guiGraphics.drawString(Minecraft.getInstance().font, name,
@@ -53,12 +56,12 @@ public class GunPerksCategory implements IRecipeCategory<ItemStack> {
     }
 
     @Override
-    public RecipeType<ItemStack> getRecipeType() {
+    public @NotNull RecipeType<ItemStack> getRecipeType() {
         return TYPE;
     }
 
     @Override
-    public Component getTitle() {
+    public @NotNull Component getTitle() {
         return Component.translatable("jei.superbwarfare.gun_perks");
     }
 
@@ -78,7 +81,7 @@ public class GunPerksCategory implements IRecipeCategory<ItemStack> {
     }
 
     @Override
-    public void setRecipe(IRecipeLayoutBuilder builder, ItemStack stack, IFocusGroup focuses) {
+    public void setRecipe(@NotNull IRecipeLayoutBuilder builder, ItemStack stack, @NotNull IFocusGroup focuses) {
         if (!(stack.getItem() instanceof GunItem)) return;
         GunData data = GunData.from(stack);
         var perks = data.availablePerks();

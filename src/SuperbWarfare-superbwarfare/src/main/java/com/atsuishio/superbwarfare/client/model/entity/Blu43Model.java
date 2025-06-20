@@ -20,6 +20,5 @@ public class Blu43Model extends GeoModel<Blu43Entity> {
     @Override
     public ResourceLocation getTextureResource(Blu43Entity entity) {
         return Mod.loc("textures/entity/blu_43.png");
-        
     }
 }

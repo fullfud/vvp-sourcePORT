@@ -11,8 +11,10 @@ import net.minecraft.client.gui.screens.inventory.AbstractContainerScreen;
 import net.minecraft.network.chat.Component;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -54,14 +56,14 @@ public class ChargingStationScreen extends AbstractContainerScreen<ChargingStati
     }
 
     @Override
-    public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        this.renderBackground(pGuiGraphics);
+    public void render(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         this.renderTooltip(pGuiGraphics, pMouseX, pMouseY);
     }
 
     @Override
-    protected void renderTooltip(GuiGraphics pGuiGraphics, int pX, int pY) {
+    protected void renderTooltip(@NotNull GuiGraphics pGuiGraphics, int pX, int pY) {
         super.renderTooltip(pGuiGraphics, pX, pY);
 
         int i = (this.width - this.imageWidth) / 2;
@@ -80,7 +82,7 @@ public class ChargingStationScreen extends AbstractContainerScreen<ChargingStati
     class ShowRangeButton extends AbstractButton {
 
         @Override
-        protected void renderWidget(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
+        protected void renderWidget(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
             this.setMessage(ChargingStationScreen.this.menu.showRange() ? Component.translatable("container.superbwarfare.charging_station.hide_range") : Component.translatable("container.superbwarfare.charging_station.show_range"));
             super.renderWidget(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         }
@@ -90,18 +92,12 @@ public class ChargingStationScreen extends AbstractContainerScreen<ChargingStati
         }
 
         @Override
-        public void render(GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-            super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
-        }
-
-        @Override
         public void onPress() {
-            Mod.PACKET_HANDLER.sendToServer(new ShowChargingRangeMessage(!ChargingStationScreen.this.menu.showRange()));
+            PacketDistributor.sendToServer(new ShowChargingRangeMessage(!ChargingStationScreen.this.menu.showRange()));
         }
 
         @Override
-        protected void updateWidgetNarration(NarrationElementOutput pNarrationElementOutput) {
-
+        protected void updateWidgetNarration(@NotNull NarrationElementOutput pNarrationElementOutput) {
         }
     }
 

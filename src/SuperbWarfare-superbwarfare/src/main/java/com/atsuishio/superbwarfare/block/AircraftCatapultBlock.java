@@ -22,7 +22,8 @@ import net.minecraft.world.level.block.state.properties.IntegerProperty;
 import net.minecraft.world.phys.Vec3;
 import org.jetbrains.annotations.NotNull;
 
-@SuppressWarnings("deprecation")
+import javax.annotation.ParametersAreNonnullByDefault;
+
 public class AircraftCatapultBlock extends Block {
 
     public static final DirectionProperty FACING = HorizontalDirectionalBlock.FACING;
@@ -36,7 +37,8 @@ public class AircraftCatapultBlock extends Block {
 
 
     @Override
-    public void onPlace(BlockState state, Level level, BlockPos pos, BlockState pOldState, boolean pMovedByPiston) {
+    @ParametersAreNonnullByDefault
+    public void onPlace(@NotNull BlockState state, Level level, BlockPos pos, @NotNull BlockState pOldState, boolean pMovedByPiston) {
         if (level instanceof ServerLevel) {
             int receivedPower = level.getBestNeighborSignal(pos);
             int maxNeighborPower = this.getFacingPower(level, pos, state);
@@ -51,7 +53,7 @@ public class AircraftCatapultBlock extends Block {
     }
 
     @Override
-    public RenderShape getRenderShape(BlockState pState) {
+    public @NotNull RenderShape getRenderShape(@NotNull BlockState pState) {
         return RenderShape.MODEL;
     }
 
@@ -61,6 +63,7 @@ public class AircraftCatapultBlock extends Block {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void neighborChanged(BlockState pState, Level pLevel, BlockPos pPos, Block pBlock, BlockPos pFromPos, boolean pIsMoving) {
         if (!pLevel.isClientSide && !pState.getValue(UPDATING)) {
             pLevel.scheduleTick(pPos, this, 1);
@@ -68,6 +71,7 @@ public class AircraftCatapultBlock extends Block {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void tick(BlockState state, ServerLevel level, BlockPos pos, RandomSource pRandom) {
         this.updateSignal(state, level, pos);
     }
@@ -105,6 +109,7 @@ public class AircraftCatapultBlock extends Block {
     }
 
     @Override
+    @ParametersAreNonnullByDefault
     public void stepOn(Level pLevel, BlockPos pPos, BlockState pState, Entity pEntity) {
         super.stepOn(pLevel, pPos, pState, pEntity);
         var direction = pState.getValue(AircraftCatapultBlock.FACING);

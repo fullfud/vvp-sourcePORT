@@ -3,7 +3,10 @@ package com.atsuishio.superbwarfare.entity.projectile;
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
-import com.atsuishio.superbwarfare.init.*;
+import com.atsuishio.superbwarfare.init.ModDamageTypes;
+import com.atsuishio.superbwarfare.init.ModEntities;
+import com.atsuishio.superbwarfare.init.ModItems;
+import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.network.message.receive.ClientIndicatorMessage;
 import com.atsuishio.superbwarfare.network.message.receive.ClientMotionSyncMessage;
 import com.atsuishio.superbwarfare.tools.ChunkLoadTool;
@@ -13,8 +16,6 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.sounds.SoundEvent;
@@ -25,38 +26,31 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
-import net.minecraft.world.level.block.Block;
-import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
-import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PacketDistributor;
-import net.minecraftforge.network.PlayMessages;
+import net.neoforged.neoforge.event.EventHooks;
+import net.neoforged.neoforge.network.PacketDistributor;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
-import software.bernie.geckolib.core.animation.AnimationController;
-import software.bernie.geckolib.core.animation.AnimationState;
-import software.bernie.geckolib.core.animation.RawAnimation;
-import software.bernie.geckolib.core.object.PlayState;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.*;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.HashSet;
 import java.util.Set;
 
 public class CannonShellEntity extends FastThrowableProjectile implements GeoEntity, ExplosiveProjectile {
 
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
+
     private float damage = 0;
     private float radius = 0;
     private float explosionDamage = 0;
     private float fireProbability = 0;
     private int fireTime = 0;
-    private int durability = 40;
-    private boolean firstHit = true;
     public Set<Long> loadedChunks = new HashSet<>();
     private float gravity = 0.1f;
 
@@ -75,17 +69,19 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
         this.gravity = gravity;
     }
 
-    public CannonShellEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.CANNON_SHELL.get(), level);
-    }
-
     public CannonShellEntity durability(int durability) {
         this.durability = durability;
         return this;
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag pCompound) {
+    @ParametersAreNonnullByDefault
+    public boolean isColliding(BlockPos pPos, BlockState pState) {
+        return true;
+    }
+
+    @Override
+    public void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
 
         pCompound.putFloat("Damage", this.damage);
@@ -105,7 +101,7 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag pCompound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.readAdditionalSaveData(pCompound);
 
         if (pCompound.contains("Damage")) {
@@ -142,12 +138,7 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
+    protected @NotNull Item getDefaultItem() {
         return ModItems.HE_5_INCHES.get();
     }
 
@@ -157,9 +148,33 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void onHitEntity(EntityHitResult entityHitResult) {
+    public void onHitBlock(@NotNull BlockHitResult blockHitResult) {
+        if (this.level() instanceof ServerLevel) {
+            BlockPos resultPos = blockHitResult.getBlockPos();
+            float hardness = this.level().getBlockState(resultPos).getBlock().defaultDestroyTime();
+            if (hardness != -1) {
+                if (ExplosionConfig.EXPLOSION_DESTROY.get()) {
+                    if (firstHit) {
+                        causeExplode(blockHitResult.getLocation());
+                        firstHit = false;
+                        Mod.queueServerWork(3, this::discard);
+                    }
+                    this.level().destroyBlock(resultPos, true);
+                }
+            }
+            if (!ExplosionConfig.EXPLOSION_DESTROY.get()) {
+                causeExplode(blockHitResult.getLocation());
+                this.discard();
+            }
+        }
+    }
+
+    @Override
+    public void onHitEntity(@NotNull EntityHitResult entityHitResult) {
         if (this.level() instanceof ServerLevel) {
             Entity entity = entityHitResult.getEntity();
+            if (this.getOwner() != null && entity == this.getOwner().getVehicle())
+                return;
             entity.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), this.damage);
 
             if (entity instanceof LivingEntity) {
@@ -170,7 +185,7 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
                 if (!living.level().isClientSide() && living instanceof ServerPlayer player) {
                     living.level().playSound(null, living.blockPosition(), ModSounds.INDICATION.get(), SoundSource.VOICE, 1, 1);
 
-                    Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new ClientIndicatorMessage(0, 5));
+                    PacketDistributor.sendToPlayer(player, new ClientIndicatorMessage(0, 5));
                 }
             }
 
@@ -184,62 +199,6 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void onHitBlock(BlockHitResult blockHitResult) {
-        if (this.level() instanceof ServerLevel) {
-            double x = blockHitResult.getLocation().x;
-            double y = blockHitResult.getLocation().y;
-            double z = blockHitResult.getLocation().z;
-
-            if (ExplosionConfig.EXPLOSION_DESTROY.get()) {
-                float hardness = this.level().getBlockState(BlockPos.containing(x, y, z)).getBlock().defaultDestroyTime();
-                BlockState blockState = this.level().getBlockState(BlockPos.containing(x, y, z));
-
-                if (hardness == -1) {
-                    this.discard();
-                    causeExplode(blockHitResult.getLocation());
-                    return;
-                }
-
-                this.durability -= (int) hardness;
-
-                if (hardness <= 50) {
-                    BlockPos blockPos = BlockPos.containing(x, y, z);
-                    Block.dropResources(this.level().getBlockState(blockPos), this.level(), BlockPos.containing(x, y, z), null);
-                    this.level().destroyBlock(blockPos, true);
-                }
-
-                if (blockState.is(ModBlocks.SANDBAG.get()) || blockState.is(Blocks.NETHERITE_BLOCK)) {
-                    this.durability -= 10;
-                }
-
-                if (blockState.is(Blocks.IRON_BLOCK) || blockState.is(Blocks.COPPER_BLOCK)) {
-                    this.durability -= 5;
-                }
-
-                if (blockState.is(Blocks.GOLD_BLOCK)) {
-                    this.durability -= 3;
-                }
-
-                if (this.durability <= 0) {
-                    causeExplode(blockHitResult.getLocation());
-                } else {
-                    if (this.firstHit) {
-                        ParticleTool.cannonHitParticles(this.level(), this.position(), this);
-                        causeExplode(blockHitResult.getLocation());
-                        this.firstHit = false;
-                    }
-                    apExplode(blockHitResult);
-                }
-            } else {
-                if (this.durability > 0) {
-                    apExplode(blockHitResult);
-                }
-                causeExplode(blockHitResult.getLocation());
-            }
-        }
-    }
-
-    @Override
     public void tick() {
         super.tick();
         if (this.level() instanceof ServerLevel serverLevel) {
@@ -249,6 +208,9 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
             // 更新需要加载的区块
             ChunkLoadTool.updateLoadedChunks(serverLevel, this, this.loadedChunks);
         }
+
+        destroyBlock();
+
         if (this.tickCount > 600 || this.isInWater()) {
             if (this.level() instanceof ServerLevel) {
                 causeExplode(position());
@@ -260,74 +222,39 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     @Override
     public void syncMotion() {
         if (!this.level().isClientSide) {
-            Mod.PACKET_HANDLER.send(PacketDistributor.ALL.noArg(), new ClientMotionSyncMessage(this));
+            PacketDistributor.sendToAllPlayers(new ClientMotionSyncMessage(this));
         }
     }
 
-
     private void causeExplode(Vec3 vec3) {
-        if (Math.random() > fireProbability) {
-            fireTime = 0;
-        }
-
         CustomExplosion explosion = new CustomExplosion(this.level(), this,
                 ModDamageTypes.causeProjectileBoomDamage(this.level().registryAccess(),
                         this,
                         this.getOwner()),
                 explosionDamage,
-                vec3.x,
-                vec3.y,
-                vec3.z,
+                vec3.x(),
+                vec3.y(),
+                vec3.z(),
                 radius,
                 ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).
-                setDamageMultiplier(1).setFireTime(fireTime);
+                setDamageMultiplier(1);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
-
-        if (radius > 7) {
+        if (radius > 9) {
             ParticleTool.spawnHugeExplosionParticles(this.level(), vec3);
         } else {
             ParticleTool.spawnMediumExplosionParticles(this.level(), vec3);
         }
-        this.discard();
-    }
-
-    private void apExplode(HitResult result) {
-        if (Math.random() > fireProbability) {
-            fireTime = 0;
-        }
-
-        CustomExplosion explosion = new CustomExplosion(this.level(), this,
-                ModDamageTypes.causeProjectileBoomDamage(this.level().registryAccess(),
-                        this,
-                        this.getOwner()),
-                explosionDamage,
-                result.getLocation().x + 5 * getDeltaMovement().normalize().x,
-                result.getLocation().y + 5 * getDeltaMovement().normalize().y,
-                result.getLocation().z + 5 * getDeltaMovement().normalize().z,
-                radius,
-                ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).
-                setDamageMultiplier(1).setFireTime(fireTime);
-        explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
-        explosion.finalizeExplosion(false);
-
-        if (radius > 7) {
-            ParticleTool.spawnHugeExplosionParticles(this.level(), result.getLocation());
-        } else {
-            ParticleTool.spawnMediumExplosionParticles(this.level(), result.getLocation());
-        }
-        this.discard();
+        discard();
     }
 
     private PlayState movementPredicate(AnimationState<CannonShellEntity> event) {
         return event.setAndContinue(RawAnimation.begin().thenLoop("animation.cannon_shell.idle"));
     }
 
-
     @Override
-    protected float getGravity() {
+    protected double getDefaultGravity() {
         return gravity;
     }
 
@@ -342,15 +269,15 @@ public class CannonShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void onRemovedFromWorld() {
+    public void onRemovedFromLevel() {
         if (this.level() instanceof ServerLevel serverLevel) {
             ChunkLoadTool.unloadAllChunks(serverLevel, this, this.loadedChunks);
         }
-        super.onRemovedFromWorld();
+        super.onRemovedFromLevel();
     }
 
     @Override
-    public SoundEvent getSound() {
+    public @NotNull SoundEvent getSound() {
         return ModSounds.SHELL_FLY.get();
     }
 

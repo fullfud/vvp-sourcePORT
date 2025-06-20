@@ -1,11 +1,10 @@
 package com.atsuishio.superbwarfare.capability.energy;
 
+import com.atsuishio.superbwarfare.component.ModDataComponents;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.energy.EnergyStorage;
+import net.neoforged.neoforge.energy.EnergyStorage;
 
 public class ItemEnergyStorage extends EnergyStorage {
-
-    private static final String NBT_ENERGY = "Energy";
 
     private final ItemStack stack;
 
@@ -13,7 +12,8 @@ public class ItemEnergyStorage extends EnergyStorage {
         super(capacity, Integer.MAX_VALUE, Integer.MAX_VALUE);
 
         this.stack = stack;
-        this.energy = stack.hasTag() && stack.getTag().contains(NBT_ENERGY) ? stack.getTag().getInt(NBT_ENERGY) : 0;
+        var component = stack.get(ModDataComponents.ENERGY);
+        this.energy = component == null ? 0 : component;
     }
 
     @Override
@@ -21,7 +21,7 @@ public class ItemEnergyStorage extends EnergyStorage {
         int received = super.receiveEnergy(maxReceive, simulate);
 
         if (received > 0 && !simulate) {
-            stack.getOrCreateTag().putInt(NBT_ENERGY, getEnergyStored());
+            stack.set(ModDataComponents.ENERGY, getEnergyStored());
         }
 
         return received;
@@ -32,7 +32,7 @@ public class ItemEnergyStorage extends EnergyStorage {
         int extracted = super.extractEnergy(maxExtract, simulate);
 
         if (extracted > 0 && !simulate) {
-            stack.getOrCreateTag().putInt(NBT_ENERGY, getEnergyStored());
+            stack.set(ModDataComponents.ENERGY, getEnergyStored());
         }
 
         return extracted;

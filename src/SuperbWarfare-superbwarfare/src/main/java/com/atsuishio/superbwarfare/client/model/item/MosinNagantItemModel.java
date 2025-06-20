@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class MosinNagantItemModel extends CustomGunModel<MosinNagantItem> {
 
@@ -47,14 +47,14 @@ public class MosinNagantItemModel extends CustomGunModel<MosinNagantItem> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
-        CoreGeoBone pu = getAnimationProcessor().getBone("pu");
-        CoreGeoBone bone15 = getAnimationProcessor().getBone("bone15");
-        CoreGeoBone bone16 = getAnimationProcessor().getBone("bone16");
-        CoreGeoBone qiangshen = getAnimationProcessor().getBone("qiangshen");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone pu = getAnimationProcessor().getBone("pu");
+        GeoBone bone15 = getAnimationProcessor().getBone("bone15");
+        GeoBone bone16 = getAnimationProcessor().getBone("bone16");
+        GeoBone qiangshen = getAnimationProcessor().getBone("qiangshen");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -82,6 +82,8 @@ public class MosinNagantItemModel extends CustomGunModel<MosinNagantItem> {
             qiangshen.setScaleZ(1);
         }
 
+        var data = GunData.from(stack);
+
         shen.setPosX((float) (0.95f * ClientEventHandler.recoilHorizon * fpz * fp));
         shen.setPosY((float) (0.4f * fp + 0.44f * fr));
         shen.setPosZ((float) (2.825 * fp + 0.17f * fr + 1.175 * fpz));
@@ -99,14 +101,14 @@ public class MosinNagantItemModel extends CustomGunModel<MosinNagantItem> {
         CrossHairOverlay.gunRot = shen.getRotZ();
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
-        CoreGeoBone body = getAnimationProcessor().getBone("roll");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone body = getAnimationProcessor().getBone("roll");
 
         float numR = (float) (1 - 0.97 * zt);
         float numP = (float) (1 - 0.81 * zt);
 
-        if (GunData.from(stack).reloading() || GunData.from(stack).bolt.actionTimer.get() > 0) {
+        if (data.reloading() || data.bolt.actionTimer.get() > 0) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

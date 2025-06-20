@@ -10,10 +10,11 @@ import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.damagesource.DamageType;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
+import org.jetbrains.annotations.NotNull;
 
 import javax.annotation.Nullable;
 
-@SuppressWarnings("OptionalGetWithoutIsPresent")
+@SuppressWarnings({"OptionalGetWithoutIsPresent", "unused"})
 public class ModDamageTypes {
 
     public static final ResourceKey<DamageType> GUN_FIRE = ResourceKey.create(Registries.DAMAGE_TYPE, Mod.loc("gunfire"));
@@ -123,15 +124,14 @@ public class ModDamageTypes {
         }
 
         @Override
-        public Component getLocalizedDeathMessage(LivingEntity pLivingEntity) {
+        public @NotNull Component getLocalizedDeathMessage(@NotNull LivingEntity pLivingEntity) {
             Entity entity = this.getEntity() == null ? this.getDirectEntity() : this.getEntity();
             if (entity == null) {
                 return Component.translatable("death.attack." + this.getMsgId(), pLivingEntity.getDisplayName());
-            } else if (entity instanceof LivingEntity living && living.getMainHandItem().hasCustomHoverName()) {
-                return Component.translatable("death.attack." + this.getMsgId() + ".item", pLivingEntity.getDisplayName(), entity.getDisplayName(), living.getMainHandItem().getDisplayName());
-            } else {
-                return Component.translatable("death.attack." + this.getMsgId() + ".entity", pLivingEntity.getDisplayName(), entity.getDisplayName());
+            } else if (entity instanceof LivingEntity living) {
+                return Component.translatable("death.attack." + this.getMsgId() + ".item", pLivingEntity.getDisplayName(), entity.getDisplayName(), living.getMainHandItem().getHoverName());
             }
+            return Component.translatable("death.attack." + this.getMsgId() + ".entity", pLivingEntity.getDisplayName(), entity.getDisplayName());
         }
     }
 }

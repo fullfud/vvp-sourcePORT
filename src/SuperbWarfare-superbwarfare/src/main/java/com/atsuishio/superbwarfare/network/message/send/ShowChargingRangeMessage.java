@@ -1,39 +1,36 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.ChargingStationMenu;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.network.NetworkEvent;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record ShowChargingRangeMessage(boolean operation) implements CustomPacketPayload {
+    public static final Type<ShowChargingRangeMessage> TYPE = new Type<>(Mod.loc("show_charging_range"));
 
-public class ShowChargingRangeMessage {
-    private final boolean operation;
+    public static final StreamCodec<ByteBuf, ShowChargingRangeMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BOOL,
+            ShowChargingRangeMessage::operation,
+            ShowChargingRangeMessage::new
+    );
 
-    public ShowChargingRangeMessage(boolean operation) {
-        this.operation = operation;
+
+    public static void handler(ShowChargingRangeMessage message, final IPayloadContext context) {
+        var player = context.player();
+        var menu = player.containerMenu;
+        if (menu instanceof ChargingStationMenu chargingStationMenu) {
+            if (!chargingStationMenu.stillValid(player)) return;
+
+            chargingStationMenu.setShowRange(message.operation);
+        }
     }
 
-    public static ShowChargingRangeMessage decode(FriendlyByteBuf buffer) {
-        return new ShowChargingRangeMessage(buffer.readBoolean());
-    }
-
-    public static void encode(ShowChargingRangeMessage message, FriendlyByteBuf buffer) {
-        buffer.writeBoolean(message.operation);
-    }
-
-    public static void handler(ShowChargingRangeMessage message, Supplier<NetworkEvent.Context> contextSupplier) {
-        NetworkEvent.Context context = contextSupplier.get();
-        context.enqueueWork(() -> {
-            if (context.getSender() == null) return;
-
-            var player = context.getSender();
-            var menu = player.containerMenu;
-            if (menu instanceof ChargingStationMenu chargingStationMenu) {
-                if (!chargingStationMenu.stillValid(player)) return;
-
-                chargingStationMenu.setShowRange(message.operation);
-            }
-        });
-        context.setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

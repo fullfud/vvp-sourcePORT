@@ -1,26 +1,26 @@
 package com.atsuishio.superbwarfare.config.client;
 
-import net.minecraftforge.common.ForgeConfigSpec;
+import net.neoforged.neoforge.common.ModConfigSpec;
 
 public class DisplayConfig {
 
-    public static ForgeConfigSpec.BooleanValue ENABLE_GUN_LOD;
-    public static ForgeConfigSpec.IntValue WEAPON_HUD_X_OFFSET;
-    public static ForgeConfigSpec.IntValue WEAPON_HUD_Y_OFFSET;
-    public static ForgeConfigSpec.BooleanValue KILL_INDICATION;
-    public static ForgeConfigSpec.BooleanValue AMMO_HUD;
-    public static ForgeConfigSpec.BooleanValue VEHICLE_INFO;
-    public static ForgeConfigSpec.BooleanValue FLOAT_CROSS_HAIR;
-    public static ForgeConfigSpec.BooleanValue CAMERA_ROTATE;
-    public static ForgeConfigSpec.BooleanValue ARMOR_PLATE_HUD;
-    public static ForgeConfigSpec.BooleanValue STAMINA_HUD;
-    public static ForgeConfigSpec.BooleanValue DOG_TAG_NAME_VISIBLE;
-    public static ForgeConfigSpec.BooleanValue DOG_TAG_ICON_VISIBLE;
-    public static ForgeConfigSpec.IntValue WEAPON_SCREEN_SHAKE;
-    public static ForgeConfigSpec.IntValue EXPLOSION_SCREEN_SHAKE;
-    public static ForgeConfigSpec.IntValue SHOCK_SCREEN_SHAKE;
+    public static ModConfigSpec.BooleanValue ENABLE_GUN_LOD;
+    public static ModConfigSpec.IntValue WEAPON_HUD_X_OFFSET;
+    public static ModConfigSpec.IntValue WEAPON_HUD_Y_OFFSET;
+    public static ModConfigSpec.BooleanValue KILL_INDICATION;
+    public static ModConfigSpec.BooleanValue AMMO_HUD;
+    public static ModConfigSpec.BooleanValue VEHICLE_INFO;
+    public static ModConfigSpec.BooleanValue FLOAT_CROSS_HAIR;
+    public static ModConfigSpec.BooleanValue CAMERA_ROTATE;
+    public static ModConfigSpec.BooleanValue ARMOR_PLATE_HUD;
+    public static ModConfigSpec.BooleanValue STAMINA_HUD;
+    public static ModConfigSpec.BooleanValue DOG_TAG_NAME_VISIBLE;
+    public static ModConfigSpec.BooleanValue DOG_TAG_ICON_VISIBLE;
+    public static ModConfigSpec.IntValue WEAPON_SCREEN_SHAKE;
+    public static ModConfigSpec.IntValue EXPLOSION_SCREEN_SHAKE;
+    public static ModConfigSpec.IntValue SHOCK_SCREEN_SHAKE;
 
-    public static void init(ForgeConfigSpec.Builder builder) {
+    public static void init(ModConfigSpec.Builder builder) {
         builder.push("display");
 
         builder.comment("Set true to enable gun lod");

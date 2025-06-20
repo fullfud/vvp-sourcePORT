@@ -1,45 +1,40 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.FuMO25Menu;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record RadarChangeModeMessage(byte mode) implements CustomPacketPayload {
+    public static final Type<RadarChangeModeMessage> TYPE = new Type<>(Mod.loc("radar_change_mode"));
 
-public class RadarChangeModeMessage {
+    public static final StreamCodec<ByteBuf, RadarChangeModeMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.BYTE,
+            RadarChangeModeMessage::mode,
+            RadarChangeModeMessage::new
+    );
 
-    private final byte mode;
+    public static void handler(RadarChangeModeMessage message, final IPayloadContext context) {
+        byte mode = message.mode;
+        if (mode < 1 || mode > 4) return;
 
-    public RadarChangeModeMessage(byte mode) {
-        this.mode = mode;
+        ServerPlayer player = (ServerPlayer) context.player();
+
+        AbstractContainerMenu menu = player.containerMenu;
+        if (menu instanceof FuMO25Menu fuMO25Menu) {
+            if (!player.containerMenu.stillValid(player)) return;
+            fuMO25Menu.setFuncTypeAndTime(mode);
+        }
     }
 
-    public static void encode(RadarChangeModeMessage message, FriendlyByteBuf buffer) {
-        buffer.writeByte(message.mode);
-    }
-
-    public static RadarChangeModeMessage decode(FriendlyByteBuf buffer) {
-        return new RadarChangeModeMessage(buffer.readByte());
-    }
-
-    public static void handler(RadarChangeModeMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            byte mode = message.mode;
-            if (mode < 1 || mode > 4) return;
-
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) return;
-
-            AbstractContainerMenu menu = player.containerMenu;
-            if (menu instanceof FuMO25Menu fuMO25Menu) {
-                if (!player.containerMenu.stillValid(player)) {
-                    return;
-                }
-                fuMO25Menu.setFuncTypeAndTime(mode);
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

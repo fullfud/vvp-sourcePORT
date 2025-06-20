@@ -9,6 +9,7 @@ import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.Comparator;
 import java.util.List;
@@ -44,7 +45,7 @@ public class LaserEntity extends AbstractLaserEntity {
             if (this.caster instanceof Player) {
                 this.updateWithPlayer();
             } else if (this.caster != null) {
-                this.updateWithEntity(0F, 0.75F);
+                this.updateWithEntity();
             }
         }
 
@@ -111,12 +112,7 @@ public class LaserEntity extends AbstractLaserEntity {
     }
 
     @Override
-    protected void defineSynchedData() {
-        super.defineSynchedData();
-    }
-
-    @Override
-    protected void readAdditionalSaveData(CompoundTag compoundTag) {
+    protected void readAdditionalSaveData(@NotNull CompoundTag compoundTag) {
         if (this.caster == null) {
             discard();
         }
@@ -134,13 +130,13 @@ public class LaserEntity extends AbstractLaserEntity {
         this.setPos(caster.getX() + vecOffset.x(), caster.getY() + caster.getBbHeight() * 0.5F + vecOffset.y(), caster.getZ() + vecOffset.z());
     }
 
-    private void updateWithEntity(float offset, float yOffset) {
+    private void updateWithEntity() {
         double radians = Math.toRadians(this.caster.yHeadRot + 90);
         this.setYaw((float) radians);
         this.setPitch((float) ((double) (-this.caster.getXRot()) * Math.PI / 180.0));
-        double offsetX = Math.cos(radians) * offset;
-        double offsetZ = Math.sin(radians) * offset;
-        this.setPos(this.caster.getX() + offsetX, this.caster.getY(yOffset), this.caster.getZ() + offsetZ);
+        double offsetX = Math.cos(radians) * (float) 0.0;
+        double offsetZ = Math.sin(radians) * (float) 0.0;
+        this.setPos(this.caster.getX() + offsetX, this.caster.getY((float) 0.75), this.caster.getZ() + offsetZ);
     }
 
 }

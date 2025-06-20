@@ -12,8 +12,10 @@ import com.atsuishio.superbwarfare.tools.SeekTool;
 import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
+import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.LayeredDraw;
 import net.minecraft.client.renderer.GameRenderer;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
@@ -21,17 +23,16 @@ import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
-import net.minecraftforge.client.gui.overlay.ForgeGui;
-import net.minecraftforge.client.gui.overlay.IGuiOverlay;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
 
+import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.List;
 
 @OnlyIn(Dist.CLIENT)
-public class HandsomeFrameOverlay implements IGuiOverlay {
+public class HandsomeFrameOverlay implements LayeredDraw.Layer {
 
-    public static final String ID = Mod.MODID + "_handsome_frame";
+    public static final ResourceLocation ID = Mod.loc("handsome_frame");
 
     private static final ResourceLocation FRAME = Mod.loc("textures/screens/frame/frame.png");
     private static final ResourceLocation FRAME_WEAK = Mod.loc("textures/screens/frame/frame_weak.png");
@@ -39,8 +40,9 @@ public class HandsomeFrameOverlay implements IGuiOverlay {
     private static final ResourceLocation FRAME_LOCK = Mod.loc("textures/screens/frame/frame_lock.png");
 
     @Override
-    public void render(ForgeGui gui, GuiGraphics guiGraphics, float partialTick, int screenWidth, int screenHeight) {
-        Player player = gui.getMinecraft().player;
+    @ParametersAreNonnullByDefault
+    public void render(GuiGraphics guiGraphics, DeltaTracker deltaTracker) {
+        Player player = Minecraft.getInstance().player;
         PoseStack poseStack = guiGraphics.pose();
 
         if (player == null) return;
@@ -52,7 +54,8 @@ public class HandsomeFrameOverlay implements IGuiOverlay {
             return;
 
         if (stack.getItem() instanceof GunItem && Minecraft.getInstance().options.getCameraType().isFirstPerson()) {
-            int level = GunData.from(stack).perk.getLevel(ModPerks.INTELLIGENT_CHIP);
+            var data = GunData.from(stack);
+            int level = data.perk.getLevel(ModPerks.INTELLIGENT_CHIP);
             if (level == 0) return;
 
             RenderSystem.disableDepthTest();
@@ -68,6 +71,7 @@ public class HandsomeFrameOverlay implements IGuiOverlay {
             Entity naerestEntity = SeekTool.seekLivingEntity(player, player.level(), 32 + 8 * (level - 1), 30);
             Entity targetEntity = ClientEventHandler.entity;
 
+
             float fovAdjust2 = (float) (Minecraft.getInstance().options.fov().get() / 30) - 1;
 
             double zoom = 1;
@@ -77,8 +81,8 @@ public class HandsomeFrameOverlay implements IGuiOverlay {
             }
 
             for (var e : allEntities) {
-                Vec3 playerVec = new Vec3(Mth.lerp(partialTick, player.xo, player.getX()), Mth.lerp(partialTick, player.yo + player.getEyeHeight(), player.getEyeY()), Mth.lerp(partialTick, player.zo, player.getZ()));
-                Vec3 pos = new Vec3(Mth.lerp(partialTick, e.xo, e.getX()), Mth.lerp(partialTick, e.yo + e.getEyeHeight(), e.getEyeY()), Mth.lerp(partialTick, e.zo, e.getZ()));
+                Vec3 playerVec = new Vec3(Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.xo, player.getX()), Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.yo + player.getEyeHeight(), player.getEyeY()), Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), player.zo, player.getZ()));
+                Vec3 pos = new Vec3(Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), e.xo, e.getX()), Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), e.yo + e.getEyeHeight(), e.getEyeY()), Mth.lerp(deltaTracker.getGameTimeDeltaPartialTick(true), e.zo, e.getZ()));
                 Vec3 lookAngle = player.getLookAngle().normalize().scale(pos.distanceTo(playerVec) * (1 - 1.0 / zoom));
 
                 var cPos = playerVec.add(lookAngle);
@@ -107,7 +111,7 @@ public class HandsomeFrameOverlay implements IGuiOverlay {
                     icon = FRAME_WEAK;
                 }
 
-                RenderHelper.blit(poseStack, icon, x - 12, y - 12, 0, 0, 24, 24, 24, 24, 1f);
+                RenderHelper.preciseBlit(guiGraphics, icon, x - 12, y - 12, 24, 24, 0, 0, 24, 24, 24, 24);
                 poseStack.popPose();
             }
         }

@@ -11,8 +11,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
 
@@ -51,11 +51,11 @@ public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone bullet = getAnimationProcessor().getBone("bullet");
-        CoreGeoBone hammer = getAnimationProcessor().getBone("trigger");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone bullet = getAnimationProcessor().getBone("bullet");
+        GeoBone hammer = getAnimationProcessor().getBone("trigger");
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -68,7 +68,7 @@ public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
         gun.setPosZ(7f * (float) zp + (float) (0.3f * zpz));
         gun.setScaleZ(1f - (0.55f * (float) zp));
 
-        CoreGeoBone body = getAnimationProcessor().getBone("gun");
+        GeoBone body = getAnimationProcessor().getBone("gun");
 
         fireRotY = (float) Mth.lerp(0.3f * times, fireRotY, 0.6f * ClientEventHandler.recoilHorizon * fpz);
         fireRotZ = (float) Mth.lerp(2f * times, fireRotZ, (0.4f + 0.5 * fpz) * ClientEventHandler.recoilHorizon);
@@ -90,7 +90,7 @@ public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
         CrossHairOverlay.gunRot = body.getRotZ();
         hammer.setRotX((120 * Mth.DEG_TO_RAD * (float) fp));
 
-        CoreGeoBone huatao = getAnimationProcessor().getBone("huatao");
+        GeoBone huatao = getAnimationProcessor().getBone("huatao");
         huatao.setPosZ(1.5f * (float) ClientEventHandler.firePos);
         if (GunData.from(stack).holdOpen.get()) {
             huatao.setPosZ(1.5f);
@@ -98,13 +98,14 @@ public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
 
         float numR = (float) (1 - 0.12 * zt);
         float numP = (float) (1 - 0.68 * zt);
 
-        if (GunData.from(stack).reload.time() > 0) {
+        var data = GunData.from(stack);
+        if (data.reload.time() > 0) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());
@@ -119,7 +120,7 @@ public class Mp443ItemModel extends CustomGunModel<Mp443Item> {
         ClientEventHandler.handleReloadShake(Mth.RAD_TO_DEG * camera.getRotX(), Mth.RAD_TO_DEG * camera.getRotY(), Mth.RAD_TO_DEG * camera.getRotZ());
         AnimationHelper.handleShellsAnimation(getAnimationProcessor(), 0.7f, 1f);
 
-        CoreGeoBone shell = getAnimationProcessor().getBone("shell");
+        GeoBone shell = getAnimationProcessor().getBone("shell");
         if (GunData.from(stack).holdOpen.get()) {
             bullet.setScaleX(0);
             bullet.setScaleY(0);

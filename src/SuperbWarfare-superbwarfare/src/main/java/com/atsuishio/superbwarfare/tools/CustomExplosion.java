@@ -1,12 +1,15 @@
 package com.atsuishio.superbwarfare.tools;
 
-import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
 import com.atsuishio.superbwarfare.network.message.receive.ShakeClientMessage;
 import com.google.common.collect.Sets;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.Holder;
+import net.minecraft.core.particles.ParticleOptions;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.server.level.ServerLevel;
-import net.minecraft.server.level.ServerPlayer;
+import net.minecraft.sounds.SoundEvent;
+import net.minecraft.sounds.SoundEvents;
 import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageSource;
 import net.minecraft.world.entity.Entity;
@@ -20,10 +23,9 @@ import net.minecraft.world.level.gameevent.GameEvent;
 import net.minecraft.world.level.material.FluidState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.PacketDistributor;
+import net.neoforged.neoforge.event.EventHooks;
 
 import javax.annotation.Nullable;
-import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -43,10 +45,12 @@ public class CustomExplosion extends Explosion {
     private int fireTime;
     private float damageMultiplier;
 
-    public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source, @Nullable ExplosionDamageCalculator pDamageCalculator,
+    public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source,
+                           @Nullable ExplosionDamageCalculator pDamageCalculator,
                            float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius,
-                           Explosion.BlockInteraction pBlockInteraction) {
-        super(pLevel, pSource, source, null, pToBlowX, pToBlowY, pToBlowZ, pRadius, false, pBlockInteraction);
+                           BlockInteraction pBlockInteraction, ParticleOptions smallParticle, ParticleOptions bigParticle, Holder<SoundEvent> sound) {
+        super(pLevel, pSource, source, null, pToBlowX, pToBlowY, pToBlowZ, pRadius, false, pBlockInteraction, smallParticle, bigParticle, sound);
+
         this.level = pLevel;
         this.source = pSource;
         this.radius = pRadius;
@@ -58,44 +62,37 @@ public class CustomExplosion extends Explosion {
         this.damage = damage;
     }
 
-    public CustomExplosion(Level pLevel, @Nullable Entity pSource, float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius, Explosion.BlockInteraction pBlockInteraction) {
+    public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source,
+                           @Nullable ExplosionDamageCalculator pDamageCalculator,
+                           float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius,
+                           BlockInteraction pBlockInteraction) {
+        this(pLevel, pSource, source, pDamageCalculator, damage, pToBlowX, pToBlowY, pToBlowZ, pRadius, pBlockInteraction, ParticleTypes.EXPLOSION, ParticleTypes.EXPLOSION_EMITTER, SoundEvents.GENERIC_EXPLODE);
+    }
+
+    public CustomExplosion(Level pLevel, @Nullable Entity pSource, float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius, BlockInteraction pBlockInteraction) {
         this(pLevel, pSource, null, null, damage, pToBlowX, pToBlowY, pToBlowZ, pRadius, pBlockInteraction);
     }
 
     public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source, float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius, Explosion.BlockInteraction pBlockInteraction, boolean vanillaExplode) {
         this(pLevel, pSource, source, null, damage, pToBlowX, pToBlowY, pToBlowZ, pRadius, pBlockInteraction);
-        final Vec3 center = new Vec3(pToBlowX, pToBlowY, pToBlowZ);
 
         if (pLevel instanceof ServerLevel && vanillaExplode) {
-            pLevel.explode(source == null ? null : source.getEntity(), pToBlowX, pToBlowY, pToBlowZ, 0.4f * pRadius , ExplosionConfig.EXPLOSION_DESTROY.get() ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
+            pLevel.explode(source == null ? null : source.getEntity(), pToBlowX, pToBlowY, pToBlowZ, 0.4f * pRadius, ExplosionConfig.EXPLOSION_DESTROY.get() ? Level.ExplosionInteraction.BLOCK : Level.ExplosionInteraction.NONE);
         }
-        
-        for (Entity target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(4 * radius), e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
-            if (target instanceof ServerPlayer serverPlayer) {
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShakeClientMessage(20 + 0.02 * damage, 3 * pRadius, 50 + 0.05 * damage, pToBlowX, pToBlowY, pToBlowZ));
-            }
-        }
+
+        ShakeClientMessage.sendToNearbyPlayers(level, pToBlowX, pToBlowY, pToBlowZ, 4 * radius, 20 + 0.02 * damage, 3 * pRadius, 50 + 0.05 * damage);
     }
 
     public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source, float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius, Explosion.BlockInteraction pBlockInteraction) {
         this(pLevel, pSource, source, null, damage, pToBlowX, pToBlowY, pToBlowZ, pRadius, pBlockInteraction);
-        final Vec3 center = new Vec3(pToBlowX, pToBlowY, pToBlowZ);
-        for (Entity target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(4 * radius), e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
-            if (target instanceof ServerPlayer serverPlayer) {
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShakeClientMessage(20 + 0.02 * damage, 3 * pRadius, 50 + 0.05 * damage, pToBlowX, pToBlowY, pToBlowZ));
-            }
-        }
+
+        ShakeClientMessage.sendToNearbyPlayers(level, pToBlowX, pToBlowY, pToBlowZ, 4 * radius, 5 + 0.02 * damage, 0.75 * pRadius, 4 + 0.02 * damage);
     }
 
     public CustomExplosion(Level pLevel, @Nullable Entity pSource, @Nullable DamageSource source, float damage, double pToBlowX, double pToBlowY, double pToBlowZ, float pRadius) {
         this(pLevel, pSource, source, null, damage, pToBlowX, pToBlowY, pToBlowZ, pRadius, BlockInteraction.KEEP);
 
-        final Vec3 center = new Vec3(pToBlowX, pToBlowY, pToBlowZ);
-        for (Entity target : level.getEntitiesOfClass(Entity.class, new AABB(center, center).inflate(radius), e -> true).stream().sorted(Comparator.comparingDouble(e -> e.distanceToSqr(center))).toList()) {
-            if (target instanceof ServerPlayer serverPlayer && !(target == pSource && pSource.getVehicle() != null)) {
-                Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> serverPlayer), new ShakeClientMessage(5 + 0.02 * damage, 0.75 * pRadius, 2 + 0.002 * damage, pToBlowX, pToBlowY, pToBlowZ));
-            }
-        }
+        ShakeClientMessage.sendToNearbyPlayers(level, pToBlowX, pToBlowY, pToBlowZ, radius, 20 + 0.02 * damage, pRadius, 10 + 0.03 * damage);
     }
 
     public CustomExplosion setFireTime(int fireTime) {
@@ -169,11 +166,11 @@ public class CustomExplosion extends Explosion {
         int z0 = Mth.floor(this.z - (double) diameter - 1.0D);
         int z1 = Mth.floor(this.z + (double) diameter + 1.0D);
         List<Entity> list = this.level.getEntities(this.source, new AABB(x0, y0, z0, x1, y1, z1));
-        net.minecraftforge.event.ForgeEventFactory.onExplosionDetonate(this.level, this, list, diameter);
+        EventHooks.onExplosionDetonate(this.level, this, list, diameter);
         Vec3 position = new Vec3(this.x, this.y, this.z);
 
         for (Entity entity : list) {
-            if (!entity.ignoreExplosion()) {
+            if (!entity.ignoreExplosion(this)) {
                 double distanceRate = Math.sqrt(entity.distanceToSqr(position)) / (double) diameter;
                 if (distanceRate <= 1.0D) {
                     double xDistance = entity.getX() - this.x;
@@ -194,7 +191,7 @@ public class CustomExplosion extends Explosion {
                         entity.invulnerableTime = 1;
 
                         if (fireTime > 0) {
-                            entity.setSecondsOnFire(fireTime);
+                            entity.setRemainingFireTicks(fireTime);
                         }
                     }
                 }

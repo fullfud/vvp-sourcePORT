@@ -4,9 +4,9 @@ import com.atsuishio.superbwarfare.item.ContainerBlockItem;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
 import net.minecraft.world.item.ItemStack;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.fml.event.IModBusEvent;
-import net.minecraftforge.registries.RegistryObject;
+import net.neoforged.bus.api.Event;
+import net.neoforged.fml.event.IModBusEvent;
+import net.neoforged.neoforge.registries.DeferredHolder;
 import org.jetbrains.annotations.ApiStatus;
 
 import java.util.ArrayList;
@@ -17,20 +17,17 @@ import java.util.List;
  */
 @ApiStatus.AvailableSince("0.8.0")
 public class RegisterContainersEvent extends Event implements IModBusEvent {
+    public static final List<ItemStack> containers = new ArrayList<>();
 
-    public static final List<ItemStack> CONTAINERS = new ArrayList<>();
-
-    public <T extends Entity> void add(RegistryObject<EntityType<T>> type) {
+    public <T extends Entity> void add(DeferredHolder<EntityType<?>, EntityType<T>> type) {
         add(type.get());
     }
 
     public <T extends Entity> void add(EntityType<T> type) {
-        ItemStack stack = ContainerBlockItem.createInstance(type);
-        CONTAINERS.add(stack);
+        containers.add(ContainerBlockItem.createInstance(type));
     }
 
     public void add(Entity entity) {
-        ItemStack stack = ContainerBlockItem.createInstance(entity);
-        CONTAINERS.add(stack);
+        containers.add(ContainerBlockItem.createInstance(entity));
     }
 }

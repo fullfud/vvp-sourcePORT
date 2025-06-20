@@ -3,8 +3,8 @@ package com.atsuishio.superbwarfare.client.model.entity;
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.entity.projectile.GunGrenadeEntity;
 import net.minecraft.resources.ResourceLocation;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 import software.bernie.geckolib.model.GeoModel;
 
 public class GunGrenadeModel extends GeoModel<GunGrenadeEntity> {
@@ -26,7 +26,7 @@ public class GunGrenadeModel extends GeoModel<GunGrenadeEntity> {
 
     @Override
     public void setCustomAnimations(GunGrenadeEntity animatable, long instanceId, AnimationState animationState) {
-        CoreGeoBone bone = getAnimationProcessor().getBone("bone");
+        GeoBone bone = getAnimationProcessor().getBone("bone");
         bone.setScaleX(0.2f);
         bone.setScaleY(0.2f);
         bone.setScaleZ(0.2f);

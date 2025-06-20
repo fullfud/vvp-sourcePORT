@@ -1,49 +1,40 @@
 package com.atsuishio.superbwarfare.network.message.send;
 
+import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.menu.ReforgingTableMenu;
 import com.atsuishio.superbwarfare.perk.Perk;
-import net.minecraft.network.FriendlyByteBuf;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.inventory.AbstractContainerMenu;
-import net.minecraftforge.network.NetworkEvent;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record SetPerkLevelMessage(int msgType, boolean add) implements CustomPacketPayload {
+    public static final Type<SetPerkLevelMessage> TYPE = new Type<>(Mod.loc("set_perk_level"));
 
-public class SetPerkLevelMessage {
+    public static final StreamCodec<ByteBuf, SetPerkLevelMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            SetPerkLevelMessage::msgType,
+            ByteBufCodecs.BOOL,
+            SetPerkLevelMessage::add,
+            SetPerkLevelMessage::new
+    );
 
-    int type;
-    boolean add;
+    public static void handler(SetPerkLevelMessage message, final IPayloadContext context) {
+        ServerPlayer player = (ServerPlayer) context.player();
+        AbstractContainerMenu abstractcontainermenu = player.containerMenu;
 
-    public SetPerkLevelMessage(int type, boolean add) {
-        this.type = type;
-        this.add = add;
+        if (abstractcontainermenu instanceof ReforgingTableMenu menu) {
+            if (!menu.stillValid(player)) return;
+            menu.setPerkLevel(Perk.Type.values()[message.msgType], message.add, player.getAbilities().instabuild);
+        }
     }
 
-    public static void encode(SetPerkLevelMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.type);
-        buffer.writeBoolean(message.add);
-    }
-
-    public static SetPerkLevelMessage decode(FriendlyByteBuf buffer) {
-        return new SetPerkLevelMessage(buffer.readInt(), buffer.readBoolean());
-    }
-
-    public static void handler(SetPerkLevelMessage message, Supplier<NetworkEvent.Context> ctx) {
-        ctx.get().enqueueWork(() -> {
-            ServerPlayer player = ctx.get().getSender();
-            if (player == null) {
-                return;
-            }
-
-            AbstractContainerMenu abstractcontainermenu = player.containerMenu;
-            if (abstractcontainermenu instanceof ReforgingTableMenu menu) {
-                if (!menu.stillValid(player)) {
-                    return;
-                }
-
-                menu.setPerkLevel(Perk.Type.values()[message.type], message.add, player.getAbilities().instabuild);
-            }
-        });
-        ctx.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

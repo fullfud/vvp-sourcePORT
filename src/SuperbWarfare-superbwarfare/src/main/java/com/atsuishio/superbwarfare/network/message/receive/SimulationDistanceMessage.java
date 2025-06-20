@@ -1,31 +1,29 @@
 package com.atsuishio.superbwarfare.network.message.receive;
 
-import com.atsuishio.superbwarfare.network.ClientPacketHandler;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.fml.DistExecutor;
-import net.minecraftforge.network.NetworkEvent;
+import com.atsuishio.superbwarfare.Mod;
+import com.atsuishio.superbwarfare.client.overlay.DroneHudOverlay;
+import io.netty.buffer.ByteBuf;
+import net.minecraft.network.codec.ByteBufCodecs;
+import net.minecraft.network.codec.StreamCodec;
+import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
+import net.neoforged.neoforge.network.handling.IPayloadContext;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.function.Supplier;
+public record SimulationDistanceMessage(int distance) implements CustomPacketPayload {
+    public static final Type<SimulationDistanceMessage> TYPE = new Type<>(Mod.loc("simulation_distance"));
 
-public class SimulationDistanceMessage {
-    public int distance;
+    public static final StreamCodec<ByteBuf, SimulationDistanceMessage> STREAM_CODEC = StreamCodec.composite(
+            ByteBufCodecs.INT,
+            SimulationDistanceMessage::distance,
+            SimulationDistanceMessage::new
+    );
 
-    public SimulationDistanceMessage(int distance) {
-        this.distance = distance;
+    public static void handler(SimulationDistanceMessage message, final IPayloadContext context) {
+        DroneHudOverlay.MAX_DISTANCE = message.distance * 16;
     }
 
-    public static void encode(SimulationDistanceMessage message, FriendlyByteBuf buffer) {
-        buffer.writeInt(message.distance);
-    }
-
-    public static SimulationDistanceMessage decode(FriendlyByteBuf buffer) {
-        return new SimulationDistanceMessage(buffer.readInt());
-    }
-
-    public static void handle(SimulationDistanceMessage message, Supplier<NetworkEvent.Context> context) {
-        context.get().enqueueWork(() -> DistExecutor.unsafeRunWhenOn(Dist.CLIENT,
-                () -> () -> ClientPacketHandler.handleSimulationDistanceMessage(message.distance, context)));
-        context.get().setPacketHandled(true);
+    @Override
+    public @NotNull Type<? extends CustomPacketPayload> type() {
+        return TYPE;
     }
 }

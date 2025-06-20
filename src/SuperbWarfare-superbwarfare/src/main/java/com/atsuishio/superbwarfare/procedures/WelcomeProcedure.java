@@ -1,17 +1,18 @@
 package com.atsuishio.superbwarfare.procedures;
 
 import com.atsuishio.superbwarfare.Mod;
-import net.minecraftforge.eventbus.api.Event;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.InterModComms;
-import net.minecraftforge.fml.event.lifecycle.FMLCommonSetupEvent;
+import net.neoforged.bus.api.Event;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.InterModComms;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import javax.annotation.Nullable;
 import java.util.stream.Stream;
 
-@net.minecraftforge.fml.common.Mod.EventBusSubscriber(bus = net.minecraftforge.fml.common.Mod.EventBusSubscriber.Bus.MOD)
+@EventBusSubscriber(modid = Mod.MODID, bus = EventBusSubscriber.Bus.MOD)
 public class WelcomeProcedure {
     @SubscribeEvent
     public static void onFMLCommonSetup(FMLCommonSetupEvent event) {
@@ -30,7 +31,7 @@ public class WelcomeProcedure {
         Logger logger = null;
         if ((logger == null ? logger = Mod.LOGGER : LogManager.getLogger(Mod.class)) instanceof Logger) {
             {
-                Logger _lgr = ((Logger) (logger == null ? logger = Mod.LOGGER : LogManager.getLogger(Mod.class)));
+                Logger _lgr = logger == null ? logger = Mod.LOGGER : LogManager.getLogger(Mod.class);
                 _lgr.info("This Mod used to be made by MCreator!");
             }
         }

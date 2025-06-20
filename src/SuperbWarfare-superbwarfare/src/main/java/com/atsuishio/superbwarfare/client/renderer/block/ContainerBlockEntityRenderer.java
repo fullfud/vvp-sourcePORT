@@ -9,12 +9,12 @@ import software.bernie.geckolib.renderer.GeoBlockRenderer;
 
 public class ContainerBlockEntityRenderer extends GeoBlockRenderer<ContainerBlockEntity> {
 
-	public ContainerBlockEntityRenderer() {
-		super(new ContainerBlockModel());
-	}
+    public ContainerBlockEntityRenderer() {
+        super(new ContainerBlockModel());
+    }
 
-	@Override
-	public RenderType getRenderType(ContainerBlockEntity animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
-		return RenderType.entityTranslucent(getTextureLocation(animatable));
-	}
+    @Override
+    public RenderType getRenderType(ContainerBlockEntity animatable, ResourceLocation texture, MultiBufferSource bufferSource, float partialTick) {
+        return RenderType.entityTranslucent(getTextureLocation(animatable));
+    }
 }

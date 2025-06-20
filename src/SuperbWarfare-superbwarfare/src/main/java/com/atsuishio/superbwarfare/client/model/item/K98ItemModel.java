@@ -10,8 +10,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-import software.bernie.geckolib.core.animatable.model.CoreGeoBone;
-import software.bernie.geckolib.core.animation.AnimationState;
+import software.bernie.geckolib.animation.AnimationState;
+import software.bernie.geckolib.cache.object.GeoBone;
 
 public class K98ItemModel extends CustomGunModel<K98Item> {
 
@@ -47,9 +47,9 @@ public class K98ItemModel extends CustomGunModel<K98Item> {
         ItemStack stack = player.getMainHandItem();
         if (shouldCancelRender(stack, animationState)) return;
 
-        CoreGeoBone gun = getAnimationProcessor().getBone("bone");
-        CoreGeoBone shen = getAnimationProcessor().getBone("shen");
-        CoreGeoBone clip = getAnimationProcessor().getBone("mag");
+        GeoBone gun = getAnimationProcessor().getBone("bone");
+        GeoBone shen = getAnimationProcessor().getBone("shen");
+        GeoBone clip = getAnimationProcessor().getBone("mag");
 
         if (GunData.from(stack).reload.prepareTimer.get() > 11 && GunData.from(stack).ammo.get() == 1) {
             clip.setScaleX(0);
@@ -61,7 +61,7 @@ public class K98ItemModel extends CustomGunModel<K98Item> {
             clip.setScaleZ(1);
         }
 
-        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getDeltaFrameTime(), 0.8);
+        float times = 0.6f * (float) Math.min(Minecraft.getInstance().getTimer().getRealtimeDeltaTicks(), 0.8);
         double zt = ClientEventHandler.zoomTime;
         double zp = ClientEventHandler.zoomPos;
         double zpz = ClientEventHandler.zoomPosZ;
@@ -93,14 +93,15 @@ public class K98ItemModel extends CustomGunModel<K98Item> {
 
         ClientEventHandler.gunRootMove(getAnimationProcessor());
 
-        CoreGeoBone camera = getAnimationProcessor().getBone("camera");
-        CoreGeoBone main = getAnimationProcessor().getBone("0");
-        CoreGeoBone body = getAnimationProcessor().getBone("roll");
+        GeoBone camera = getAnimationProcessor().getBone("camera");
+        GeoBone main = getAnimationProcessor().getBone("0");
+        GeoBone body = getAnimationProcessor().getBone("roll");
 
         float numR = (float) (1 - 0.52 * zt);
         float numP = (float) (1 - 0.58 * zt);
 
-        if (GunData.from(stack).reload.time() > 0 || GunData.from(stack).reloading()) {
+        var data = GunData.from(stack);
+        if (data.reload.time() > 0 || data.reloading()) {
             main.setRotX(numR * main.getRotX());
             main.setRotY(numR * main.getRotY());
             main.setRotZ(numR * main.getRotZ());

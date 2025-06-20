@@ -24,8 +24,9 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Inventory;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.api.distmarker.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.network.PacketDistributor;
 import org.jetbrains.annotations.NotNull;
 
 import java.util.ArrayList;
@@ -162,7 +163,9 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
 
         if (this.currentTarget != null) {
             StringBuilder sb = new StringBuilder();
-            sb.append(currentTarget.getDisplayName().getString());
+            if (currentTarget.getDisplayName() != null) {
+                sb.append(currentTarget.getDisplayName().getString());
+            }
             if (currentTarget instanceof LivingEntity living) {
                 sb.append(" (HP: ").append(FormatTool.format1D(living.getHealth()))
                         .append("/").append(FormatTool.format1D(living.getMaxHealth())).append(")");
@@ -171,7 +174,7 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
                         .append("/").append(FormatTool.format1D(vehicle.getMaxHealth())).append(")");
             }
 
-            guiGraphics.drawString(this.font, Component.translatable("des.superbwarfare.fumo_25.current_target", sb),
+            guiGraphics.drawString(this.font, Component.translatable("des.superbwarfare.fumo_25.current_target", sb.toString()),
                     i + 173, j + 24, 0xffffff);
         }
 
@@ -211,7 +214,7 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
             double moveZ = (entity.getZ() - pos.getZ()) / range * 74;
 
             if (pMouseX >= centerX + moveX && pMouseX <= centerX + moveX + 4 && pMouseY >= centerY + moveZ && pMouseY <= centerY + moveZ + 4) {
-                Mod.PACKET_HANDLER.sendToServer(new RadarSetPosMessage(entity.getOnPos()));
+                PacketDistributor.sendToServer(new RadarSetPosMessage(entity.getOnPos()));
                 this.currentPos = entity.getOnPos();
                 this.currentTarget = entity;
                 return true;
@@ -223,7 +226,7 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
 
     @Override
     public void render(@NotNull GuiGraphics pGuiGraphics, int pMouseX, int pMouseY, float pPartialTick) {
-        this.renderBackground(pGuiGraphics);
+        this.renderBackground(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         pGuiGraphics.pose().pushPose();
         super.render(pGuiGraphics, pMouseX, pMouseY, pPartialTick);
         pGuiGraphics.pose().popPose();
@@ -289,9 +292,9 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
         public void onPress() {
             if (FuMO25Screen.this.menu.getFuncType() == 3 && FuMO25Screen.this.menu.getSlot(0).getItem().isEmpty()) {
                 if (FuMO25Screen.this.currentTarget == null) return;
-                Mod.PACKET_HANDLER.sendToServer(new RadarSetTargetMessage(FuMO25Screen.this.currentTarget.getUUID()));
+                PacketDistributor.sendToServer(new RadarSetTargetMessage(FuMO25Screen.this.currentTarget.getUUID()));
             } else {
-                Mod.PACKET_HANDLER.sendToServer(new RadarSetParametersMessage((byte) 0));
+                PacketDistributor.sendToServer(new RadarSetParametersMessage((byte) 0));
             }
         }
 
@@ -321,7 +324,7 @@ public class FuMO25Screen extends AbstractContainerScreen<FuMO25Menu> {
 
         @Override
         public void onPress() {
-            Mod.PACKET_HANDLER.sendToServer(new RadarChangeModeMessage((byte) this.mode));
+            PacketDistributor.sendToServer(new RadarChangeModeMessage((byte) this.mode));
         }
 
         @Override

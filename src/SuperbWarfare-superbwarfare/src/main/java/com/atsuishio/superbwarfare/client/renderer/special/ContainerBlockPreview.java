@@ -8,12 +8,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.world.level.ClipContext;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
-import net.minecraftforge.api.distmarker.Dist;
-import net.minecraftforge.client.event.RenderLevelStageEvent;
-import net.minecraftforge.eventbus.api.SubscribeEvent;
-import net.minecraftforge.fml.common.Mod;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
+import net.neoforged.fml.common.EventBusSubscriber;
+import net.neoforged.neoforge.client.event.RenderLevelStageEvent;
 
-@Mod.EventBusSubscriber(bus = Mod.EventBusSubscriber.Bus.FORGE, value = Dist.CLIENT)
+@EventBusSubscriber(bus = EventBusSubscriber.Bus.GAME, value = Dist.CLIENT)
 public class ContainerBlockPreview {
     @SubscribeEvent
     public static void render(RenderLevelStageEvent event) {
@@ -46,16 +46,11 @@ public class ContainerBlockPreview {
 
         // 获取实体信息
         var entityType = container.entityType;
-        var entity = container.entity;
 
         int w = 0, h = 0;
         if (entityType != null) {
-            w = (int) (entityType.getDimensions().width / 2 + 1);
-            h = (int) (entityType.getDimensions().height + 1);
-        }
-        if (entity != null) {
-            w = (int) (entity.getType().getDimensions().width / 2 + 1);
-            h = (int) (entity.getType().getDimensions().height + 1);
+            w = (int) (entityType.getDimensions().width() / 2 + 1);
+            h = (int) (entityType.getDimensions().height() + 1);
         }
         if (w == 0 || h == 0) return;
 
@@ -78,7 +73,7 @@ public class ContainerBlockPreview {
         float endY = (float) aabb.maxY + 0.001f - pos.getY();
         float endZ = (float) aabb.maxZ + 0.001f - pos.getZ();
 
-        var hasEnoughSpace = ContainerBlock.canOpen(level, pos, entityType, entity);
+        var hasEnoughSpace = ContainerBlock.canOpen(level, pos, entityType);
 
         var red = hasEnoughSpace ? 0 : 1;
         var green = 1 - red;
@@ -89,40 +84,40 @@ public class ContainerBlockPreview {
         var m4f = poseStack.last().pose();
 
         // east
-        builder.vertex(m4f, startX, startY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, endY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, startY, startZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, startX, startY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, endY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, startY, startZ).setColor(red, green, blue, alpha);
 
         // west
-        builder.vertex(m4f, startX, startY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, startY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, endY, endZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, startX, startY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, startY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, endY, endZ).setColor(red, green, blue, alpha);
 
         // south
-        builder.vertex(m4f, endX, startY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, startY, endZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, endX, startY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, startY, endZ).setColor(red, green, blue, alpha);
 
         // north
-        builder.vertex(m4f, startX, startY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, startY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, endY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, endY, startZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, startX, startY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, startY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, endY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, endY, startZ).setColor(red, green, blue, alpha);
 
         // top
-        builder.vertex(m4f, startX, endY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, endY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, endY, endZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, startX, endY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, endY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, endY, endZ).setColor(red, green, blue, alpha);
 
         // bottom
-        builder.vertex(m4f, startX, startY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, startY, startZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, endX, startY, endZ).color(red, green, blue, alpha).endVertex();
-        builder.vertex(m4f, startX, startY, endZ).color(red, green, blue, alpha).endVertex();
+        builder.addVertex(m4f, startX, startY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, startY, startZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, endX, startY, endZ).setColor(red, green, blue, alpha);
+        builder.addVertex(m4f, startX, startY, endZ).setColor(red, green, blue, alpha);
 
         poseStack.popPose();
     }

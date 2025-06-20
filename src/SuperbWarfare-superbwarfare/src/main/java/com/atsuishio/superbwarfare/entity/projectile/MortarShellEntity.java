@@ -10,11 +10,12 @@ import com.atsuishio.superbwarfare.tools.CustomExplosion;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import com.google.common.collect.Sets;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.component.DataComponents;
 import net.minecraft.core.particles.ParticleTypes;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.nbt.ListTag;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientGamePacketListener;
+import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
 import net.minecraft.sounds.SoundEvent;
 import net.minecraft.world.effect.MobEffectInstance;
@@ -25,7 +26,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.alchemy.Potion;
-import net.minecraft.world.item.alchemy.PotionUtils;
+import net.minecraft.world.item.alchemy.PotionContents;
 import net.minecraft.world.item.alchemy.Potions;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
@@ -34,15 +35,13 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.EntityHitResult;
 import net.minecraft.world.phys.Vec3;
-import net.minecraftforge.network.NetworkHooks;
-import net.minecraftforge.network.PlayMessages;
-import net.minecraftforge.registries.ForgeRegistries;
+import net.neoforged.neoforge.event.EventHooks;
+import org.jetbrains.annotations.NotNull;
 import software.bernie.geckolib.animatable.GeoEntity;
-import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
-import software.bernie.geckolib.core.animation.AnimatableManager;
+import software.bernie.geckolib.animatable.instance.AnimatableInstanceCache;
+import software.bernie.geckolib.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
 
-import java.util.Collection;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -56,7 +55,7 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
     private final AnimatableInstanceCache cache = GeckoLibUtil.createInstanceCache(this);
     public Set<Long> loadedChunks = new HashSet<>();
 
-    private Potion potion = Potions.EMPTY;
+    private Potion potion = Potions.WATER.value();
     private final Set<MobEffectInstance> effects = Sets.newHashSet();
 
     public MortarShellEntity(EntityType<? extends MortarShellEntity> type, Level world) {
@@ -84,30 +83,24 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
         this.radius = radius;
     }
 
-    public MortarShellEntity(PlayMessages.SpawnEntity spawnEntity, Level level) {
-        this(ModEntities.MORTAR_SHELL.get(), level);
-    }
+    public void setEffectsFromItem(ItemStack stack) {
+        if (stack.is(ModItems.POTION_MORTAR_SHELL.get())) {
+            var potionContents = stack.getOrDefault(DataComponents.POTION_CONTENTS, PotionContents.EMPTY);
+            this.potion = potionContents.potion().orElse(Potions.WATER).value();
 
-    public void setEffectsFromItem(ItemStack pStack) {
-        if (pStack.is(ModItems.POTION_MORTAR_SHELL.get())) {
-            this.potion = PotionUtils.getPotion(pStack);
-            Collection<MobEffectInstance> collection = PotionUtils.getCustomEffects(pStack);
-            if (!collection.isEmpty()) {
-                for (MobEffectInstance mobeffectinstance : collection) {
-                    this.effects.add(new MobEffectInstance(mobeffectinstance));
-                }
+            for (MobEffectInstance mobeffectinstance : potionContents.getAllEffects()) {
+                this.effects.add(new MobEffectInstance(mobeffectinstance));
             }
-        } else if (pStack.is(ModItems.MORTAR_SHELL.get())) {
-            this.potion = Potions.EMPTY;
+        } else if (stack.is(ModItems.MORTAR_SHELL.get())) {
+            this.potion = Potions.WATER.value();
             this.effects.clear();
         }
     }
 
     @Override
-    public void addAdditionalSaveData(CompoundTag pCompound) {
+    public void addAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.addAdditionalSaveData(pCompound);
-        pCompound.putFloat("Damage", this.damage);
-        pCompound.putFloat("ExplosionDamage", this.explosionDamage);
+        pCompound.putFloat("Damage", this.explosionDamage);
         pCompound.putInt("Life", this.life);
         pCompound.putFloat("Radius", this.radius);
 
@@ -119,31 +112,24 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
         }
         pCompound.put("Chunks", listTag);
 
-        if (this.potion != Potions.EMPTY) {
-            pCompound.putString("Potion", Objects.requireNonNullElse(ForgeRegistries.POTIONS.getKey(this.potion), "empty").toString());
+        if (this.potion != Potions.WATER.value()) {
+            pCompound.putString("Potion", Objects.requireNonNullElse(BuiltInRegistries.POTION.getKey(this.potion), "empty").toString());
         }
 
         if (!this.effects.isEmpty()) {
             ListTag listtag = new ListTag();
             for (MobEffectInstance mobeffectinstance : this.effects) {
-                listtag.add(mobeffectinstance.save(new CompoundTag()));
+                listtag.add(mobeffectinstance.save());
             }
             pCompound.put("CustomPotionEffects", listtag);
         }
     }
 
     @Override
-    public void readAdditionalSaveData(CompoundTag pCompound) {
+    public void readAdditionalSaveData(@NotNull CompoundTag pCompound) {
         super.readAdditionalSaveData(pCompound);
-
         if (pCompound.contains("Damage")) {
-            this.damage = pCompound.getFloat("Damage");
-        } else {
-            this.damage = 50f;
-        }
-
-        if (pCompound.contains("ExplosionDamage")) {
-            this.explosionDamage = pCompound.getFloat("ExplosionDamage");
+            this.explosionDamage = pCompound.getFloat("Damage");
         } else {
             this.explosionDamage = ExplosionConfig.MORTAR_SHELL_EXPLOSION_DAMAGE.get();
         }
@@ -169,19 +155,22 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
         }
 
         if (pCompound.contains("Potion", 8)) {
-            this.potion = PotionUtils.getPotion(pCompound);
+            var tagName = pCompound.getString("Potion");
+            this.potion = BuiltInRegistries.POTION.get(ResourceLocation.tryParse(tagName));
         }
 
-        this.effects.addAll(PotionUtils.getCustomEffects(pCompound));
+        var listTag = pCompound.getList("CustomPotionEffects", 10);
+        for (int i = 0; i < listTag.size(); ++i) {
+            CompoundTag compoundtag = listTag.getCompound(i);
+            MobEffectInstance instance = MobEffectInstance.load(compoundtag);
+            if (instance != null) {
+                this.effects.add(instance);
+            }
+        }
     }
 
     @Override
-    public Packet<ClientGamePacketListener> getAddEntityPacket() {
-        return NetworkHooks.getEntitySpawningPacket(this);
-    }
-
-    @Override
-    protected Item getDefaultItem() {
+    protected @NotNull Item getDefaultItem() {
         return ModItems.MORTAR_SHELL.get();
     }
 
@@ -191,13 +180,13 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public void onHitEntity(EntityHitResult entityHitResult) {
+    public void onHitEntity(@NotNull EntityHitResult entityHitResult) {
         if (this.tickCount > 1) {
             Entity entity = entityHitResult.getEntity();
-            entity.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), this.damage);
+            entity.hurt(ModDamageTypes.causeCannonFireDamage(this.level().registryAccess(), this, this.getOwner()), 50);
             if (this.level() instanceof ServerLevel) {
                 causeExplode(entityHitResult.getLocation());
-                this.createAreaCloud(this.level(), entityHitResult.getLocation());
+                this.createAreaCloud(this.level());
             }
             this.discard();
         }
@@ -205,16 +194,25 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
 
     @Override
     public void onHitBlock(BlockHitResult blockHitResult) {
-        super.onHitBlock(blockHitResult);
         BlockPos resultPos = blockHitResult.getBlockPos();
         BlockState state = this.level().getBlockState(resultPos);
+
+        if (this.level() instanceof ServerLevel) {
+            float hardness = this.level().getBlockState(resultPos).getBlock().defaultDestroyTime();
+            if (hardness != -1) {
+                if (ExplosionConfig.EXPLOSION_DESTROY.get()) {
+                    this.level().destroyBlock(resultPos, true);
+                }
+            }
+        }
+
         if (state.getBlock() instanceof BellBlock bell) {
             bell.attemptToRing(this.level(), resultPos, blockHitResult.getDirection());
         }
         if (!this.level().isClientSide() && this.level() instanceof ServerLevel) {
             if (this.tickCount > 1) {
                 causeExplode(blockHitResult.getLocation());
-                this.createAreaCloud(this.level(), blockHitResult.getLocation());
+                this.createAreaCloud(this.level());
             }
         }
         this.discard();
@@ -233,7 +231,7 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
         if (this.tickCount > this.life || this.isInWater()) {
             if (this.level() instanceof ServerLevel) {
                 causeExplode(position());
-                this.createAreaCloud(this.level(), position());
+                this.createAreaCloud(this.level());
             }
             this.discard();
         }
@@ -252,7 +250,7 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
                 ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).
                 setDamageMultiplier(1.25f);
         explosion.explode();
-        net.minecraftforge.event.ForgeEventFactory.onExplosionStart(this.level(), explosion);
+        EventHooks.onExplosionStart(this.level(), explosion);
         explosion.finalizeExplosion(false);
         ParticleTool.spawnMediumExplosionParticles(this.level(), vec3);
     }
@@ -267,23 +265,26 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    protected float getGravity() {
+    protected double getDefaultGravity() {
         return 0.146F;
     }
 
     @Override
-    public void onRemovedFromWorld() {
+    public void onRemovedFromLevel() {
         if (this.level() instanceof ServerLevel serverLevel) {
             ChunkLoadTool.unloadAllChunks(serverLevel, this, this.loadedChunks);
         }
-        super.onRemovedFromWorld();
+        super.onRemovedFromLevel();
     }
 
-    private void createAreaCloud(Level level, Vec3 pos) {
-        if (this.potion == Potions.EMPTY) return;
+    private void createAreaCloud(Level level) {
+        if (this.potion == Potions.WATER.value()) return;
 
-        AreaEffectCloud cloud = new AreaEffectCloud(level, pos.x, pos.y, pos.z);
-        cloud.setPotion(this.potion);
+        AreaEffectCloud cloud = new AreaEffectCloud(level, this.getX() + 0.75 * getDeltaMovement().x, this.getY() + 0.5 * getBbHeight() + 0.75 * getDeltaMovement().y, this.getZ() + 0.75 * getDeltaMovement().z);
+
+        for (MobEffectInstance effect : this.effects) {
+            cloud.addEffect(effect);
+        }
         cloud.setDuration((int) this.explosionDamage);
         cloud.setRadius(this.radius);
         if (this.getOwner() instanceof LivingEntity living) {
@@ -293,7 +294,7 @@ public class MortarShellEntity extends FastThrowableProjectile implements GeoEnt
     }
 
     @Override
-    public SoundEvent getSound() {
+    public @NotNull SoundEvent getSound() {
         return ModSounds.SHELL_FLY.get();
     }
 
