@@ -24,7 +24,8 @@ runs {
 
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        argument '--nogui'
+        // ИСПРАВЛЕНО: Используем 'args' вместо 'argument'
+        args '--nogui'
     }
 
     gameTestServer {
@@ -32,14 +33,14 @@ runs {
     }
 
     data {
-        arguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
+        // ИСПРАВЛЕНО: Используем 'args' для единообразия
+        args '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    // Репозиторий для зависимостей с CurseForge
     maven {
         url "https://cursemaven.com"
         content {
@@ -49,16 +50,11 @@ repositories {
 }
 
 dependencies {
-    // Основная зависимость - NeoForge
+    // Основная зависимость - NeoForge. Версия берется из gradle.properties
     implementation "net.neoforged:neoforge:${neo_version}"
 
     // ЗАВИСИМОСТИ ДЛЯ ПОРТИРОВАНИЯ:
-    // API, которые будет использовать код Superb Warfare после того, как ты его исправишь.
-
-    // Curios API для NeoForge 1.21.1
     implementation fg.deobf("curse.maven:curios-309927:6665790")
-
-    // GeckoLib для NeoForge 1.21.1
     implementation fg.deobf("curse.maven:geckolib-388172:6659026")
 }
 
