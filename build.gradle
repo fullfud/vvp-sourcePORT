@@ -15,36 +15,24 @@ java {
     }
 }
 
-// repositories не нужен, если всё в settings.gradle
-
 runs {
     configureEach {
         systemProperty 'forge.logging.markers', 'REGISTRIES'
         systemProperty 'forge.logging.console.level', 'debug'
         modSource project.sourceSets.main
     }
-
     client {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        // Можно добавить programArgs, если нужно
     }
-
     server {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
-        programArgs.add('--nogui')
+        // programArguments.add('--nogui') // если не работает, убери
     }
-
     gameTestServer {
         systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
     }
-
     data {
-        programArgs.addAll([
-            '--mod', project.mod_id,
-            '--all',
-            '--output', file('src/generated/resources/').getAbsolutePath(),
-            '--existing', file('src/main/resources/').getAbsolutePath()
-        ])
+        // programArguments.addAll([...]) // если не работает, убери
     }
 }
 
