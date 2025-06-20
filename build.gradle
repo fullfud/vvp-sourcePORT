@@ -1,59 +1,46 @@
 plugins {
-    id 'eclipse'
-    id 'idea'
-    id 'net.neoforged.neogradle.userdev' version '7.0.123'
+    // Используем правильный ID и последнюю версию из MDK
+    id 'net.neoforged.gradle.userdev' version '7.0.185'
 }
 
+version = mod_version
 group = mod_group_id
-version = '0.1.1-hotfix-1.21.1'
 
 base {
-    archivesName = "vvp-beta"
+    archivesName = mod_id
 }
 
-java {
-    toolchain.languageVersion = JavaLanguageVersion.of(21)
-}
+java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// NeoGradle сам управляет маппингами, так что блок minecraft{} упрощается
-neoforge {
-    runs {
-        configureEach {
-            workingDirectory project.file('run')
-            property 'neoforge.logging.markers', 'REGISTRIES'
-            property 'neoforge.logging.console.level', 'debug'
-            
-            mods {
-                "${mod_id}" {
-                    source sourceSets.main
-                }
-            }
-        }
-        
-        client {
-            property 'neoforge.enabledGameTestNamespaces', mod_id
-        }
-        
-        server {
-            property 'neoforge.enabledGameTestNamespaces', mod_id
-            args '--nogui'
-        }
-        
-        gameTestServer {
-            property 'neoforge.enabledGameTestNamespaces', mod_id
-        }
+runs {
+    configureEach {
+        systemProperty 'forge.logging.markers', 'REGISTRIES'
+        systemProperty 'forge.logging.console.level', 'debug'
+        modSource project.sourceSets.main
+    }
 
-        data {
-            workingDirectory project.file('run-data')
-            args '--mod', mod_id, '--all', '--output', file('src/generated/resources/'), '--existing', file('src/main/resources/')
-        }
+    client {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
+
+    server {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+        argument '--nogui'
+    }
+
+    gameTestServer {
+        systemProperty 'neoforge.enabledGameTestNamespaces', project.mod_id
+    }
+
+    data {
+        arguments.addAll '--mod', project.mod_id, '--all', '--output', file('src/generated/resources/').getAbsolutePath(), '--existing', file('src/main/resources/').getAbsolutePath()
     }
 }
 
 sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 repositories {
-    // Репозиторий CurseMaven нужен для зависимостей
+    // Репозиторий для зависимостей с CurseForge
     maven {
         url "https://cursemaven.com"
         content {
@@ -63,43 +50,37 @@ repositories {
 }
 
 dependencies {
-    // Главная зависимость - сам NeoForge
-    implementation "net.neoforged:neoforge:1.21.1-1.0.12"
+    // Основная зависимость - NeoForge
+    implementation "net.neoforged:neoforge:${neo_version}"
 
-    // Вот ПРАВИЛЬНЫЕ зависимости для твоего проекта.
-    // Это API, которые будет использовать код Superb Warfare после портирования.
+    // ЗАВИСИМОСТИ ДЛЯ ПОРТИРОВАНИЯ:
+    // API, которые будет использовать код Superb Warfare после того, как ты его исправишь.
 
     // Curios API для NeoForge 1.21.1
     implementation fg.deobf("curse.maven:curios-309927:6665790")
 
     // GeckoLib для NeoForge 1.21.1
     implementation fg.deobf("curse.maven:geckolib-388172:6659026")
-
-    // НЕ ДОБАВЛЯЙ СЮДА SUPERB WARFARE!
-    // Его исходный код ты скопируешь в папку src/main/java.
 }
 
-
-tasks.named('processResources', ProcessResources).configure {
-    var replaceProperties = [minecraft_version: minecraft_version, mod_id: mod_id, mod_name: mod_name, mod_license: mod_license, mod_version: mod_version, mod_authors: mod_authors, mod_description: mod_description]
+tasks.withType(ProcessResources).configureEach {
+    var replaceProperties = [
+            minecraft_version      : minecraft_version,
+            minecraft_version_range: minecraft_version_range,
+            neo_version            : neo_version,
+            neo_version_range      : neo_version_range,
+            loader_version_range   : loader_version_range,
+            mod_id                 : mod_id,
+            mod_name               : mod_name,
+            mod_license            : mod_license,
+            mod_version            : mod_version,
+            mod_authors            : mod_authors,
+            mod_description        : mod_description
+    ]
     inputs.properties replaceProperties
-    
-    filesMatching(['META-INF/neoforge.mods.toml', 'pack.mcmeta']) {
-        expand replaceProperties + [project: project]
-    }
-}
 
-tasks.named('jar', Jar).configure {
-    manifest {
-        attributes([
-                "Specification-Title"     : mod_id,
-                "Specification-Vendor"    : mod_authors,
-                "Specification-Version"   : "1",
-                "Implementation-Title"    : project.name,
-                "Implementation-Version"  : project.jar.archiveVersion,
-                "Implementation-Vendor"   : mod_authors,
-                "Implementation-Timestamp": new Date().format("yyyy-MM-dd'T'HH:mm:ssZ")
-        ])
+    filesMatching(['META-INF/neoforge.mods.toml']) {
+        expand replaceProperties
     }
 }
 
