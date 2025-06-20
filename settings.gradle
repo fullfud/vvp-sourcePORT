@@ -5,13 +5,14 @@ pluginManagement {
     }
 }
 
-// ВОТ ОНО. ЭТОТ БЛОК РЕШАЕТ ВСЁ.
-// Он говорит Gradle, где искать ЗАВИСИМОСТИ, а не только плагины.
+plugins {
+    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
+}
+
+// ЭТОТ БЛОК И ВСЕ ОСТАЛЬНЫЕ ДОЛЖНЫ ИДТИ ПОСЛЕ БЛОКА PLUGINS
 dependencyResolutionManagement {
     repositories {
-        // Репозиторий для самого NeoForge
         maven { url = 'https://maven.neoforged.net/releases' }
-        // Репозиторий для модов с CurseForge
         maven {
             url = "https://cursemaven.com"
             content {
@@ -19,10 +20,6 @@ dependencyResolutionManagement {
             }
         }
     }
-}
-
-plugins {
-    id 'org.gradle.toolchains.foojay-resolver-convention' version '0.9.0'
 }
 
 rootProject.name = 'extensiontest'
