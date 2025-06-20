@@ -93,7 +93,7 @@ dependencies {
     compileOnly fg.deobf("top.theillusivec4.curios:curios-forge:6.0.3+1.21.1:api")
 
     implementation fg.deobf('software.bernie.geckolib:geckolib-forge-1.21:5.0.2')
-
+    
     implementation fg.deobf("curse.maven:superb-warfare-1218165:6633628")
 }
 
