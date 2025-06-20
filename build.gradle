@@ -11,7 +11,7 @@ base {
 
 java.toolchain.languageVersion = JavaLanguageVersion.of(21)
 
-// Блок repositories здесь больше НЕ НУЖЕН. Он теперь в settings.gradle.
+// repositories не нужен, если всё в settings.gradle
 
 runs {
     configureEach {
