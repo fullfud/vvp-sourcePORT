@@ -40,7 +40,7 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
-    implementation "curse.maven:curios-309927:6665790"
+    implementation "curse.maven:curios-309927:6529130"
     implementation "curse.maven:geckolib-388172:6659026"
 }
 
