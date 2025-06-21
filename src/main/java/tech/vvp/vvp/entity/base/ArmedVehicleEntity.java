@@ -2,7 +2,6 @@ package tech.vvp.vvp.entity.base;
 
 import com.atsuishio.superbwarfare.entity.vehicle.base.VehicleEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.WeaponVehicleEntity;
-
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
 

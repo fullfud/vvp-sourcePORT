@@ -1,6 +1,5 @@
 package tech.vvp.vvp.network;
 
-import net.minecraft.core.Direction;
 import net.minecraft.core.HolderLookup;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.network.FriendlyByteBuf;
@@ -9,12 +8,8 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.level.Level;
-import net.minecraft.world.level.LevelAccessor;
-import net.minecraft.world.level.saveddata.SavedData;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.capabilities.BlockCapability;
 import net.neoforged.neoforge.capabilities.EntityCapability;
 import net.neoforged.neoforge.capabilities.ICapabilityProvider;
 import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
@@ -27,8 +22,6 @@ import net.neoforged.neoforge.network.handling.IPayloadContext;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import tech.vvp.vvp.VVP;
-
-import java.util.Optional;
 
 @Mod.EventBusSubscriber(modid = VVP.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
 public class ModVariables {
@@ -69,12 +62,14 @@ public class ModVariables {
     }
 
     // --- Игровые события для синхронизации и сохранения ---
+    // Этот класс будет автоматически подхвачен, так как он находится внутри класса с аннотацией
     @Mod.EventBusSubscriber(modid = VVP.MOD_ID)
     private static class GameEvents {
         @SubscribeEvent
         public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
             if (event.getObject() instanceof Player) {
-                event.addCapability(PLAYER_VARIABLE, new PlayerVariablesProvider());
+                // Прикрепляем наш провайдер к игроку
+                event.registerCapability(PLAYER_VARIABLE, new PlayerVariablesProvider());
             }
         }
 
@@ -84,10 +79,10 @@ public class ModVariables {
                 syncPlayerVariables(player);
             }
         }
-        
+
         @SubscribeEvent
         public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-             if (event.getEntity() instanceof ServerPlayer player) {
+            if (event.getEntity() instanceof ServerPlayer player) {
                 syncPlayerVariables(player);
             }
         }
@@ -104,8 +99,10 @@ public class ModVariables {
             if (event.isWasDeath()) {
                 Player original = event.getOriginal();
                 Player newPlayer = event.getEntity();
-                original.getCapability(PLAYER_VARIABLE).ifPresent(oldStore -> {
-                    newPlayer.getCapability(PLAYER_VARIABLE).ifPresent(newStore -> {
+                
+                // Используем Provider для доступа к данным
+                original.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(oldStore -> {
+                    newPlayer.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(newStore -> {
                         newStore.copyFrom(oldStore);
                     });
                 });
@@ -116,13 +113,12 @@ public class ModVariables {
     // --- Логика синхронизации ---
     public static void syncPlayerVariables(Player player) {
         if (player instanceof ServerPlayer serverPlayer) {
-            PlayerVariable cap = serverPlayer.getCapability(PLAYER_VARIABLE);
-            if (cap != null) {
-                PacketDistributor.sendToPlayer(serverPlayer, new PlayerVariablesSyncPayload(cap.saveNBTData(new CompoundTag())));
-            }
+            serverPlayer.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(cap -> {
+                PacketDistributor.sendToPlayer(serverPlayer, new PlayerVariablesSyncPayload(cap.serializeNBT(serverPlayer.registryAccess())));
+            });
         }
     }
-    
+
     // --- Провайдер для Capability ---
     private static class PlayerVariablesProvider implements ICapabilityProvider<Player, Void, PlayerVariable>, INBTSerializable<CompoundTag> {
         private final PlayerVariable playerVariable = new PlayerVariable();
@@ -148,9 +144,10 @@ public class ModVariables {
         public static void handlePlayerVariablesSync(final PlayerVariablesSyncPayload payload, final IPayloadContext context) {
             context.enqueueWork(() -> {
                 Player player = context.player();
-                PlayerVariable cap = player.getCapability(PLAYER_VARIABLE);
-                if (cap != null) {
-                    cap.loadNBTData(payload.data());
+                if (player != null) {
+                    player.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(cap -> {
+                        cap.loadNBTData(payload.data());
+                    });
                 }
             });
         }
