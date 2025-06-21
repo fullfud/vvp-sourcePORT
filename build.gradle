@@ -2,25 +2,22 @@ plugins {
     id 'net.neoforged.gradle.userdev' version '7.0.123'
 }
 
-// Добавляем репозиторий GeckoLib
+// ПРАВИЛЬНЫЙ БЛОК РЕПОЗИТОРИЕВ
 repositories {
     maven {
         name = "GeckoLib"
         url = "https://dl.cloudsmith.io/public/geckolib3/geckolib/maven/"
     }
-    // Оставляем твой репозиторий для CurseForge
-    exclusiveContent {
-        forRepository {
-            maven {
-                url "https://cursemaven.com"
-            }
-        }
-        filter {
+    maven {
+        name = "CurseMaven"
+        url = "https://cursemaven.com"
+        content {
             includeGroup "curse.maven"
         }
     }
+    // Добавим mavenCentral на всякий случай, это стандартная практика
+    mavenCentral()
 }
-
 
 version = mod_version
 group = mod_group_id
@@ -29,7 +26,8 @@ base {
     archivesName = mod_id
 }
 
-// Включаем лицензию и другие файлы в итоговый jar
+// ... (остальной код остается без изменений)
+
 jar {
     manifest {
         attributes([
@@ -74,13 +72,13 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
     
-    // Зависимости с CurseForge
     implementation "curse.maven:curios-309927:6529130"
 	implementation "curse.maven:superb-warfare-1218165:6633628"
     
     // ПРАВИЛЬНАЯ ЗАВИСИМОСТЬ GECKOLIB
     implementation "software.bernie.geckolib:geckolib-neoforge-1.21:4.5.1"
 }
+
 
 tasks.withType(ProcessResources).configureEach {
     var replaceProperties = [
