@@ -1,155 +1,51 @@
+// tech/vvp/vvp/network/ModVariables.java
+
 package tech.vvp.vvp.network;
 
-import net.minecraft.core.HolderLookup;
-import net.minecraft.nbt.CompoundTag;
-import net.minecraft.network.FriendlyByteBuf;
-import net.minecraft.network.protocol.common.custom.CustomPacketPayload;
-import net.minecraft.resources.ResourceLocation;
-import net.minecraft.server.level.ServerPlayer;
-import net.minecraft.world.entity.Entity;
+import com.atsuishio.superbwarfare.capability.entity.PlayerVariable;
 import net.minecraft.world.entity.player.Player;
 import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.fml.common.Mod;
-import net.neoforged.neoforge.capabilities.EntityCapability;
-import net.neoforged.neoforge.capabilities.ICapabilityProvider;
-import net.neoforged.neoforge.capabilities.RegisterCapabilitiesEvent;
-import net.neoforged.neoforge.common.util.INBTSerializable;
-import net.neoforged.neoforge.event.AttachCapabilitiesEvent;
 import net.neoforged.neoforge.event.entity.player.PlayerEvent;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.neoforged.neoforge.network.event.RegisterPayloadHandlersEvent;
-import net.neoforged.neoforge.network.handling.IPayloadContext;
-import org.jetbrains.annotations.NotNull;
-import org.jetbrains.annotations.Nullable;
 import tech.vvp.vvp.VVP;
 
-@Mod.EventBusSubscriber(modid = VVP.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
+/**
+ * Этот класс теперь отвечает ТОЛЬКО за обработку игровых событий,
+ * чтобы гарантировать, что данные из SuperbWarfare копируются и синхронизируются правильно.
+ * Вся логика переменных и пакетов находится в самом SuperbWarfare.
+ */
+@Mod.EventBusSubscriber(modid = VVP.MOD_ID)
 public class ModVariables {
 
-    // --- Capabilities ---
-    public static final EntityCapability<PlayerVariable, Void> PLAYER_VARIABLE =
-            EntityCapability.createVoid(new ResourceLocation(VVP.MOD_ID, "player_variable"), PlayerVariable.class);
-
+    // Событие для копирования данных при смерти и респавне игрока
     @SubscribeEvent
-    public static void registerCapabilities(RegisterCapabilitiesEvent event) {
-        event.register(PLAYER_VARIABLE);
-    }
+    public static void onPlayerClone(PlayerEvent.Clone event) {
+        // Мы копируем данные только после смерти, чтобы сохранить переменные
+        if (event.isWasDeath()) {
+            Player original = event.getOriginal();
+            Player newPlayer = event.getEntity();
 
-    // --- Сетевые пакеты (Payloads) ---
-    public record PlayerVariablesSyncPayload(CompoundTag data) implements CustomPacketPayload {
-        public static final ResourceLocation ID = new ResourceLocation(VVP.MOD_ID, "player_variables_sync");
-
-        public PlayerVariablesSyncPayload(FriendlyByteBuf buf) {
-            this(buf.readNbt());
-        }
-
-        @Override
-        public void write(FriendlyByteBuf buf) {
-            buf.writeNbt(data);
-        }
-
-        @Override
-        public @NotNull ResourceLocation id() {
-            return ID;
-        }
-    }
-
-    @SubscribeEvent
-    public static void registerPayloads(RegisterPayloadHandlersEvent event) {
-        event.registrar(VVP.MOD_ID)
-                .play(PlayerVariablesSyncPayload.ID, PlayerVariablesSyncPayload::new, handler -> handler
-                        .client(PayloadHandlers::handlePlayerVariablesSync));
-    }
-
-    // --- Игровые события для синхронизации и сохранения ---
-    // Этот класс будет автоматически подхвачен, так как он находится внутри класса с аннотацией
-    @Mod.EventBusSubscriber(modid = VVP.MOD_ID)
-    private static class GameEvents {
-        @SubscribeEvent
-        public static void onAttachCapabilities(AttachCapabilitiesEvent<Entity> event) {
-            if (event.getObject() instanceof Player) {
-                // Прикрепляем наш провайдер к игроку
-                event.registerCapability(PLAYER_VARIABLE, new PlayerVariablesProvider());
-            }
-        }
-
-        @SubscribeEvent
-        public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
-            if (event.getEntity() instanceof ServerPlayer player) {
-                syncPlayerVariables(player);
-            }
-        }
-
-        @SubscribeEvent
-        public static void onPlayerRespawn(PlayerEvent.PlayerRespawnEvent event) {
-            if (event.getEntity() instanceof ServerPlayer player) {
-                syncPlayerVariables(player);
-            }
-        }
-
-        @SubscribeEvent
-        public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
-            if (event.getEntity() instanceof ServerPlayer player) {
-                syncPlayerVariables(player);
-            }
-        }
-
-        @SubscribeEvent
-        public static void onPlayerClone(PlayerEvent.Clone event) {
-            if (event.isWasDeath()) {
-                Player original = event.getOriginal();
-                Player newPlayer = event.getEntity();
-                
-                // Используем Provider для доступа к данным
-                original.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(oldStore -> {
-                    newPlayer.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(newStore -> {
-                        newStore.copyFrom(oldStore);
-                    });
+            // Получаем "capability" из SuperbWarfare у старого и нового игрока
+            // и вызываем метод копирования из самого SuperbWarfare.
+            // Это самый правильный и безопасный способ.
+            PlayerVariable.getCap(original).ifPresent(oldStore -> {
+                PlayerVariable.getCap(newPlayer).ifPresent(newStore -> {
+                    newStore.copyFrom(oldStore);
                 });
-            }
-        }
-    }
-
-    // --- Логика синхронизации ---
-    public static void syncPlayerVariables(Player player) {
-        if (player instanceof ServerPlayer serverPlayer) {
-            serverPlayer.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(cap -> {
-                PacketDistributor.sendToPlayer(serverPlayer, new PlayerVariablesSyncPayload(cap.serializeNBT(serverPlayer.registryAccess())));
             });
         }
     }
 
-    // --- Провайдер для Capability ---
-    private static class PlayerVariablesProvider implements ICapabilityProvider<Player, Void, PlayerVariable>, INBTSerializable<CompoundTag> {
-        private final PlayerVariable playerVariable = new PlayerVariable();
-
-        @Override
-        public @NotNull PlayerVariable getCapability(@NotNull Player owner, @Nullable Void context) {
-            return playerVariable;
-        }
-
-        @Override
-        public CompoundTag serializeNBT(HolderLookup.Provider provider) {
-            return playerVariable.saveNBTData(new CompoundTag());
-        }
-
-        @Override
-        public void deserializeNBT(HolderLookup.Provider provider, CompoundTag nbt) {
-            playerVariable.loadNBTData(nbt);
-        }
+    // Событие для синхронизации данных при входе в мир
+    @SubscribeEvent
+    public static void onPlayerLoggedIn(PlayerEvent.PlayerLoggedInEvent event) {
+        // Вызываем стандартный метод синхронизации из SuperbWarfare
+        PlayerVariable.sync(event.getEntity());
     }
 
-    // --- Обработчики пакетов ---
-    private static class PayloadHandlers {
-        public static void handlePlayerVariablesSync(final PlayerVariablesSyncPayload payload, final IPayloadContext context) {
-            context.enqueueWork(() -> {
-                Player player = context.player();
-                if (player != null) {
-                    player.getCapabilityProvider().getCapability(PLAYER_VARIABLE).ifPresent(cap -> {
-                        cap.loadNBTData(payload.data());
-                    });
-                }
-            });
-        }
+    // Событие для синхронизации данных при смене измерения
+    @SubscribeEvent
+    public static void onPlayerChangedDimension(PlayerEvent.PlayerChangedDimensionEvent event) {
+        PlayerVariable.sync(event.getEntity());
     }
 }

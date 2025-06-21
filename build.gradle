@@ -2,6 +2,7 @@ plugins {
     id 'net.neoforged.gradle.userdev' version '7.0.123'
 }
 
+// ПРАВИЛЬНЫЙ БЛОК РЕПОЗИТОРИЕВ
 repositories {
     maven {
         name = "GeckoLib"
@@ -16,6 +17,7 @@ repositories {
     }
     mavenCentral()
 }
+
 
 version = mod_version
 group = mod_group_id
@@ -68,11 +70,12 @@ sourceSets.main.resources { srcDir 'src/generated/resources' }
 dependencies {
     implementation "net.neoforged:neoforge:${neo_version}"
     
+    // Зависимости с CurseForge
     implementation "curse.maven:curios-309927:6529130"
 	implementation "curse.maven:superb-warfare-1218165:6633628"
     
-    // ТВОЯ ВЕРСИЯ. ПРАВИЛЬНАЯ.
-    implementation "software.bernie.geckolib:geckolib-neoforge-1.21.1:4.7.5.1"
+    // ПРАВИЛЬНАЯ ЗАВИСИМОСТЬ GECKOLIB
+    implementation "software.bernie.geckolib:geckolib-neoforge-1.21:4.5.1"
 }
 
 
