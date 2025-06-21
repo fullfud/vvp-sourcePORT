@@ -14,9 +14,6 @@ import com.atsuishio.superbwarfare.entity.vehicle.weapon.SmallCannonShellWeapon;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.VehicleWeapon;
 import com.atsuishio.superbwarfare.event.ClientMouseHandler;
 import com.atsuishio.superbwarfare.init.ModDamageTypes;
-
-import tech.vvp.vvp.VVP;
-import tech.vvp.vvp.init.ModEntities;
 import com.atsuishio.superbwarfare.init.ModItems;
 import com.atsuishio.superbwarfare.init.ModSounds;
 import com.atsuishio.superbwarfare.network.message.receive.ShakeClientMessage;
@@ -25,6 +22,7 @@ import com.atsuishio.superbwarfare.tools.CustomExplosion;
 import com.atsuishio.superbwarfare.tools.InventoryTool;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import com.mojang.math.Axis;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Font;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.core.BlockPos;
@@ -46,8 +44,9 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import import net.neoforged.api.distmarker.Dist;.Dist;
-import import net.neoforged.api.distmarker.Dist;.OnlyIn;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.network.PacketDistributor;
 import net.neoforged.neoforge.network.PlayMessages;
 import org.jetbrains.annotations.NotNull;
@@ -63,11 +62,10 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
-import import net.neoforged.api.distmarker.Dist;.Dist;
-import import net.neoforged.api.distmarker.Dist;.OnlyIn;
-import net.minecraft.client.Minecraft;
+import tech.vvp.vvp.VVP;
 import tech.vvp.vvp.client.sound.VehicleEngineSoundInstance;
 import tech.vvp.vvp.config.VehicleConfigVVP;
+import tech.vvp.vvp.init.ModEntities;
 
 import javax.annotation.ParametersAreNonnullByDefault;
 import java.util.Comparator;
@@ -182,6 +180,9 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
         rightWheelRotO = this.getRightWheelRot();
 
         super.baseTick();
+        
+        // Перемещенная логика из travel()
+        this.handleVehicleMovement();
 
         if (level().isClientSide()) {
             handleEngineSound();
@@ -230,9 +231,7 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
         
         if (player == null) return;
         
-        // ПРОВЕРКА ЭНЕРГИИ - главное условие!
         if (!hasEnergy()) {
-            // Если нет энергии - останавливаем звук
             if (engineSoundInstance != null) {
                 minecraft.getSoundManager().stop(engineSoundInstance);
                 engineSoundInstance = null;
@@ -244,11 +243,9 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
         float enginePower = getEnginePower();
         float speed = (float) getDeltaMovement().horizontalDistance();
         
-        // Условия для проигрывания звука (ТОЛЬКО при наличии энергии)
         boolean shouldPlaySound = distance < 60.0f && 
             (Math.abs(enginePower) > 0.01f || speed > 0.02f || distance < 15.0f);
         
-        // Если звук должен играть, но его нет - создаем
         if (shouldPlaySound && (engineSoundInstance == null || !minecraft.getSoundManager().isActive(engineSoundInstance))) {
             if (engineSoundInstance != null) {
                 minecraft.getSoundManager().stop(engineSoundInstance);
@@ -257,7 +254,6 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
             minecraft.getSoundManager().play(engineSoundInstance);
         }
         
-        // Если звук не должен играть, но играет - останавливаем
         if (!shouldPlaySound && engineSoundInstance != null) {
             minecraft.getSoundManager().stop(engineSoundInstance);
             engineSoundInstance = null;
@@ -267,7 +263,6 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
 
     @Override
     public void remove(RemovalReason reason) {
-        // Останавливаем звук при удалении сущности
         if (level().isClientSide() && engineSoundInstance != null) {
             Minecraft.getInstance().getSoundManager().stop(engineSoundInstance);
             engineSoundInstance = null;
@@ -397,8 +392,7 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
         }
     }
 
-    @Override
-    public void travel() {
+    private void handleVehicleMovement() {
         Entity passenger0 = this.getFirstPassenger();
 
         if (this.getEnergy() <= 0) return;
@@ -457,8 +451,7 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
     }
 
     @Override
-    public void positionRider(@NotNull Entity passenger, @NotNull MoveFunction callback) {
-        // From Immersive_Aircraft
+    public void positionRider(@NotNull Entity passenger, @NotNull Entity.MoveFunction callback) {
         if (!this.hasPassenger(passenger)) {
             return;
         }
@@ -554,7 +547,7 @@ public class btr80aEntity extends ContainerMobileVehicleEntity implements GeoEnt
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), getAttacker(), getAttacker()), 80f,
                     this.getX(), this.getY(), this.getZ(), 5f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.NeoForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
         }
