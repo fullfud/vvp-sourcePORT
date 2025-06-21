@@ -2,18 +2,18 @@ package tech.vvp.vvp.entity.vehicle;
 
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
-
-import tech.vvp.vvp.VVP;
-import tech.vvp.vvp.config.VehicleConfigVVP;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ArmedVehicleEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ContainerMobileVehicleEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.LandArmorEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ThirdPersonCameraPosition;
 import com.atsuishio.superbwarfare.entity.vehicle.damage.DamageModifier;
-import com.atsuishio.superbwarfare.init.*;
+import com.atsuishio.superbwarfare.init.ModDamageTypes;
+import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.init.ModTags;
 import com.atsuishio.superbwarfare.tools.CustomExplosion;
 import com.atsuishio.superbwarfare.tools.ParticleTool;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.registries.BuiltInRegistries;
 import net.minecraft.nbt.CompoundTag;
 import net.minecraft.resources.ResourceLocation;
 import net.minecraft.server.level.ServerLevel;
@@ -22,18 +22,19 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.damagesource.DamageTypes;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.EntityType;
+import net.minecraft.world.entity.Mob;
+import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
+import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import import net.neoforged.api.distmarker.Dist;.Dist;
-import import net.neoforged.api.distmarker.Dist;.OnlyIn;
-import net.neoforged.neoforge.fluids.FluidType;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.network.PlayMessages;
-import net.neoforged.neoforge.registries.ForgeRegistries;
-import net.minecraft.core.registries.BuiltInRegistries;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Math;
@@ -47,11 +48,9 @@ import software.bernie.geckolib.core.animation.AnimationState;
 import software.bernie.geckolib.core.animation.RawAnimation;
 import software.bernie.geckolib.core.object.PlayState;
 import software.bernie.geckolib.util.GeckoLibUtil;
-
-// Импортируем необходимые классы для атрибутов
-import net.minecraft.world.entity.ai.attributes.AttributeSupplier;
-import net.minecraft.world.entity.ai.attributes.Attributes;
-import net.minecraft.world.entity.Mob;
+import tech.vvp.vvp.VVP;
+import tech.vvp.vvp.config.VehicleConfigVVP;
+import tech.vvp.vvp.init.ModEntities; // Предполагается, что сущность регистрируется здесь
 
 public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEntity, LandArmorEntity, ArmedVehicleEntity {
 
@@ -62,31 +61,19 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
         this.setMaxUpStep(1.5f);
     }
 
+    // Конструктор для спавна по сети (заменяет статический метод clientSpawn)
+    public bikeredEntity(PlayMessages.SpawnEntity packet, Level world) {
+        this((EntityType<bikeredEntity>) packet.getEntityType(), world);
+    }
+
     // Добавляем статический метод для создания атрибутов
     public static AttributeSupplier.Builder createAttributes() {
         return Mob.createMobAttributes()
-                .add(Attributes.MAX_HEALTH, 100.0D)  // Тигр легче Абрамса
-                .add(Attributes.MOVEMENT_SPEED, 0.35D) // Тигр быстрее
+                .add(Attributes.MAX_HEALTH, 100.0D)
+                .add(Attributes.MOVEMENT_SPEED, 0.35D)
                 .add(Attributes.KNOCKBACK_RESISTANCE, 0.8D)
                 .add(Attributes.ARMOR, 10.0D)
                 .add(Attributes.ARMOR_TOUGHNESS, 5.0D);
-    }
-
-    @SuppressWarnings("unchecked")
-    public static bikeredEntity clientSpawn(PlayMessages.SpawnEntity packet, Level world) {
-        EntityType<?> entityTypeFromPacket = BuiltInRegistries.ENTITY_TYPE.byId(packet.getTypeId());
-        if (entityTypeFromPacket == null) {
-            Mod.LOGGER.error("Failed to create entity from packet: Unknown entity type id: " + packet.getTypeId());
-            return null; 
-        }
-        if (!(entityTypeFromPacket instanceof EntityType<?>)) {
-             Mod.LOGGER.error("Retrieved EntityType is not an instance of EntityType<?> for id: " + packet.getTypeId());
-             return null;
-        }
-
-        EntityType<bikeredEntity> castedEntityType = (EntityType<bikeredEntity>) entityTypeFromPacket;
-        bikeredEntity entity = new bikeredEntity(castedEntityType, world);
-        return entity;
     }
 
     @Override
@@ -117,13 +104,11 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
     @Override
     public void addAdditionalSaveData(@NotNull CompoundTag compound) {
         super.addAdditionalSaveData(compound);
-        // Добавьте здесь любые дополнительные данные для сохранения, если они есть
     }
 
     @Override
     public void readAdditionalSaveData(@NotNull CompoundTag compound) {
         super.readAdditionalSaveData(compound);
-        // Восстановите здесь любые дополнительные данные, если они есть
     }
 
     @Override
@@ -153,14 +138,6 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
                 .reduce(7);
     }
 
-    public double getSubmergedHeight(Entity entity) {
-        for (FluidType fluidType : ForgeRegistries.FLUID_TYPES.get().getValues()) {
-            if (entity.level().getFluidState(entity.blockPosition()).getFluidType() == fluidType)
-                return entity.getFluidTypeHeight(fluidType);
-        }
-        return 0;
-    }
-
     @Override
     public void baseTick() {
         turretYRotO = this.getTurretYRot();
@@ -170,6 +147,9 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
         rightWheelRotO = this.getRightWheelRot();
 
         super.baseTick();
+        
+        // Логика движения из удаленного метода travel() перенесена сюда
+        this.handleVehicleMovement();
 
         if (this.onGround()) {
             float f0 = 0.54f + 0.25f * Mth.abs(90 - (float) calculateAngle(this.getDeltaMovement(), this.getViewVector(1))) / 90;
@@ -191,9 +171,9 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
     public boolean canCollideHardBlock() {
         return getDeltaMovement().horizontalDistance() > 0.09 || Mth.abs(this.entityData.get(POWER)) > 0.15;
     }
-
-    @Override
-    public void travel() {
+    
+    // Метод travel() удален, его логика теперь в handleVehicleMovement()
+    private void handleVehicleMovement() {
         Entity passenger0 = this.getFirstPassenger();
 
         if (this.getEnergy() <= 0) return;
@@ -259,7 +239,7 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
     }
 
     @Override
-    public void positionRider(@NotNull Entity passenger, @NotNull MoveFunction callback) {
+    public void positionRider(@NotNull Entity passenger, @NotNull Entity.MoveFunction callback) {
         if (!this.hasPassenger(passenger)) {
             return;
         }
@@ -270,10 +250,10 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
         Vector4f worldPosition;
 
         switch(i) {
-            case 0: // Водитель (слева спереди)
-            worldPosition = transformPosition(transform, -0.f, 0.30f, -0.3f); 
+            case 0: // Водитель
+                worldPosition = transformPosition(transform, -0.f, 0.30f, -0.3f); 
                 break;
-            case 1: // Пассажир (справа спереди)
+            case 1: // Пассажир
                 worldPosition = transformPosition(transform, 0.f, 0.30f, -0.9f);
                 break;
             default:
@@ -287,7 +267,7 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
 
     @Override
     public int getMaxPassengers() {
-        return 2; // Водитель + 3 пассажира (типичная компоновка седана)
+        return 2;
     }
 
     @Override
@@ -297,7 +277,8 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), getAttacker(), getAttacker()), 80f,
                     this.getX(), this.getY(), this.getZ(), 5f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
             explosion.explode();
-            net.minecraftforge.event.NeoForgeEventFactory.onExplosionStart(this.level(), explosion);
+            // Исправлено на EventHooks
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnMediumExplosionParticles(this.level(), this.position());
         }
@@ -308,7 +289,7 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
 
     @Override
     public void onPassengerTurned(Entity entity) {
-        // Ничего не делаем здесь, чтобы предотвратить вращение турели при повороте головы пассажира
+        // Ничего не делаем здесь
     }
 
     private PlayState idlePredicate(AnimationState<bikeredEntity> event) {
@@ -318,41 +299,40 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
         return event.setAndContinue(RawAnimation.begin().thenLoop("animation.lav.idle"));
     }
     
-    // Реализация методов ArmedVehicleEntity - заглушки, так как оружия у нас больше нет
+    // Реализация методов ArmedVehicleEntity - заглушки
     
     @Override
     public int mainGunRpm(Player player) {
-        return 0; // Нет оружия
+        return 0;
     }
 
     @Override
     public boolean canShoot(Player player) {
-        return false; // Нет оружия
+        return false;
     }
 
     @Override
     public int getAmmoCount(Player player) {
-        return 0; // Нет боеприпасов
+        return 0;
     }
 
     @Override
     public void vehicleShoot(Player player, int type) {
-        // Ничего не делаем, т.к. стрелять невозможно
+        // Ничего не делаем
     }
     
     @Override
     public int zoomFov() {
-        return 0; // Нет оптического прицела
+        return 0;
     }
     
     @Override
     public int getWeaponHeat(Player player) {
-        return 0; // Нет нагрева оружия
+        return 0;
     }
 
     @Override
     public boolean hidePassenger(Entity entity) {
-        // Пассажиры внутри автомобиля видны
         return false;
     }
 
@@ -363,7 +343,7 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
 
     @Override
     public double getSensitivity(double original, boolean zoom, int seatIndex, boolean isOnGround) {
-        return 0.3; // Нормальная чувствительность для всех пассажиров
+        return 0.3;
     }
 
     @OnlyIn(Dist.CLIENT)
@@ -380,7 +360,6 @@ public class bikeredEntity extends ContainerMobileVehicleEntity implements GeoEn
     @Override
     public Vec3 getCameraPosition(float partialTicks, Player player, boolean zoom, boolean isFirstPerson) {
         if (isFirstPerson) {
-            // В режиме от первого лица камера находится примерно на уровне глаз
             return new Vec3(Mth.lerp(partialTicks, player.xo, player.getX()), 
                            Mth.lerp(partialTicks, player.yo + player.getEyeHeight(), player.getEyeY()), 
                            Mth.lerp(partialTicks, player.zo, player.getZ()));
