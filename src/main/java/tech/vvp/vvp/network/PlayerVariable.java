@@ -1,13 +1,9 @@
 package tech.vvp.vvp.network;
 
-import com.atsuishio.superbwarfare.Mod; // Импорт для PACKET_HANDLER из SuperbWarfare
-import tech.vvp.vvp.network.message.receive.PlayerVariablesSyncMessage;
-import tech.vvp.vvp.tools.Ammo; // <-- Убедитесь, что этот импорт указывает на ваш класс Ammo
 import net.minecraft.nbt.CompoundTag;
-import net.minecraft.server.level.ServerPlayer;
 import net.minecraft.world.entity.Entity;
-import net.neoforged.neoforge.network.PacketDistributor;
-import net.minecraft.nbt.Tag;
+import net.minecraft.world.entity.player.Player;
+import tech.vvp.vvp.tools.Ammo;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -15,96 +11,57 @@ import java.util.function.Consumer;
 
 public class PlayerVariable {
 
-    private PlayerVariable old = null;
-
     public Map<Ammo, Integer> ammo = new HashMap<>();
     public boolean tacticalSprint = false;
 
-    public void watch() {
-        this.old = this.copy();
+    /**
+     * Получает Capability, изменяет его и синхронизирует с клиентом.
+     */
+    public static void modify(Player player, Consumer<PlayerVariable> consumer) {
+        PlayerVariable cap = player.getCapability(ModVariables.PLAYER_VARIABLE);
+        if (cap != null) {
+            consumer.accept(cap);
+            ModVariables.syncPlayerVariables(player);
+        }
     }
 
     /**
-     * 编辑并自动同步玩家变量
+     * Копирует данные из одного capability в другой. Используется при респавне.
      */
-    public static void modify(Entity entity, Consumer<PlayerVariable> consumer) {
-        var cap = entity.getCapability(ModVariables.PLAYER_VARIABLE).orElse(new PlayerVariable());
-
-        cap.watch();
-        consumer.accept(cap);
-        cap.sync(entity);
+    public void copyFrom(PlayerVariable source) {
+        this.ammo = new HashMap<>(source.ammo);
+        this.tacticalSprint = source.tacticalSprint;
     }
 
-    public void sync(Entity entity) {
-        if (!entity.getCapability(ModVariables.PLAYER_VARIABLE).isPresent()) return;
-
-        var newVariable = entity.getCapability(ModVariables.PLAYER_VARIABLE).resolve().get();
-        if (old != null && old.equals(newVariable)) return;
-
-        if (entity instanceof ServerPlayer player) {
-            Mod.PACKET_HANDLER.send(PacketDistributor.PLAYER.with(() -> player), new PlayerVariablesSyncMessage(entity.getId(), compareAndUpdate()));
+    /**
+     * Сохраняет данные этого capability в NBT.
+     */
+    public CompoundTag saveNBTData(CompoundTag nbt) {
+        CompoundTag ammoTag = new CompoundTag();
+        for (Map.Entry<Ammo, Integer> entry : ammo.entrySet()) {
+            ammoTag.putInt(entry.getKey().name(), entry.getValue());
         }
-    }
-
-    public Map<Byte, Integer> compareAndUpdate() {
-        var map = new HashMap<Byte, Integer>();
-        var old = this.old == null ? new PlayerVariable() : this.old;
-
-        for (var type : Ammo.values()) {
-            var oldCount = old.ammo.getOrDefault(type, 0);
-            var newCount = type.get(this);
-
-            if (oldCount != newCount) {
-                map.put((byte) type.ordinal(), newCount);
-            }
-        }
-
-        if (old.tacticalSprint != this.tacticalSprint) {
-            map.put((byte) -1, this.tacticalSprint ? 1 : 0);
-        }
-
-        return map;
-    }
-
-    public PlayerVariable copy() {
-        var clone = new PlayerVariable();
-
-        for (var type : Ammo.values()) {
-            type.set(clone, type.get(this));
-        }
-
-        clone.tacticalSprint = this.tacticalSprint;
-
-        return clone;
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (!(obj instanceof PlayerVariable other)) return false;
-
-        for (var type : Ammo.values()) {
-            if (type.get(this) != type.get(other)) return false;
-        }
-
-        return tacticalSprint == other.tacticalSprint;
-    }
-
-    public Tag writeNBT() {
-        CompoundTag nbt = new CompoundTag();
-        for (var type : Ammo.values()) {
-            type.set(nbt, type.get(this));
-        }
-
-        nbt.putBoolean("TacticalSprint", tacticalSprint);
+        nbt.put("ammo", ammoTag);
+        nbt.putBoolean("tacticalSprint", tacticalSprint);
         return nbt;
     }
 
-    public void readNBT(Tag tag) {
-        CompoundTag nbt = (CompoundTag) tag;
-        for (var type : Ammo.values()) {
-            type.set(this, type.get(nbt));
+    /**
+     * Загружает данные в этот capability из NBT.
+     */
+    public void loadNBTData(CompoundTag nbt) {
+        if (nbt.contains("ammo", CompoundTag.TAG_COMPOUND)) {
+            CompoundTag ammoTag = nbt.getCompound("ammo");
+            this.ammo.clear();
+            for (String key : ammoTag.getAllKeys()) {
+                try {
+                    Ammo ammoType = Ammo.valueOf(key);
+                    this.ammo.put(ammoType, ammoTag.getInt(key));
+                } catch (IllegalArgumentException e) {
+                    // Игнорируем неверные или устаревшие типы патронов
+                }
+            }
         }
-
-        tacticalSprint = nbt.getBoolean("TacticalSprint");
+        this.tacticalSprint = nbt.getBoolean("tacticalSprint");
     }
 }
