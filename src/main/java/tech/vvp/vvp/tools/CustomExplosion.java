@@ -169,7 +169,7 @@ public class CustomExplosion extends Explosion {
         int z0 = Mth.floor(this.z - (double) diameter - 1.0D);
         int z1 = Mth.floor(this.z + (double) diameter + 1.0D);
         List<Entity> list = this.level.getEntities(this.source, new AABB(x0, y0, z0, x1, y1, z1));
-        net.minecraftforge.event.ForgeEventFactory.onExplosionDetonate(this.level, this, list, diameter);
+        net.minecraftforge.event.NeoForgeEventFactory.onExplosionDetonate(this.level, this, list, diameter);
         Vec3 position = new Vec3(this.x, this.y, this.z);
 
         for (Entity entity : list) {

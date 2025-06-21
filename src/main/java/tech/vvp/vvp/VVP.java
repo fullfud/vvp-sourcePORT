@@ -1,3 +1,4 @@
+// Полный путь: src/main/java/tech/vvp/vvp/VVP.java
 package tech.vvp.vvp;
 
 import com.mojang.logging.LogUtils;
@@ -5,8 +6,10 @@ import net.neoforged.fml.common.Mod;
 import net.neoforged.fml.event.lifecycle.FMLCommonSetupEvent;
 import net.neoforged.fml.javafmlmod.FMLJavaModLoadingContext;
 import net.neoforged.bus.api.IEventBus;
+import net.neoforged.neoforge.common.NeoForge;
 import org.slf4j.Logger;
 import net.minecraft.resources.ResourceLocation;
+import tech.vvp.vvp.network.ModVariables;
 
 @Mod(VVP.MOD_ID)
 public class VVP {
@@ -16,14 +19,14 @@ public class VVP {
     public VVP() {
         IEventBus modEventBus = FMLJavaModLoadingContext.get().getModEventBus();
 
-        // Пример регистрации своих классов (если есть)
-        // ModItems.register(modEventBus);
-        // ModEntities.register(modEventBus);
+        // --- РЕГИСТРАЦИЯ ВСЕЙ ЛОГИКИ ИЗ MODVARIABLES ---
+        // Регистрируем обработчики для загрузки мода (капы, пакеты)
+        modEventBus.register(ModVariables.RegistrationEvents.class);
+        // Регистрируем обработчики для игровых событий (вход игрока и т.д.)
+        NeoForge.EVENT_BUS.register(ModVariables.GameEvents.class);
+        // ----------------------------------------------------
 
         modEventBus.addListener(this::setup);
-
-        // Глобальные ивенты (если нужны)
-        // net.neoforged.neoforge.common.NeoForge.EVENT_BUS.register(this);
     }
 
     private void setup(final FMLCommonSetupEvent event) {

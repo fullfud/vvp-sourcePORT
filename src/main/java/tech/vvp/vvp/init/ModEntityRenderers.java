@@ -1,8 +1,8 @@
 package tech.vvp.vvp.init;
 
-import net.neoforged.neoforge.api.distmarker.Dist;
+import import net.neoforged.api.distmarker.Dist;.Dist;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import net.neoforged.neoforge.eventbus.api.SubscribeEvent;
+import import net.neoforged.bus.api.SubscribeEvent;.SubscribeEvent;
 import net.neoforged.neoforge.fml.common.Mod;
 import tech.vvp.vvp.VVP;
 import tech.vvp.vvp.client.renderer.entity.vazikRenderer;

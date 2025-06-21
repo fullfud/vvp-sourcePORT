@@ -5,7 +5,7 @@ import net.minecraft.sounds.SoundEvent;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.ForgeRegistries;
 import net.neoforged.neoforge.registries.RegistryObject;
-import net.neoforged.neoforge.eventbus.api.IEventBus;
+import import net.neoforged.bus.api.SubscribeEvent;.IEventBus;
 import tech.vvp.vvp.VVP;
 
 /**
