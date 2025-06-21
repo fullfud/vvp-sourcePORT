@@ -1,22 +1,11 @@
 package tech.vvp.vvp.init;
 
-import import net.neoforged.api.distmarker.Dist;.Dist;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.bus.api.SubscribeEvent;
 import net.neoforged.neoforge.client.event.EntityRenderersEvent;
-import import net.neoforged.bus.api.SubscribeEvent;.SubscribeEvent;
 import net.neoforged.neoforge.fml.common.Mod;
 import tech.vvp.vvp.VVP;
-import tech.vvp.vvp.client.renderer.entity.vazikRenderer;
-import tech.vvp.vvp.client.renderer.entity.bikegreenRenderer;
-import tech.vvp.vvp.client.renderer.entity.bikeredRenderer;
-import tech.vvp.vvp.client.renderer.entity.mi24Renderer;
-import tech.vvp.vvp.client.renderer.entity.mi24polRenderer;
-import tech.vvp.vvp.client.renderer.entity.mi24ukrRenderer;
-import tech.vvp.vvp.client.renderer.entity.m997Renderer;
-import tech.vvp.vvp.client.renderer.entity.m997_greenRenderer;
-import tech.vvp.vvp.client.renderer.entity.cobraRenderer;
-import tech.vvp.vvp.client.renderer.entity.cobrasharkRenderer;
-import tech.vvp.vvp.client.renderer.entity.btr80aRenderer;
-import tech.vvp.vvp.client.renderer.entity.btr80a_1Renderer;
+import tech.vvp.vvp.client.renderer.entity.*;
 
 @Mod.EventBusSubscriber(modid = VVP.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD, value = Dist.CLIENT)
 public class ModEntityRenderers {
@@ -35,15 +24,4 @@ public class ModEntityRenderers {
         event.registerEntityRenderer(ModEntities.BTR_80A.get(), btr80aRenderer::new);
         event.registerEntityRenderer(ModEntities.BTR_80A_1.get(), btr80a_1Renderer::new);
     }
-
-    /**
-     * Регистрация всех рендереров сущностей
-     * @deprecated Используйте метод registerEntityRenderers с аннотацией @SubscribeEvent
-     */
-    @Deprecated
-    public static void register() {
-        // Эта функция больше не используется
-        // Все регистрации перенесены в метод registerEntityRenderers
-    }
 }
-

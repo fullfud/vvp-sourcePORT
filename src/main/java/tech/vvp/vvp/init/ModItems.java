@@ -3,23 +3,22 @@ package tech.vvp.vvp.init;
 import net.minecraft.world.item.Item;
 import net.minecraft.world.item.Rarity;
 import net.minecraft.world.item.RecordItem;
+import net.neoforged.bus.api.IEventBus;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.ForgeRegistries;
 import net.neoforged.neoforge.registries.RegistryObject;
-import import net.neoforged.bus.api.SubscribeEvent;.IEventBus;
 import tech.vvp.vvp.VVP;
 import tech.vvp.vvp.item.armor.usahelmet;
 import tech.vvp.vvp.item.armor.usachest;
 
 
 public class ModItems {
-    public static final DeferredRegister<Item> REGISTRY = 
+    public static final DeferredRegister<Item> REGISTRY =
             DeferredRegister.create(ForgeRegistries.ITEMS, VVP.MOD_ID);
 
     public static final RegistryObject<Item> SHELL_30MM = REGISTRY.register("shell_30mm",
             () -> new Item(new Item.Properties()));
 
-    // Регистрация предмета ruflag
     public static final RegistryObject<Item> RUFLAG = REGISTRY.register("ruflag",
             () -> new Item(new Item.Properties().stacksTo(64)));
 
@@ -33,14 +32,14 @@ public class ModItems {
             () -> new Item(new Item.Properties()));
 
     public static final RegistryObject<Item> USA_HELMET = REGISTRY.register("usahelmet",
-            () -> new usahelmet());
-            
+            usahelmet::new);
+
     public static final RegistryObject<Item> USA_CHEST = REGISTRY.register("usachest",
-            () -> new usachest());
+            usachest::new);
 
     public static final RegistryObject<Item> RADIOHEAD = REGISTRY.register("music_disc_radiohead",
-                        () -> new RecordItem(15, ModSounds.RADIOHEAD, // 15 = comparator signal strength
-                                new Item.Properties().stacksTo(1).rarity(Rarity.RARE), 4800)); // 4800 = длительность в тиках
+            () -> new RecordItem(15, ModSounds.RADIOHEAD,
+                    new Item.Properties().stacksTo(1).rarity(Rarity.RARE), 4800));
 
 
     public static void register(IEventBus eventBus) {

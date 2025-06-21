@@ -5,15 +5,9 @@ import net.minecraft.core.registries.Registries;
 import net.minecraft.network.chat.Component;
 import net.minecraft.world.item.CreativeModeTab;
 import net.minecraft.world.item.ItemStack;
-import net.neoforged.neoforge.event.BuildCreativeModeTabContentsEvent;
-import import net.neoforged.bus.api.SubscribeEvent;.SubscribeEvent;
-import net.neoforged.neoforge.fml.common.Mod;
 import net.neoforged.neoforge.registries.DeferredRegister;
 import net.neoforged.neoforge.registries.RegistryObject;
 import tech.vvp.vvp.VVP;
-import tech.vvp.vvp.init.ModItems;
-import tech.vvp.vvp.init.ModEntities;
-import tech.vvp.vvp.item.armor.usahelmet;
 
 @SuppressWarnings("unused")
 public class ModTabs {
@@ -32,10 +26,8 @@ public class ModTabs {
                 output.accept(ContainerBlockItem.createInstance(ModEntities.MI24.get()));
                 output.accept(ContainerBlockItem.createInstance(ModEntities.MI24POL.get()));
                 output.accept(ContainerBlockItem.createInstance(ModEntities.MI24UKR.get()));
-                output.accept(ContainerBlockItem.createInstance(ModEntities.M997.get()));
                 output.accept(ContainerBlockItem.createInstance(ModEntities.COBRA.get()));
                 output.accept(ContainerBlockItem.createInstance(ModEntities.COBRASHARK.get()));
-                // Здесь будут добавляться новые единицы техники
             })
             .build());
 
@@ -51,26 +43,12 @@ public class ModTabs {
                     .build());
 
     public static final RegistryObject<CreativeModeTab> ARMOR_TAB = TABS.register("armor_tab",
-                    () -> CreativeModeTab.builder()
-                            .title(Component.translatable("itemGroup.vvp_armor_tab"))
-                            .icon(() -> new ItemStack(ModItems.ARMOR_ICON.get()))
-                            .displayItems((parameters, output) -> {
-                                output.accept(ModItems.USA_HELMET.get());
-                                output.accept(ModItems.USA_CHEST.get());
-                            })
-                            .build());
-    
-    /**
-     * Event for adding items to creative tabs
-     */
-    @Mod.EventBusSubscriber(modid = VVP.MOD_ID, bus = Mod.EventBusSubscriber.Bus.MOD)
-    public static class Registration {
-        @SubscribeEvent
-        public static void register(BuildCreativeModeTabContentsEvent event) {
-            if (event.getTabKey() == ModTabs.VEHICLES.getKey()) {
-                // Добавляем технику
-                event.accept(ContainerBlockItem.createInstance(ModEntities.M997.get()));
-            }
-        }
-    }
+            () -> CreativeModeTab.builder()
+                    .title(Component.translatable("itemGroup.vvp_armor_tab"))
+                    .icon(() -> new ItemStack(ModItems.ARMOR_ICON.get()))
+                    .displayItems((parameters, output) -> {
+                        output.accept(ModItems.USA_HELMET.get());
+                        output.accept(ModItems.USA_CHEST.get());
+                    })
+                    .build());
 }
