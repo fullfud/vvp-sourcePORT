@@ -2,9 +2,6 @@ package tech.vvp.vvp.entity.vehicle;
 
 import com.atsuishio.superbwarfare.Mod;
 import com.atsuishio.superbwarfare.config.server.ExplosionConfig;
-
-import tech.vvp.vvp.VVP;
-import tech.vvp.vvp.config.VehicleConfigVVP;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ContainerMobileVehicleEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.HelicopterEntity;
 import com.atsuishio.superbwarfare.entity.vehicle.base.ThirdPersonCameraPosition;
@@ -15,8 +12,14 @@ import com.atsuishio.superbwarfare.entity.vehicle.weapon.HeliRocketWeapon;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.SmallCannonShellWeapon;
 import com.atsuishio.superbwarfare.entity.vehicle.weapon.VehicleWeapon;
 import com.atsuishio.superbwarfare.event.ClientMouseHandler;
-import com.atsuishio.superbwarfare.init.*;
-import com.atsuishio.superbwarfare.tools.*;
+import com.atsuishio.superbwarfare.init.ModDamageTypes;
+import com.atsuishio.superbwarfare.init.ModItems;
+import com.atsuishio.superbwarfare.init.ModSounds;
+import com.atsuishio.superbwarfare.tools.Ammo;
+import com.atsuishio.superbwarfare.tools.CameraTool;
+import com.atsuishio.superbwarfare.tools.CustomExplosion;
+import com.atsuishio.superbwarfare.tools.InventoryTool;
+import com.atsuishio.superbwarfare.tools.ParticleTool;
 import com.mojang.math.Axis;
 import it.unimi.dsi.fastutil.Pair;
 import net.minecraft.core.BlockPos;
@@ -40,9 +43,9 @@ import net.minecraft.world.level.Explosion;
 import net.minecraft.world.level.Level;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
-import import net.neoforged.api.distmarker.Dist;.Dist;
-import import net.neoforged.api.distmarker.Dist;.OnlyIn;
-import net.neoforged.neoforge.event.NeoForgeEventFactory;
+import net.neoforged.api.distmarker.Dist;
+import net.neoforged.api.distmarker.OnlyIn;
+import net.neoforged.neoforge.event.EventHooks;
 import net.neoforged.neoforge.network.PlayMessages;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -54,8 +57,10 @@ import software.bernie.geckolib.animatable.GeoEntity;
 import software.bernie.geckolib.core.animatable.instance.AnimatableInstanceCache;
 import software.bernie.geckolib.core.animation.AnimatableManager;
 import software.bernie.geckolib.util.GeckoLibUtil;
-
+import tech.vvp.vvp.VVP;
+import tech.vvp.vvp.config.VehicleConfigVVP;
 import tech.vvp.vvp.init.ModEntities;
+import tech.vvp.vvp.init.ModTags;
 
 import static com.atsuishio.superbwarfare.event.ClientMouseHandler.freeCameraPitch;
 import static com.atsuishio.superbwarfare.event.ClientMouseHandler.freeCameraYaw;
@@ -155,7 +160,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
         return super.getDamageModifier()
                 .custom((source, damage) -> {
                     var entity = source.getDirectEntity();
-                    if (entity != null && entity.getType().is(tech.vvp.vvp.init.ModTags.EntityTypes.AERIAL_BOMB)) {
+                    if (entity != null && entity.getType().is(ModTags.EntityTypes.AERIAL_BOMB)) {
                         damage *= 2;
                     }
                     damage *= getHealth() > 0.1f ? 0.7f : 0.05f;
@@ -180,6 +185,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
     @Override
     public void baseTick() {
         super.baseTick();
+        handleVehicleMovement();
 
         if (this.level() instanceof ServerLevel) {
             if (reloadCoolDown > 0) {
@@ -224,7 +230,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
         }).mapToInt(Ammo.HEAVY::get).sum() + countItem(ModItems.SMALL_SHELL.get());
 
         if ((hasItem(ModItems.ROCKET_70.get()) || InventoryTool.hasCreativeAmmoBox(player)) && reloadCoolDown == 0 && this.getEntityData().get(LOADED_ROCKET) < 25) {
-            this.entityData.set(LOADED_ROCKET, this.getEntityData().get(LOADED_ROCKET) + 1);
+            this.entityData.set(LOADED_ROCKET, this.entityData.get(LOADED_ROCKET) + 1);
             reloadCoolDown = 18;
             if (!InventoryTool.hasCreativeAmmoBox(player)) {
                 this.getItemStacks().stream().filter(stack -> stack.is(ModItems.ROCKET_70.get())).findFirst().ifPresent(stack -> stack.shrink(1));
@@ -250,8 +256,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
         }
     }
 
-    @Override
-    public void travel() {
+    private void handleVehicleMovement() {
         Entity passenger = getFirstPassenger();
         Entity passenger2 = getNthEntity(1);
 
@@ -269,7 +274,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
                     this.entityData.set(POWER, this.entityData.get(POWER) * 0.99f);
                 }
             } else if (passenger instanceof Player) {
-                
+
                 if (rightInputDown) {
                     holdTick++;
                     this.entityData.set(DELTA_ROT, this.entityData.get(DELTA_ROT) - 2f * Math.min(holdTick, 7) * this.entityData.get(POWER));
@@ -422,7 +427,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
     }
 
     @Override
-    public void positionRider(@NotNull Entity passenger, @NotNull MoveFunction callback) {
+    public void positionRider(@NotNull Entity passenger, @NotNull Entity.MoveFunction callback) {
         if (!this.hasPassenger(passenger)) {
             return;
         }
@@ -432,14 +437,14 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
         float riderOffset = (float) passenger.getMyRidingOffset();
         Vector4f worldPosition;
     
-        if (i == 0) { // Пилот (заднее сиденье)
+        if (i == 0) { // Пилот
             float pilotX = 0.0f;
             float pilotY = -0.43f + riderOffset;
             float pilotZ = 1.3f;
             worldPosition = transformPosition(transform, pilotX, pilotY, pilotZ);
             passenger.setPos(worldPosition.x, worldPosition.y, worldPosition.z);
             callback.accept(passenger, worldPosition.x, worldPosition.y, worldPosition.z);
-        } else if (i == 1) { // Стрелок (переднее сиденье)
+        } else if (i == 1) { // Стрелок
             float gunnerX = 0.0f;
             float gunnerY = -0.60f + riderOffset;
             float gunnerZ = 2.6f;
@@ -447,7 +452,6 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
             passenger.setPos(worldPosition.x, worldPosition.y, worldPosition.z);
             callback.accept(passenger, worldPosition.x, worldPosition.y, worldPosition.z);
         }
-    
     
         if (passenger != this.getFirstPassenger()) {
             passenger.setXRot(passenger.getXRot() + (getXRot() - xRotO));
@@ -494,7 +498,7 @@ public class cobrasharkEntity extends ContainerMobileVehicleEntity implements Ge
                     ModDamageTypes.causeCustomExplosionDamage(this.level().registryAccess(), this, getAttacker()), 300.0f,
                     this.getX(), this.getY(), this.getZ(), 8f, ExplosionConfig.EXPLOSION_DESTROY.get() ? Explosion.BlockInteraction.DESTROY : Explosion.BlockInteraction.KEEP, true).setDamageMultiplier(1);
             explosion.explode();
-            NeoForgeEventFactory.onExplosionStart(this.level(), explosion);
+            EventHooks.onExplosionStart(this.level(), explosion);
             explosion.finalizeExplosion(false);
             ParticleTool.spawnHugeExplosionParticles(this.level(), this.position());
         }
